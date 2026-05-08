@@ -92,6 +92,18 @@ export const api = {
     update: (id: string, data: unknown) => put<{ data: any }>(`/players/${id}`, data),
     toggle: (id: string) => patch<{ data: any }>(`/players/${id}/toggle`, {}),
     remove: (id: string) => del<void>(`/players/${id}`),
+    subscriptions: {
+      all: (params?: Record<string, string>) => {
+        const qs = params ? '?' + new URLSearchParams(params).toString() : '';
+        return get<{ data: any[] }>(`/players/subscriptions/all${qs}`);
+      },
+      list: (playerId: string) => get<{ data: any[] }>(`/players/${playerId}/subscriptions`),
+      create: (playerId: string, data: unknown) => post<{ data: any }>(`/players/${playerId}/subscriptions`, data),
+      bulk: (data: unknown) => post<{ data: any }>('/players/subscriptions/bulk', data),
+      sendLink: (subId: string) => patch<{ data: any }>(`/players/subscriptions/${subId}/send-link`, {}),
+      markPaid: (subId: string) => patch<{ data: any }>(`/players/subscriptions/${subId}/pay`, {}),
+      remove: (subId: string) => del<void>(`/players/subscriptions/${subId}`),
+    },
   },
   matches: {
     list: (params?: Record<string, string>) => {
@@ -149,5 +161,68 @@ export const api = {
     create: (data: unknown) => post<{ data: any }>('/sanctions', data),
     resolve: (id: string) => patch<{ data: any }>(`/sanctions/${id}/resolve`, {}),
     remove: (id: string) => del<void>(`/sanctions/${id}`),
+  },
+  members: {
+    list: () => get<{ data: any[] }>('/members'),
+    create: (data: unknown) => post<{ data: any }>('/members', data),
+    get: (id: string) => get<{ data: any }>(`/members/${id}`),
+    update: (id: string, data: unknown) => put<{ data: any }>(`/members/${id}`, data),
+    remove: (id: string) => del<void>(`/members/${id}`),
+    linkPlayer: (id: string, playerId: string) => post<{ data: any }>(`/members/${id}/players`, { playerId }),
+    unlinkPlayer: (id: string, playerId: string) => del<void>(`/members/${id}/players/${playerId}`),
+    subscriptions: {
+      list: (id: string) => get<{ data: any[] }>(`/members/${id}/subscriptions`),
+      create: (id: string, data: unknown) => post<{ data: any }>(`/members/${id}/subscriptions`, data),
+      bulk: (data: unknown) => post<{ data: any }>('/members/subscriptions/bulk', data),
+      sendLink: (subId: string) => patch<{ data: any }>(`/members/subscriptions/${subId}/send-link`, {}),
+      markPaid: (subId: string) => patch<{ data: any }>(`/members/subscriptions/${subId}/pay`, {}),
+      remove: (subId: string) => del<void>(`/members/subscriptions/${subId}`),
+    },
+  },
+  club: {
+    get: () => get<{ data: any }>('/club'),
+    update: (data: unknown) => put<{ data: any }>('/club', data),
+    categories: {
+      list: () => get<{ data: any[] }>('/club/categories'),
+      create: (data: unknown) => post<{ data: any }>('/club/categories', data),
+      update: (id: string, data: unknown) => put<{ data: any }>(`/club/categories/${id}`, data),
+      remove: (id: string) => del<void>(`/club/categories/${id}`),
+    },
+    news: {
+      list: () => get<{ data: any[] }>('/club/news'),
+      create: (data: unknown) => post<{ data: any }>('/club/news', data),
+      update: (id: string, data: unknown) => put<{ data: any }>(`/club/news/${id}`, data),
+      remove: (id: string) => del<void>(`/club/news/${id}`),
+    },
+    staff: {
+      list: () => get<{ data: any[] }>('/club/staff'),
+      create: (data: unknown) => post<{ data: any }>('/club/staff', data),
+      update: (id: string, data: unknown) => put<{ data: any }>(`/club/staff/${id}`, data),
+      remove: (id: string) => del<void>(`/club/staff/${id}`),
+    },
+    gallery: {
+      list: () => get<{ data: any[] }>('/club/gallery'),
+      add: (data: unknown) => post<{ data: any }>('/club/gallery', data),
+      remove: (id: string) => del<void>(`/club/gallery/${id}`),
+    },
+    fields: {
+      list: () => get<{ data: any[] }>('/club/fields'),
+      create: (data: unknown) => post<{ data: any }>('/club/fields', data),
+      update: (id: string, data: unknown) => put<{ data: any }>(`/club/fields/${id}`, data),
+      remove: (id: string) => del<void>(`/club/fields/${id}`),
+    },
+    credentials: {
+      generate: (playerId: string) => post<{ data: any }>(`/club/credentials/${playerId}`, {}),
+      get: (playerId: string) => get<{ data: any }>(`/club/credentials/${playerId}`),
+    },
+    payments: {
+      list: (teamId?: string) => {
+        const qs = teamId ? `?teamId=${teamId}` : '';
+        return get<{ data: any[] }>(`/club/payments${qs}`);
+      },
+      create: (data: unknown) => post<{ data: any }>('/club/payments', data),
+      markPaid: (id: string) => patch<{ data: any }>(`/club/payments/${id}/pay`, {}),
+      remove: (id: string) => del<void>(`/club/payments/${id}`),
+    },
   },
 };

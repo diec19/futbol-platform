@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import { db } from '../../config/database';
 import { env } from '../../config/env';
 import { AppError } from '../../lib/app-error';
@@ -29,10 +29,10 @@ export class AuthService {
 
     const payload = { id: user.id, role: user.role, email: user.email };
     const accessToken = jwt.sign(payload, env.JWT_SECRET, {
-      expiresIn: env.JWT_EXPIRES_IN,
+      expiresIn: env.JWT_EXPIRES_IN as SignOptions['expiresIn'],
     });
     const refreshToken = jwt.sign(payload, env.JWT_REFRESH_SECRET, {
-      expiresIn: env.JWT_REFRESH_EXPIRES_IN,
+      expiresIn: env.JWT_REFRESH_EXPIRES_IN as SignOptions['expiresIn'],
     });
 
     return {
@@ -64,7 +64,7 @@ export class AuthService {
 
       const newPayload = { id: user.id, role: user.role, email: user.email };
       const accessToken = jwt.sign(newPayload, env.JWT_SECRET, {
-        expiresIn: env.JWT_EXPIRES_IN,
+        expiresIn: env.JWT_EXPIRES_IN as SignOptions['expiresIn'],
       });
       return { accessToken };
     } catch (err) {

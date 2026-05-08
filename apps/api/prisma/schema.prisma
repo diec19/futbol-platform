@@ -60,6 +60,26 @@ enum PhaseType {
   MIXED
 }
 
+enum PaymentType {
+  REGISTRATION
+  MONTHLY_FEE
+  FINE
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  OVERDUE
+}
+
+enum SubscriptionStatus {
+  PENDING
+  LINK_SENT
+  PAID
+  OVERDUE
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -128,6 +148,7 @@ model Team {
   awayMatches   Match[]     @relation("AwayTeam")
   groupTeams    GroupTeam[]
   matchEvents   MatchEvent[]
+  payments      Payment[]
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
@@ -135,25 +156,68 @@ model Team {
 }
 
 model Player {
-  id            String      @id @default(cuid())
-  teamId        String
-  team          Team        @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  fullName      String
-  dni           String
-  birthDate     DateTime
-  photoUrl      String?
-  shirtNumber   Int?
-  position      Position?
-  medicalStatus String?
-  observations  String?
-  active        Boolean     @default(true)
-  events        MatchEvent[]
-  sanctions     Sanction[]
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  id               String            @id @default(cuid())
+  teamId           String?
+  team             Team?             @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  clubCategoryId   String?
+  clubCategory     ClubCategory?     @relation(fields: [clubCategoryId], references: [id], onDelete: SetNull)
+  firstName        String?
+  lastName         String?
+  fullName         String
+  isClubPlayer     Boolean           @default(false)
+  dni              String            @unique
+  birthDate        DateTime
+  photoUrl         String?           @db.Text
+  shirtNumber      Int?
+  position         Position?
+  medicalStatus    String?
+  observations     String?
+  active           Boolean           @default(true)
+  events           MatchEvent[]
+  sanctions        Sanction[]
+  credential       PlayerCredential?
+  memberLinks      MemberPlayer[]
+  subscriptions    PlayerSubscription[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 
-  @@unique([teamId, dni])
   @@map("players")
+}
+
+model PlayerSubscription {
+  id             String             @id @default(cuid())
+  playerId       String
+  player         Player             @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  month          Int
+  year           Int
+  amount         Float
+  status         SubscriptionStatus @default(PENDING)
+  mpPreferenceId String?
+  mpPaymentLink  String?
+  mpPaymentId    String?
+  paidAt         DateTime?
+  dueDate        DateTime
+  notes          String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@unique([playerId, month, year])
+  @@map("player_subscriptions")
+}
+
+model ClubCategory {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  birthYear   Int?
+  coach       String?
+  assistant   String?
+  active      Boolean   @default(true)
+  players     Player[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("club_categories")
 }
 
 model Referee {
@@ -213,6 +277,8 @@ model Match {
   awayScore    Int?
   scheduledAt  DateTime
   venue        String?
+  fieldId      String?
+  field        Field?       @relation(fields: [fieldId], references: [id])
   refereeId    String?
   referee      Referee?     @relation(fields: [refereeId], references: [id])
   status       MatchStatus  @default(SCHEDULED)
@@ -272,4 +338,169 @@ model Sanction {
   updatedAt  DateTime  @updatedAt
 
   @@map("sanctions")
+}
+
+// ── Club Management ──────────────────────────────────────────────────────────
+
+model Club {
+  id          String        @id @default(cuid())
+  name        String
+  shortName   String?
+  description String?
+  foundedYear Int?
+  logo        String?
+  colors      String?
+  address     String?
+  phone       String?
+  email       String?
+  website     String?
+  instagram   String?
+  facebook    String?
+  whatsapp    String?
+  news        ClubNews[]
+  gallery     ClubGallery[]
+  staff       ClubStaff[]
+  fields      Field[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@map("clubs")
+}
+
+model ClubNews {
+  id          String    @id @default(cuid())
+  clubId      String
+  club        Club      @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  title       String
+  body        String
+  imageUrl    String?
+  published   Boolean   @default(false)
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("club_news")
+}
+
+model ClubGallery {
+  id        String   @id @default(cuid())
+  clubId    String
+  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  url       String
+  caption   String?
+  createdAt DateTime @default(now())
+
+  @@map("club_gallery")
+}
+
+model ClubStaff {
+  id        String   @id @default(cuid())
+  clubId    String
+  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  name      String
+  role      String
+  photo     String?
+  bio       String?
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("club_staff")
+}
+
+model Field {
+  id        String   @id @default(cuid())
+  clubId    String
+  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  name      String
+  address   String?
+  mapUrl    String?
+  capacity  Int?
+  surface   String?
+  matches   Match[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("fields")
+}
+
+// ── SaaS Base ────────────────────────────────────────────────────────────────
+
+model PlayerCredential {
+  id        String    @id @default(cuid())
+  playerId  String    @unique
+  player    Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  qrCode    String
+  issuedAt  DateTime  @default(now())
+  expiresAt DateTime?
+
+  @@map("player_credentials")
+}
+
+model Payment {
+  id          String        @id @default(cuid())
+  teamId      String
+  team        Team          @relation(fields: [teamId], references: [id])
+  type        PaymentType
+  status      PaymentStatus @default(PENDING)
+  amount      Float
+  description String?
+  dueDate     DateTime?
+  paidAt      DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@map("payments")
+}
+
+// ── Socios ───────────────────────────────────────────────────────────────────
+
+model Member {
+  id            String         @id @default(cuid())
+  fullName      String
+  dni           String         @unique
+  email         String         @unique
+  phone         String?
+  address       String?
+  username      String         @unique
+  password      String
+  active        Boolean        @default(true)
+  players       MemberPlayer[]
+  subscriptions Subscription[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@map("members")
+}
+
+model MemberPlayer {
+  id       String @id @default(cuid())
+  memberId String
+  playerId String
+  member   Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, playerId])
+  @@map("member_players")
+}
+
+model Subscription {
+  id             String             @id @default(cuid())
+  memberId       String
+  member         Member             @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  month          Int
+  year           Int
+  amount         Float
+  status         SubscriptionStatus @default(PENDING)
+  mpPreferenceId String?
+  mpPaymentLink  String?
+  mpPaymentId    String?
+  paidAt         DateTime?
+  dueDate        DateTime
+  notes          String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@unique([memberId, month, year])
+  @@map("subscriptions")
 }

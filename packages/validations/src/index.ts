@@ -52,18 +52,22 @@ export const createTeamSchema = z.object({
 export const updateTeamSchema = createTeamSchema.partial().omit({ categoryId: true });
 
 export const createPlayerSchema = z.object({
-  teamId: z.string().cuid(),
+  teamId: z.string().cuid().optional(),
+  clubCategoryId: z.string().cuid().optional(),
+  firstName: z.string().min(1).max(80).optional(),
+  lastName: z.string().min(1).max(80).optional(),
   fullName: z.string().min(2).max(120),
+  isClubPlayer: z.boolean().optional(),
   dni: z.string().min(6).max(20),
   birthDate: z.string().datetime(),
-  photoUrl: z.string().url().optional(),
+  photoUrl: z.string().optional(),
   shirtNumber: z.number().int().min(1).max(99).optional(),
   position: z.enum(POSITION).optional(),
   medicalStatus: z.string().max(200).optional(),
   observations: z.string().max(500).optional(),
 });
 
-export const updatePlayerSchema = createPlayerSchema.partial().omit({ teamId: true });
+export const updatePlayerSchema = createPlayerSchema.partial();
 
 export const createRefereeSchema = z.object({
   fullName: z.string().min(2).max(120),

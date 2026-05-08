@@ -1,0 +1,56 @@
+import { Request, Response, NextFunction } from 'express';
+import { membersService as svc } from './members.service';
+
+export const membersController = {
+  login: async (req: Request, res: Response, next: NextFunction) => {
+    try { res.json({ data: await svc.login(req.body.username, req.body.password) }); } catch (e) { next(e); }
+  },
+  me: async (req: Request, res: Response, next: NextFunction) => {
+    try { res.json({ data: await svc.me((req as any).memberId) }); } catch (e) { next(e); }
+  },
+  list: async (_req: Request, res: Response, next: NextFunction) => {
+    try { res.json({ data: await svc.list() }); } catch (e) { next(e); }
+  },
+  get: async (req: Request, res: Response, next: NextFunction) => {
+    try { res.json({ data: await svc.get(req.params.id) }); } catch (e) { next(e); }
+  },
+  create: async (req: Request, res: Response, next: NextFunction) => {
+    try { res.status(201).json({ data: await svc.create(req.body) }); } catch (e) { next(e); }
+  },
+  update: async (req: Request, res: Response, next: NextFunction) => {
+    try { res.json({ data: await svc.update(req.params.id, req.body) }); } catch (e) { next(e); }
+  },
+  remove: async (req: Request, res: Response, next: NextFunction) => {
+    try { await svc.remove(req.params.id); res.status(204).send(); } catch (e) { next(e); }
+  },
+  linkPlayer: async (req: Request, res: Response, next: NextFunction) => {
+    try { res.status(201).json({ data: await svc.linkPlayer(req.params.id, req.body.playerId) }); } catch (e) { next(e); }
+  },
+  unlinkPlayer: async (req: Request, res: Response, next: NextFunction) => {
+    try { await svc.unlinkPlayer(req.params.id, req.params.playerId); res.status(204).send(); } catch (e) { next(e); }
+  },
+  listSubscriptions: async (req: Request, res: Response, next: NextFunction) => {
+    try { res.json({ data: await svc.listSubscriptions(req.params.id) }); } catch (e) { next(e); }
+  },
+  createSubscription: async (req: Request, res: Response, next: NextFunction) => {
+    try { res.status(201).json({ data: await svc.createSubscription(req.params.id, req.body) }); } catch (e) { next(e); }
+  },
+  createBulk: async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { month, year, amount, dueDate } = req.body;
+      res.json({ data: await svc.createBulkSubscriptions(month, year, amount, dueDate) });
+    } catch (e) { next(e); }
+  },
+  sendLink: async (req: Request, res: Response, next: NextFunction) => {
+    try { res.json({ data: await svc.sendPaymentLink(req.params.subId) }); } catch (e) { next(e); }
+  },
+  markPaid: async (req: Request, res: Response, next: NextFunction) => {
+    try { res.json({ data: await svc.markPaid(req.params.subId) }); } catch (e) { next(e); }
+  },
+  markOverdue: async (req: Request, res: Response, next: NextFunction) => {
+    try { res.json({ data: await svc.markOverdue(req.params.subId) }); } catch (e) { next(e); }
+  },
+  deleteSubscription: async (req: Request, res: Response, next: NextFunction) => {
+    try { await svc.deleteSubscription(req.params.subId); res.status(204).send(); } catch (e) { next(e); }
+  },
+};

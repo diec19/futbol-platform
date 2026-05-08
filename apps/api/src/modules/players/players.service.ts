@@ -4,10 +4,13 @@ import { AppError } from '../../lib/app-error';
 
 export class PlayersService {
   async findAll(query: Record<string, unknown>) {
-    const { teamId, categoryId, position, active, search, page = 1, limit = 20 } = query;
+    const { teamId, categoryId, clubCategoryId, position, active, search, noTeam, isClubPlayer, page = 1, limit = 20 } = query;
     const where: Record<string, unknown> = {};
 
     if (teamId) where.teamId = teamId;
+    if (noTeam === 'true') where.teamId = null;
+    if (clubCategoryId) where.clubCategoryId = clubCategoryId;
+    if (isClubPlayer !== undefined) where.isClubPlayer = isClubPlayer === 'true';
     if (active !== undefined) where.active = active === 'true';
     if (position) where.position = position as Position;
     if (categoryId) where.team = { categoryId };
@@ -23,7 +26,13 @@ export class PlayersService {
       db.player.findMany({
         where,
         include: {
-          team: { select: { id: true, name: true, shieldUrl: true } },
+          team: {
+            select: {
+              id: true, name: true, shieldUrl: true,
+              category: { select: { id: true, name: true } },
+            },
+          },
+          clubCategory: { select: { id: true, name: true } },
           sanctions: { where: { resolved: false }, select: { id: true, matchesBan: true, endDate: true } },
         },
         orderBy: [{ fullName: 'asc' }],
@@ -58,8 +67,12 @@ export class PlayersService {
   }
 
   async create(data: {
-    teamId: string;
+    teamId?: string;
+    clubCategoryId?: string;
+    firstName?: string;
+    lastName?: string;
     fullName: string;
+    isClubPlayer?: boolean;
     dni: string;
     birthDate: string;
     photoUrl?: string;
@@ -68,17 +81,24 @@ export class PlayersService {
     medicalStatus?: string;
     observations?: string;
   }) {
+    const existing = await db.player.findUnique({ where: { dni: data.dni } });
+    if (existing) throw new AppError('Ya existe un jugador con ese DNI', 409);
     return db.player.create({
       data: { ...data, birthDate: new Date(data.birthDate), position: data.position as Position | undefined },
+      include: { clubCategory: { select: { id: true, name: true } } },
     });
   }
 
-  async update(id: string, data: Partial<Omit<Parameters<typeof this.create>[0], 'teamId'>>) {
+  async update(id: string, data: Partial<Parameters<typeof this.create>[0]>) {
     await this.findById(id);
     const updateData: Record<string, unknown> = { ...data };
     if (data.birthDate) updateData.birthDate = new Date(data.birthDate);
     if (data.position) updateData.position = data.position as Position;
-    return db.player.update({ where: { id }, data: updateData });
+    return db.player.update({
+      where: { id },
+      data: updateData,
+      include: { clubCategory: { select: { id: true, name: true } } },
+    });
   }
 
   async toggle(id: string) {

@@ -16,6 +16,9 @@ import { standingsRouter } from './modules/standings/standings.router';
 import { bracketsRouter } from './modules/brackets/brackets.router';
 import { statisticsRouter } from './modules/statistics/statistics.router';
 import { sanctionsRouter } from './modules/sanctions/sanctions.router';
+import { clubRouter } from './modules/club/club.router';
+import { membersRouter } from './modules/members/members.router';
+import { webhooksRouter } from './modules/webhooks/webhooks.router';
 
 const app = express();
 
@@ -47,6 +50,9 @@ app.use(`${v1}/standings`, standingsRouter);
 app.use(`${v1}/brackets`, bracketsRouter);
 app.use(`${v1}/statistics`, statisticsRouter);
 app.use(`${v1}/sanctions`, sanctionsRouter);
+app.use(`${v1}/club`, clubRouter);
+app.use(`${v1}/members`, membersRouter);
+app.use(`${v1}/webhooks`, webhooksRouter);
 
 app.use(errorMiddleware);
 

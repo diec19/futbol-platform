@@ -1,6 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
+import NextImage from 'next/image';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/providers/auth-provider';
@@ -17,10 +19,32 @@ import {
   Flag,
   LogOut,
   LayoutDashboard,
+  Building2,
+  Newspaper,
+  Image,
+  MapPin,
+  CreditCard,
+  ChevronDown,
+  Shirt,
+  Layers,
+  Banknote,
 } from 'lucide-react';
 
-const navigation = [
+const clubNav = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { name: 'Info del Club', href: '/club', icon: Building2 },
+  { name: 'Categorías', href: '/club/categorias', icon: Layers },
+  { name: 'Plantel', href: '/club/plantel', icon: Shirt },
+  { name: 'Cuotas', href: '/club/cuotas', icon: Banknote },
+  { name: 'Socios', href: '/club/members', icon: Users },
+  { name: 'Noticias', href: '/club/news', icon: Newspaper },
+  { name: 'Cuerpo Técnico', href: '/club/staff', icon: Users },
+  { name: 'Galería', href: '/club/gallery', icon: Image },
+  { name: 'Canchas', href: '/club/fields', icon: MapPin },
+  { name: 'Pagos', href: '/club/payments', icon: CreditCard },
+];
+
+const tournamentNav = [
   { name: 'Torneos', href: '/tournaments', icon: Trophy },
   { name: 'Categorías', href: '/categories', icon: ListOrdered },
   { name: 'Equipos', href: '/teams', icon: Shield },
@@ -33,6 +57,76 @@ const navigation = [
   { name: 'Sanciones', href: '/sanctions', icon: AlertTriangle },
 ];
 
+function NavItem({ item, pathname }: { item: { name: string; href: string; icon: any }; pathname: string }) {
+  const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
+  return (
+    <Link
+      href={item.href}
+      className={cn(
+        'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
+        isActive
+          ? 'bg-brand-red text-white shadow-sm shadow-brand-red/30'
+          : 'text-slate-400 hover:text-white hover:bg-white/10'
+      )}
+    >
+      <item.icon size={16} className={isActive ? 'text-white' : 'text-slate-400'} />
+      {item.name}
+    </Link>
+  );
+}
+
+function NavSection({
+  label,
+  items,
+  pathname,
+  defaultOpen = true,
+  bordered = false,
+}: {
+  label: string;
+  items: typeof tournamentNav;
+  pathname: string;
+  defaultOpen?: boolean;
+  bordered?: boolean;
+}) {
+  const hasActive = items.some(
+    (i) => pathname === i.href || (i.href !== '/' && pathname.startsWith(i.href))
+  );
+  const [open, setOpen] = useState(defaultOpen || hasActive);
+
+  return (
+    <div className={cn(bordered && 'border-t border-white/10 pt-3')}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-3 py-1.5 group"
+      >
+        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider group-hover:text-slate-300 transition-colors">
+          {label}
+        </span>
+        <ChevronDown
+          size={13}
+          className={cn(
+            'text-slate-600 transition-transform duration-200',
+            open && 'rotate-180'
+          )}
+        />
+      </button>
+
+      <div
+        className={cn(
+          'overflow-hidden transition-all duration-200',
+          open ? 'max-h-[600px] opacity-100 mt-0.5' : 'max-h-0 opacity-0'
+        )}
+      >
+        <div className="space-y-0.5 pb-1">
+          {items.map((item) => (
+            <NavItem key={item.href} item={item} pathname={pathname} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
@@ -42,41 +136,24 @@ export function Sidebar() {
       {/* Logo */}
       <div className="p-5 border-b border-white/10">
         <div className="flex items-center gap-3">
-          {/* Tricolor shield */}
-          <div className="w-10 h-10 rounded-xl overflow-hidden flex flex-col shadow-lg flex-shrink-0">
-            <div className="flex-1 bg-brand-red" />
-            <div className="flex-1 bg-white" />
-            <div className="flex-1 bg-brand-blue" />
-          </div>
+          <NextImage
+            src="/logo.png"
+            alt="Club logo"
+            width={44}
+            height={44}
+            className="rounded-full flex-shrink-0 shadow-lg"
+          />
           <div>
-            <p className="font-bold text-sm text-white leading-tight">Fútbol Platform</p>
+            <p className="font-bold text-sm text-white leading-tight">Club DM</p>
             <p className="text-xs text-slate-400">Panel de Administración</p>
           </div>
         </div>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
-        {navigation.map((item) => {
-          const isActive =
-            pathname === item.href ||
-            (item.href !== '/' && pathname.startsWith(item.href));
-          return (
-            <Link
-              key={item.name}
-              href={item.href}
-              className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
-                isActive
-                  ? 'bg-brand-red text-white shadow-sm shadow-brand-red/30'
-                  : 'text-slate-400 hover:text-white hover:bg-white/10'
-              )}
-            >
-              <item.icon size={16} className={isActive ? 'text-white' : 'text-slate-400'} />
-              {item.name}
-            </Link>
-          );
-        })}
+      <nav className="flex-1 p-3 overflow-y-auto space-y-1">
+        <NavSection label="Mi Club" items={clubNav} pathname={pathname} defaultOpen={true} />
+        <NavSection label="Torneos" items={tournamentNav} pathname={pathname} defaultOpen={false} bordered />
       </nav>
 
       {/* Footer */}

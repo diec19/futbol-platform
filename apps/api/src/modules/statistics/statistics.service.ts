@@ -124,10 +124,11 @@ export class StatisticsService {
     }
 
     return goalkeepers
+      .filter((gk) => gk.team !== null)
       .map((gk) => ({
         ...gk,
-        goalsAgainst: goalsAgainst[gk.team.id] ?? 0,
-        matchesPlayed: matchesPlayed[gk.team.id] ?? 0,
+        goalsAgainst: goalsAgainst[gk.team!.id] ?? 0,
+        matchesPlayed: matchesPlayed[gk.team!.id] ?? 0,
       }))
       .sort((a, b) => a.goalsAgainst - b.goalsAgainst);
   }

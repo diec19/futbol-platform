@@ -11,6 +11,9 @@ const envSchema = z.object({
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
   UPLOAD_DIR: z.string().default('./uploads'),
   MAX_FILE_SIZE: z.coerce.number().default(5 * 1024 * 1024),
+  MP_ACCESS_TOKEN: z.string().optional(),
+  MP_WEBHOOK_SECRET: z.string().optional(),
+  APP_URL: z.string().default('http://localhost:3001'),
 });
 
 const parsed = envSchema.safeParse(process.env);
