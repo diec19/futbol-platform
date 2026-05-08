@@ -1,0 +1,10 @@
+[build]
+builder = "nixpacks"
+buildCommand = "npm ci && npm run build --workspace=@futbol/api"
+
+[deploy]
+startCommand = "npm run db:deploy --workspace=@futbol/api && npm run start --workspace=@futbol/api"
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10

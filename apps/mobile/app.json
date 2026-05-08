@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "Fútbol Platform",
+    "slug": "futbol-platform",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "futbolplatform",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.futbolplatform.app"
+    },
+    "android": {
+      "package": "com.futbolplatform.app"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "apiUrl": "http://10.0.2.2:3001/api/v1",
+      "router": { "origin": false }
+    }
+  }
+}
