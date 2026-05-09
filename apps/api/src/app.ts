@@ -23,9 +23,10 @@ import { webhooksRouter } from './modules/webhooks/webhooks.router';
 const app = express();
 
 app.use(helmet());
+const corsOrigins = env.CORS_ORIGIN.split(',').map((o) => o.trim()).filter(Boolean);
 app.use(
   cors({
-    origin: env.CORS_ORIGIN,
+    origin: corsOrigins.length === 1 ? corsOrigins[0] : corsOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   })
