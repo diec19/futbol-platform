@@ -1,5 +1,4 @@
-FROM node:20-alpine AS base
-RUN apk add --no-cache libc6-compat
+FROM node:20-slim AS base
 WORKDIR /app
 
 COPY package.json package-lock.json turbo.json ./
@@ -16,7 +15,7 @@ COPY apps/api ./apps/api
 
 RUN npm run build --workspace=@futbol/api
 
-FROM node:20-alpine AS runner
+FROM node:20-slim AS runner
 WORKDIR /app
 
 COPY --from=base /app/package.json ./package.json
@@ -25,8 +24,6 @@ COPY --from=base /app/packages ./packages
 COPY --from=base /app/apps/api/dist ./apps/api/dist
 COPY --from=base /app/apps/api/prisma ./apps/api/prisma
 COPY --from=base /app/apps/api/package.json ./apps/api/
-
-RUN npm prune --omit=dev
 
 WORKDIR /app/apps/api
 CMD npx prisma migrate deploy && node dist/server.js
