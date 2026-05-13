@@ -1,6 +1,5 @@
 [build]
-builder = "nixpacks"
-buildCommand = "npm run build --workspace=@futbol/api"
+builder = "Dockerfile"
 
 [deploy]
 startCommand = "npm run db:deploy --workspace=@futbol/api && npm run start --workspace=@futbol/api"
