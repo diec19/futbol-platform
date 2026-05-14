@@ -2,7 +2,8 @@
 builder = "Dockerfile"
 
 [deploy]
-startCommand = "npm run db:deploy --workspace=@futbol/api && npm run start --workspace=@futbol/api"
+preDeployCommand = "npm run db:deploy --workspace=@futbol/api"
+startCommand = "npm run start --workspace=@futbol/api"
 healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"

@@ -28,4 +28,4 @@ COPY --from=base /app/apps/api/prisma ./apps/api/prisma
 COPY --from=base /app/apps/api/package.json ./apps/api/
 
 WORKDIR /app/apps/api
-CMD npx prisma migrate deploy && node dist/server.js
+CMD node dist/server.js
