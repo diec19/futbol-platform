@@ -1,4 +1,5 @@
-FROM node:20-slim AS base
+FROM node:20-bookworm-slim AS base
+RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 COPY package.json package-lock.json turbo.json ./
@@ -15,7 +16,8 @@ COPY apps/api ./apps/api
 
 RUN npm run build --workspace=@futbol/api
 
-FROM node:20-slim AS runner
+FROM node:20-bookworm-slim AS runner
+RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 COPY --from=base /app/package.json ./package.json
