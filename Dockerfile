@@ -14,7 +14,7 @@ RUN npm ci
 COPY packages ./packages
 COPY apps/api ./apps/api
 
-RUN npm run build --workspace=@futbol/api
+RUN npm run build
 
 FROM node:20-bookworm-slim AS runner
 RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
