@@ -13,7 +13,10 @@ config.resolver.nodeModulesPaths = [
   path.resolve(workspaceRoot, 'node_modules'),
 ];
 
-config.resolver.extraNodeModules = {};
+config.resolver.extraNodeModules = {
+  'react': path.resolve(projectRoot, 'node_modules/react'),
+  'react-native': path.resolve(projectRoot, 'node_modules/react-native'),
+};
 
 config.resolver.blockList = [/node_modules\/expo\/node_modules\/react-native\/.*/];
 
