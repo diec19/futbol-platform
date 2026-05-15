@@ -9,18 +9,11 @@ const config = getDefaultConfig(projectRoot);
 config.watchFolders = [workspaceRoot];
 
 config.resolver.nodeModulesPaths = [
-  path.resolve(workspaceRoot, 'node_modules'),
   path.resolve(projectRoot, 'node_modules'),
+  path.resolve(workspaceRoot, 'node_modules'),
 ];
 
-config.resolver.extraNodeModules = {
-  'react': path.resolve(workspaceRoot, 'node_modules/react'),
-  'react-dom': path.resolve(workspaceRoot, 'node_modules/react-dom'),
-  'react-native': path.resolve(workspaceRoot, 'node_modules/react-native'),
-  'react-native-web': path.resolve(workspaceRoot, 'node_modules/react-native-web'),
-  'react-native-safe-area-context': path.resolve(workspaceRoot, 'node_modules/react-native-safe-area-context'),
-  'react-native-screens': path.resolve(workspaceRoot, 'node_modules/react-native-screens'),
-};
+config.resolver.extraNodeModules = {};
 
 config.resolver.blockList = [/node_modules\/expo\/node_modules\/react-native\/.*/];
 
