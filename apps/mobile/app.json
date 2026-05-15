@@ -6,7 +6,9 @@
     "orientation": "portrait",
     "scheme": "futbolplatform",
     "userInterfaceStyle": "light",
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.futbolplatform.app"
@@ -18,13 +20,20 @@
       "bundler": "metro",
       "output": "single"
     },
-    "plugins": ["expo-router"],
+    "plugins": [
+      "expo-router"
+    ],
     "experiments": {
       "typedRoutes": true
     },
     "extra": {
-      "apiUrl": "http://10.0.2.2:3001/api/v1",
-      "router": { "origin": false }
+      "apiUrl": "https://futbol-platform-production.up.railway.app/api/v1",
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "373f40c1-49ba-4ced-be78-dd73b99b3c16"
+      }
     }
   }
 }
