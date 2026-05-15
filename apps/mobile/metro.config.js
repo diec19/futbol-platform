@@ -17,15 +17,4 @@ config.resolver.extraNodeModules = {};
 
 config.resolver.blockList = [/node_modules\/expo\/node_modules\/react-native\/.*/];
 
-const originalResolveRequest = config.resolver.resolveRequest;
-config.resolver.resolveRequest = (ctx, moduleName, platform) => {
-  if (moduleName.startsWith('expo-router/_ctx')) {
-    return ctx.resolveRequest(ctx, path.join(projectRoot, 'router-ctx.android.js'), platform);
-  }
-  if (typeof originalResolveRequest === 'function') {
-    return originalResolveRequest(ctx, moduleName, platform);
-  }
-  return ctx.resolveRequest(ctx, moduleName, platform);
-};
-
 module.exports = config;
