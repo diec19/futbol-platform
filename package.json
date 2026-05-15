@@ -20,6 +20,10 @@
     "prettier": "^3.3.0",
     "typescript": "^5.5.0"
   },
+  "overrides": {
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
+  },
   "packageManager": "npm@10.8.2",
   "engines": {
     "node": ">=20.0.0"
