@@ -9,7 +9,8 @@
     "ios": "expo start --ios",
     "web": "cross-env EXPO_ROUTER_APP_ROOT=app expo export -p web && serve dist",
     "web:export": "cross-env EXPO_ROUTER_APP_ROOT=app expo export -p web",
-    "eas-build-post-install": "cd ../../packages/constants && npm run build && cd ../types && npm run build && cd ../validations && npm run build && cd ../../apps/mobile && node -e \"const fs=require('fs');['android','ios','web'].forEach(p=>{let f='node_modules/expo-router/_ctx.'+p+'.js';let c=fs.readFileSync(f,'utf8');c=c.replace(/process\\.env\\.EXPO_ROUTER_APP_ROOT/g,'\\'./app\\'').replace(/process\\.env\\.EXPO_ROUTER_IMPORT_MODE/g,'\\'sync\\'');fs.writeFileSync(f,c)})\"",
+    "postinstall": "node scripts/patch-router.js && cd ../../packages/constants && npm run build && cd ../types && npm run build && cd ../validations && npm run build",
+    "eas-build-post-install": "node scripts/patch-router.js",
     "build:android": "eas build --platform android",
     "lint": "eslint app --ext .ts,.tsx"
   },

@@ -32,8 +32,9 @@
         "origin": false
       },
       "eas": {
-        "projectId": "373f40c1-49ba-4ced-be78-dd73b99b3c16"
+        "projectId": "0f7f236b-6bcb-4f00-b88a-c0ad532a0d6e"
       }
-    }
+    },
+    "owner": "dev-diec19"
   }
 }
