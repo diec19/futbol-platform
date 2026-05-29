@@ -11,12 +11,18 @@
     "preview": {
       "distribution": "internal",
       "node": "20.18.0",
+      "env": {
+        "EXPO_ROUTER_APP_ROOT": "./app"
+      },
       "android": {
         "buildType": "apk"
       }
     },
     "production": {
       "node": "20.18.0",
+      "env": {
+        "EXPO_ROUTER_APP_ROOT": "./app"
+      },
       "android": {
         "buildType": "app-bundle"
       }
