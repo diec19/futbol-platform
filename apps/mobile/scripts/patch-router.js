@@ -36,7 +36,11 @@ platforms.forEach((p) => {
 
   content = content.replace(
     /process\.env\.EXPO_ROUTER_APP_ROOT/g,
-    "'./app'"
+    "'../../app'"
+  );
+  content = content.replace(
+    /'\.\/app'/g,
+    "'../../app'"
   );
   content = content.replace(
     /process\.env\.EXPO_ROUTER_IMPORT_MODE/g,
