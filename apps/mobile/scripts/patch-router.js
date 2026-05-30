@@ -1,9 +1,27 @@
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
 const scriptDir = __dirname;
 const appDir = path.resolve(scriptDir, '..');
 const rootDir = path.resolve(appDir, '../..');
+
+const packagesToBuild = ['constants', 'types'];
+
+for (const pkg of packagesToBuild) {
+  const pkgDir = path.join(rootDir, 'packages', pkg);
+  const distDir = path.join(pkgDir, 'dist');
+  if (!fs.existsSync(distDir)) {
+    console.log(`Building @futbol/${pkg}...`);
+    execSync(`npx tsc -p ${path.join(pkgDir, 'tsconfig.json')}`, {
+      cwd: rootDir,
+      stdio: 'inherit',
+    });
+    console.log(`Built @futbol/${pkg}`);
+  } else {
+    console.log(`@futbol/${pkg} already built`);
+  }
+}
 
 const platforms = ['android', 'ios', 'web'];
 
