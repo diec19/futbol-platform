@@ -22,6 +22,7 @@ function memberAuth(req: Request, res: Response, next: NextFunction) {
 
 // ── Auth pública ─────────────────────────────────────────────────────────────
 membersRouter.post('/auth/login', ctrl.login);
+membersRouter.post('/auth/register', ctrl.create);
 membersRouter.get('/auth/me', memberAuth, ctrl.me);
 
 // ── Admin CRUD ────────────────────────────────────────────────────────────────
