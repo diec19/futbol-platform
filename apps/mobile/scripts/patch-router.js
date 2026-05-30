@@ -8,19 +8,16 @@ const rootDir = path.resolve(appDir, '../..');
 
 const packagesToBuild = ['constants', 'types'];
 
+const tscScript = path.join(rootDir, 'node_modules', 'typescript', 'lib', 'tsc.js');
+
 for (const pkg of packagesToBuild) {
   const pkgDir = path.join(rootDir, 'packages', pkg);
-  const distDir = path.join(pkgDir, 'dist');
-  if (!fs.existsSync(distDir)) {
-    console.log(`Building @futbol/${pkg}...`);
-    execSync(`npx tsc -p ${path.join(pkgDir, 'tsconfig.json')}`, {
-      cwd: rootDir,
-      stdio: 'inherit',
-    });
-    console.log(`Built @futbol/${pkg}`);
-  } else {
-    console.log(`@futbol/${pkg} already built`);
-  }
+  console.log(`Building @futbol/${pkg}...`);
+  execSync(`node "${tscScript}" -p ${path.join(pkgDir, 'tsconfig.json')}`, {
+    cwd: rootDir,
+    stdio: 'inherit',
+  });
+  console.log(`Built @futbol/${pkg}`);
 }
 
 const platforms = ['android', 'ios', 'web'];
