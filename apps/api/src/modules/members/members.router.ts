@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { authenticate } from '../../middleware/auth.middleware';
 import { env } from '../../config/env';
 import { membersController as ctrl } from './members.controller';
+import { membersService as svc } from './members.service';
 
 export const membersRouter = Router();
 
@@ -22,7 +23,14 @@ function memberAuth(req: Request, res: Response, next: NextFunction) {
 
 // ── Auth pública ─────────────────────────────────────────────────────────────
 membersRouter.post('/auth/login', ctrl.login);
-membersRouter.post('/auth/register', ctrl.create);
+membersRouter.post('/auth/register', async (req, res, next) => {
+  try {
+    const data = await svc.create(req.body);
+    res.status(201).json({ data });
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message || 'Error interno del servidor', stack: e?.stack });
+  }
+});
 membersRouter.get('/auth/me', memberAuth, ctrl.me);
 
 // ── Admin CRUD ────────────────────────────────────────────────────────────────
