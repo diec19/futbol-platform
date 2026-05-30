@@ -1,28 +1,99 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
 
-function getToken(): string | null {
+function getAccessToken(): string | null {
   if (typeof window === 'undefined') return null;
   return localStorage.getItem('access_token');
+}
+
+function getRefreshToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('refresh_token');
+}
+
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (token: string) => void;
+  reject: (err: unknown) => void;
+}> = [];
+
+function processQueue(error: unknown, token: string | null = null) {
+  failedQueue.forEach(({ resolve, reject }) => {
+    if (error) reject(error);
+    else resolve(token!);
+  });
+  failedQueue = [];
+}
+
+async function refreshAccessToken(): Promise<string> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) throw new Error('No refresh token');
+
+  const res = await fetch(`${API_URL}/auth/refresh`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refreshToken }),
+  });
+
+  if (!res.ok) throw new Error('Refresh failed');
+
+  const json = await res.json();
+  const { accessToken, refreshToken: newRefreshToken } = json.data;
+
+  localStorage.setItem('access_token', accessToken);
+  localStorage.setItem('refresh_token', newRefreshToken);
+
+  return accessToken;
 }
 
 async function request<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const token = getToken();
+  const token = getAccessToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
   };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
+  let res = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
 
   if (res.status === 401) {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    window.location.href = '/login';
-    throw new Error('Session expired');
+    if (!getRefreshToken()) {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      window.location.href = '/login';
+      throw new Error('Session expired');
+    }
+
+    try {
+      const newToken = await new Promise<string>((resolve, reject) => {
+        if (!isRefreshing) {
+          isRefreshing = true;
+          refreshAccessToken()
+            .then((token) => {
+              isRefreshing = false;
+              processQueue(null, token);
+              resolve(token);
+            })
+            .catch((err) => {
+              isRefreshing = false;
+              processQueue(err, null);
+              reject(err);
+            });
+        } else {
+          failedQueue.push({ resolve, reject });
+        }
+      });
+
+      headers['Authorization'] = `Bearer ${newToken}`;
+      res = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
+    } catch {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      window.location.href = '/login';
+      throw new Error('Session expired');
+    }
   }
 
   if (!res.ok) {
