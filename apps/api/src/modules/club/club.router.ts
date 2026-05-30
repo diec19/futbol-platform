@@ -43,6 +43,9 @@ clubRouter.post('/categories', ctrl.createClubCategory);
 clubRouter.put('/categories/:id', ctrl.updateClubCategory);
 clubRouter.delete('/categories/:id', ctrl.deleteClubCategory);
 
+// Finance (unified payments + subscriptions)
+clubRouter.get('/finance/all', ctrl.listAllFinance);
+
 // Payments
 clubRouter.get('/payments', ctrl.listPayments);
 clubRouter.post('/payments', ctrl.createPayment);

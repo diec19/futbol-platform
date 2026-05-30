@@ -7,7 +7,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MATCH_STATUS_LABELS, BRACKET_STAGE_LABELS } from '@futbol/constants';
+import { MATCH_STATUS_LABELS, BRACKET_STAGE_LABELS } from '../../lib/constants';
 
 type Tab = 'matches' | 'standings' | 'bracket';
 

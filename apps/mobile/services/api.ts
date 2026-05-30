@@ -78,4 +78,15 @@ export const api = {
       post<{ data: { accessToken: string; member: any } }>('/members/auth/login', { username, password }),
     me: () => getAuth<{ data: any }>('/members/auth/me'),
   },
+  notifications: {
+    list: () => getAuth<{ data: any[] }>('/notifications'),
+    unreadCount: () => getAuth<{ data: { count: number } }>('/notifications/count'),
+    markRead: (id: string) =>
+      request<{ data: any }>(`/notifications/${id}/read`, { method: 'PATCH' }, true),
+    markAllRead: () =>
+      request<{ data: any }>('/notifications/read-all', { method: 'PATCH' }, true),
+  },
+  news: {
+    list: () => getAuth<{ data: any[] }>('/club/news'),
+  },
 };

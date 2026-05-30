@@ -85,6 +85,14 @@ export const clubController = {
     try { await clubService.deleteClubCategory(req.params.id); res.status(204).send(); } catch (e) { next(e); }
   },
 
+  // ── Unified Finance ───────────────────────────────────────────────────────
+  listAllFinance: async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { status, type } = req.query as Record<string, string>;
+      res.json({ data: await clubService.listAllFinance({ status, type }) });
+    } catch (e) { next(e); }
+  },
+
   // ── Payments ──────────────────────────────────────────────────────────────
   listPayments: async (req: Request, res: Response, next: NextFunction) => {
     try { res.json({ data: await clubService.listPayments(req.query.teamId as string) }); } catch (e) { next(e); }

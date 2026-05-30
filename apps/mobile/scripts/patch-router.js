@@ -1,26 +1,17 @@
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
 
 const scriptDir = __dirname;
 const appDir = path.resolve(scriptDir, '..');
 const rootDir = path.resolve(appDir, '../..');
 
-const packagesToBuild = ['constants', 'types'];
-
-const tscScript = path.join(rootDir, 'node_modules', 'typescript', 'lib', 'tsc.js');
-
-for (const pkg of packagesToBuild) {
-  const pkgDir = path.join(rootDir, 'packages', pkg);
-  console.log(`Building @futbol/${pkg}...`);
-  execSync(`node "${tscScript}" -p ${path.join(pkgDir, 'tsconfig.json')}`, {
-    cwd: rootDir,
-    stdio: 'inherit',
-  });
-  console.log(`Built @futbol/${pkg}`);
-}
-
-const platforms = ['android', 'ios', 'web'];
+const ctxFiles = [
+  '_ctx.android.js',
+  '_ctx.ios.js',
+  '_ctx.web.js',
+  '_ctx.js',
+  '_ctx-html.js',
+];
 
 // Possible locations for expo-router ctx files (npm hoisting)
 const searchPaths = [
@@ -37,8 +28,7 @@ function findCtxFile(filename) {
   return null;
 }
 
-platforms.forEach((p) => {
-  const ctxFile = `_ctx.${p}.js`;
+ctxFiles.forEach((ctxFile) => {
   const filePath = findCtxFile(ctxFile);
 
   if (!filePath) {
@@ -56,10 +46,6 @@ platforms.forEach((p) => {
   content = content.replace(
     /'\.\/app'/g,
     "'../../app'"
-  );
-  content = content.replace(
-    /process\.env\.EXPO_ROUTER_IMPORT_MODE/g,
-    "'sync'"
   );
 
   if (content !== original) {

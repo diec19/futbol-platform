@@ -7,7 +7,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { POSITION_LABELS, MATCH_STATUS_LABELS } from '@futbol/constants';
+import { POSITION_LABELS, MATCH_STATUS_LABELS } from '../../lib/constants';
+import PlayerAvatar from '../../components/PlayerAvatar';
 
 type Tab = 'roster' | 'matches';
 
@@ -98,9 +99,7 @@ export default function TeamScreen() {
                 style={s.playerRow}
                 onPress={() => router.push(`/player/${item.id}`)}
               >
-                <View style={s.shirt}>
-                  <Text style={s.shirtNum}>{item.shirtNumber ?? '—'}</Text>
-                </View>
+                <PlayerAvatar photoUrl={item.photoUrl} name={item.fullName} size={36} style={s.shirt} />
                 <View style={s.playerInfo}>
                   <Text style={s.playerName}>{item.fullName}</Text>
                   {item.position && (
@@ -186,8 +185,7 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 12,
     elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 2,
   },
-  shirt: { width: 36, height: 36, borderRadius: 8, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' },
-  shirtNum: { fontSize: 14, fontWeight: '700', color: '#374151' },
+  shirt: { width: 36, height: 36, borderRadius: 18 },
   playerInfo: { flex: 1 },
   playerName: { fontSize: 14, fontWeight: '600', color: '#111827' },
   playerPos: { fontSize: 12, color: '#9ca3af', marginTop: 1 },

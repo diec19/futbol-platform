@@ -9,22 +9,37 @@ function getClient() {
 }
 
 export const mpService = {
-  async createPreference(sub: {
-    id: string; month: number; year: number; amount: number; dueDate: Date;
-  }, member: { email: string; fullName: string }) {
+  async createPreference(
+    sub: { id: string; month: number; year: number; amount: number; dueDate: Date },
+    member: { email: string; fullName: string },
+    childSubs: { id: string; player: { fullName: string }; amount: number }[] = [],
+  ) {
     const client = getClient();
     const preference = new Preference(client);
 
     const monthName = MONTH_NAMES[sub.month - 1];
+    const items: any[] = [{
+      id: sub.id,
+      title: `Cuota ${monthName} ${sub.year} — ${member.fullName}`,
+      quantity: 1,
+      unit_price: sub.amount,
+      currency_id: 'ARS',
+    }];
+
+    // Add children's subscriptions as additional items
+    for (const cs of childSubs) {
+      items.push({
+        id: cs.id,
+        title: `Cuota ${monthName} ${sub.year} — ${cs.player.fullName}`,
+        quantity: 1,
+        unit_price: cs.amount,
+        currency_id: 'ARS',
+      });
+    }
+
     const result = await preference.create({
       body: {
-        items: [{
-          id: sub.id,
-          title: `Cuota ${monthName} ${sub.year}`,
-          quantity: 1,
-          unit_price: sub.amount,
-          currency_id: 'ARS',
-        }],
+        items,
         payer: {
           email: member.email,
           name: member.fullName,

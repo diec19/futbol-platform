@@ -145,6 +145,100 @@ export const clubService = {
     return db.clubCategory.delete({ where: { id } });
   },
 
+  // ── Unified Finance (payments + subscriptions) ──────────────────────────
+  async listAllFinance(filters?: { status?: string; type?: string }) {
+    const { status, type } = filters ?? {};
+
+    const results: any[] = [];
+
+    // 1. Team payments
+    if (!type || type === 'team_payment') {
+      const teamPayments = await db.payment.findMany({
+        where: status ? { status: status as any } : undefined,
+        include: { team: { select: { name: true } } },
+        orderBy: { createdAt: 'desc' },
+      });
+      for (const p of teamPayments) {
+        results.push({
+          id: p.id,
+          _type: 'team_payment',
+          _typeLabel: 'Pago de equipo',
+          entityName: p.team.name,
+          entityDetail: '',
+          description: p.description ?? '',
+          amount: p.amount,
+          status: p.status,
+          dueDate: p.dueDate,
+          paidAt: p.paidAt,
+          createdAt: p.createdAt,
+        });
+      }
+    }
+
+    // 2. Member subscriptions
+    if (!type || type === 'member_subscription') {
+      const memberSubs = await db.subscription.findMany({
+        where: status ? { status: status as any } : undefined,
+        include: { member: { select: { fullName: true, email: true } } },
+        orderBy: { createdAt: 'desc' },
+      });
+      for (const s of memberSubs) {
+        results.push({
+          id: s.id,
+          _type: 'member_subscription',
+          _typeLabel: 'Cuota de socio',
+          entityName: s.member.fullName,
+          entityDetail: s.member.email ?? '',
+          description: `Cuota ${s.month}/${s.year}`,
+          amount: s.amount,
+          status: s.status,
+          dueDate: s.dueDate,
+          paidAt: s.paidAt,
+          createdAt: s.createdAt,
+        });
+      }
+    }
+
+    // 3. Player subscriptions
+    if (!type || type === 'player_subscription') {
+      const playerSubs = await db.playerSubscription.findMany({
+        where: {
+          ...(status ? { status: status as any } : {}),
+          player: { isClubPlayer: true },
+        },
+        include: {
+          player: {
+            select: {
+              fullName: true,
+              clubCategory: { select: { name: true } },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      for (const s of playerSubs) {
+        results.push({
+          id: s.id,
+          _type: 'player_subscription',
+          _typeLabel: 'Cuota de jugador',
+          entityName: s.player.fullName,
+          entityDetail: s.player.clubCategory?.name ?? '',
+          description: `Cuota ${s.month}/${s.year}`,
+          amount: s.amount,
+          status: s.status,
+          dueDate: s.dueDate,
+          paidAt: s.paidAt,
+          createdAt: s.createdAt,
+        });
+      }
+    }
+
+    // Sort by createdAt desc
+    results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    return results;
+  },
+
   // ── Payments ────────────────────────────────────────────────────────────
   async listPayments(teamId?: string) {
     return db.payment.findMany({

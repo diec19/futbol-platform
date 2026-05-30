@@ -36,6 +36,14 @@ membersRouter.get('/auth/me', memberAuth, ctrl.me);
 // ── Admin CRUD ────────────────────────────────────────────────────────────────
 membersRouter.use(authenticate);
 
+// Subscriptions must precede /:id to avoid route conflict
+membersRouter.get('/subscriptions/all', ctrl.listAllSubscriptions);
+membersRouter.post('/subscriptions/bulk', ctrl.createBulk);
+membersRouter.patch('/subscriptions/:subId/send-link', ctrl.sendLink);
+membersRouter.patch('/subscriptions/:subId/pay', ctrl.markPaid);
+membersRouter.patch('/subscriptions/:subId/overdue', ctrl.markOverdue);
+membersRouter.delete('/subscriptions/:subId', ctrl.deleteSubscription);
+
 membersRouter.get('/', ctrl.list);
 membersRouter.post('/', ctrl.create);
 membersRouter.get('/:id', ctrl.get);
@@ -47,9 +55,3 @@ membersRouter.delete('/:id/players/:playerId', ctrl.unlinkPlayer);
 
 membersRouter.get('/:id/subscriptions', ctrl.listSubscriptions);
 membersRouter.post('/:id/subscriptions', ctrl.createSubscription);
-
-membersRouter.post('/subscriptions/bulk', ctrl.createBulk);
-membersRouter.patch('/subscriptions/:subId/send-link', ctrl.sendLink);
-membersRouter.patch('/subscriptions/:subId/pay', ctrl.markPaid);
-membersRouter.patch('/subscriptions/:subId/overdue', ctrl.markOverdue);
-membersRouter.delete('/subscriptions/:subId', ctrl.deleteSubscription);

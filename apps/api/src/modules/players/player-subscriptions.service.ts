@@ -101,7 +101,18 @@ export const playerSubscriptionsService = {
     });
   },
 
-  async createBulk(data: { month: number; year: number; amount: number; dueDate: string; clubCategoryId?: string }) {
+  async createBulk(data: {
+    month: number; year: number; amount: number; dueDate: string; clubCategoryId?: string; sendWhatsapp?: boolean;
+  }) {
+    const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+    const normalizePhone = (phone: string) => {
+      const d = phone.replace(/\D/g, '');
+      if (d.startsWith('549')) return d;
+      if (d.startsWith('54')) return `9${d}`;
+      return `549${d}`;
+    };
+
     const players = await db.player.findMany({
       where: {
         isClubPlayer: true,
@@ -127,7 +138,32 @@ export const playerSubscriptionsService = {
     );
 
     const created = results.filter((r) => r.status === 'fulfilled').length;
-    return { created, total: players.length };
+    const monthName = MONTHS[data.month - 1];
+    const APP_URL = env.APP_URL ?? '';
+    const waMessages: { phone: string; playerName: string; link: string; month: string; year: number; waUrl: string }[] = [];
+
+    // Generate WhatsApp messages if requested (without MP links to avoid MP errors)
+    if (data.sendWhatsapp) {
+      const fulfilled = results.filter((r) => r.status === 'fulfilled') as PromiseFulfilledResult<any>[];
+      for (const result of fulfilled) {
+        const sub = result.value as any;
+        try {
+          const player = sub.player ?? (await db.player.findUnique({ where: { id: sub.playerId }, select: { fullName: true } }));
+          const memberLink = await db.memberPlayer.findFirst({
+            where: { playerId: sub.playerId },
+            include: { member: { select: { fullName: true, phone: true } } },
+          });
+
+          if (memberLink?.member.phone && memberLink.member.phone.trim()) {
+            const phone = normalizePhone(memberLink.member.phone);
+            const msg = encodeURIComponent(`Hola! 👋 La cuota de ${monthName} ${data.year} de ${player?.fullName ?? 'tu hijo'} ya está generada. Ingresá a la app para pagarla: ${APP_URL}`);
+            waMessages.push({ phone, playerName: player?.fullName ?? '', link: '', month: monthName, year: data.year, waUrl: `https://wa.me/${phone}?text=${msg}` });
+          }
+        } catch { /* skip individual errors */ }
+      }
+    }
+
+    return { created, total: players.length, waMessages };
   },
 
   async sendPaymentLink(subId: string) {
@@ -147,10 +183,35 @@ export const playerSubscriptionsService = {
   },
 
   async markPaid(subId: string) {
-    return db.playerSubscription.update({
+    const sub = await db.playerSubscription.findUnique({
+      where: { id: subId },
+      include: {
+        player: {
+          include: { memberLinks: { select: { memberId: true } } },
+        },
+      },
+    });
+    if (!sub) throw new AppError('Cuota no encontrada', 404);
+
+    const updated = await db.playerSubscription.update({
       where: { id: subId },
       data: { status: 'PAID', paidAt: new Date() },
     });
+
+    // Auto-mark linked member's Subscription for same month/year as PAID
+    if (sub.player?.memberLinks?.length) {
+      await db.subscription.updateMany({
+        where: {
+          memberId: { in: sub.player.memberLinks.map((l) => l.memberId) },
+          month: sub.month,
+          year: sub.year,
+          status: { not: 'PAID' },
+        },
+        data: { status: 'PAID', paidAt: new Date() },
+      });
+    }
+
+    return updated;
   },
 
   async markOverdue(subId: string) {

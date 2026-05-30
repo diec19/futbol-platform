@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { api } from '@/services/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MATCH_STATUS_LABELS } from '@futbol/constants';
+import { MATCH_STATUS_LABELS } from '../../lib/constants';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   SCHEDULED: { bg: '#f3f4f6', text: '#6b7280' },

@@ -30,6 +30,8 @@ async function request<T>(
     throw new Error(err.error ?? 'Request failed');
   }
 
+  if (res.status === 204) return undefined as T;
+
   return res.json();
 }
 
@@ -171,6 +173,10 @@ export const api = {
     linkPlayer: (id: string, playerId: string) => post<{ data: any }>(`/members/${id}/players`, { playerId }),
     unlinkPlayer: (id: string, playerId: string) => del<void>(`/members/${id}/players/${playerId}`),
     subscriptions: {
+      all: (params?: Record<string, string>) => {
+        const qs = params ? '?' + new URLSearchParams(params).toString() : '';
+        return get<{ data: any[] }>(`/members/subscriptions/all${qs}`);
+      },
       list: (id: string) => get<{ data: any[] }>(`/members/${id}/subscriptions`),
       create: (id: string, data: unknown) => post<{ data: any }>(`/members/${id}/subscriptions`, data),
       bulk: (data: unknown) => post<{ data: any }>('/members/subscriptions/bulk', data),
@@ -178,6 +184,11 @@ export const api = {
       markPaid: (subId: string) => patch<{ data: any }>(`/members/subscriptions/${subId}/pay`, {}),
       remove: (subId: string) => del<void>(`/members/subscriptions/${subId}`),
     },
+  },
+  notifications: {
+    list: () => get<{ data: any[] }>('/notifications/all'),
+    create: (data: unknown) => post<{ data: any }>('/notifications', data),
+    remove: (id: string) => del<void>(`/notifications/${id}`),
   },
   club: {
     get: () => get<{ data: any }>('/club'),
@@ -214,6 +225,12 @@ export const api = {
     credentials: {
       generate: (playerId: string) => post<{ data: any }>(`/club/credentials/${playerId}`, {}),
       get: (playerId: string) => get<{ data: any }>(`/club/credentials/${playerId}`),
+    },
+    finance: {
+      all: (params?: Record<string, string>) => {
+        const qs = params ? '?' + new URLSearchParams(params).toString() : '';
+        return get<{ data: any[] }>(`/club/finance/all${qs}`);
+      },
     },
     payments: {
       list: (teamId?: string) => {

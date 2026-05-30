@@ -19,6 +19,7 @@ import { sanctionsRouter } from './modules/sanctions/sanctions.router';
 import { clubRouter } from './modules/club/club.router';
 import { membersRouter } from './modules/members/members.router';
 import { webhooksRouter } from './modules/webhooks/webhooks.router';
+import { notificationsRouter } from './modules/notifications/notifications.router';
 
 const app = express();
 
@@ -54,6 +55,7 @@ app.use(`${v1}/sanctions`, sanctionsRouter);
 app.use(`${v1}/club`, clubRouter);
 app.use(`${v1}/members`, membersRouter);
 app.use(`${v1}/webhooks`, webhooksRouter);
+app.use(`${v1}/notifications`, notificationsRouter);
 
 app.use(errorMiddleware);
 

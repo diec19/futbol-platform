@@ -32,6 +32,7 @@ function StatusBadge({ status }: { status: string }) {
 // ── Bulk generation modal ─────────────────────────────────────────────────────
 function BulkModal({ categories, onClose, onDone }: { categories: any[]; onClose: () => void; onDone: () => void }) {
   const now = new Date();
+  const [target, setTarget] = useState<'players' | 'members'>('players');
   const [form, setForm] = useState({
     month: String(now.getMonth() + 1),
     year: String(now.getFullYear()),
@@ -39,24 +40,92 @@ function BulkModal({ categories, onClose, onDone }: { categories: any[]; onClose
     dueDate: '',
     clubCategoryId: '',
   });
+  const [sendWhatsapp, setSendWhatsapp] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [result, setResult] = useState<{ created: number; total: number; waMessages?: any[] } | null>(null);
   const [error, setError] = useState('');
 
   const handleGenerate = async () => {
     if (!form.amount || !form.dueDate) { setError('Monto y vencimiento son requeridos'); return; }
     setSaving(true);
     setError('');
+    setResult(null);
     try {
-      const result = await api.players.subscriptions.bulk({
+      const payload: any = {
         month: Number(form.month),
         year: Number(form.year),
         amount: Number(form.amount),
         dueDate: new Date(form.dueDate).toISOString(),
-        clubCategoryId: form.clubCategoryId || undefined,
-      });
-      onDone();
+        sendWhatsapp,
+      };
+      let res: any;
+      if (target === 'players') {
+        payload.clubCategoryId = form.clubCategoryId || undefined;
+        res = await api.players.subscriptions.bulk(payload);
+      } else {
+        res = await api.members.subscriptions.bulk(payload);
+      }
+      setResult(res.data ?? res);
     } catch (e: any) { setError(e.message ?? 'Error'); } finally { setSaving(false); }
   };
+
+  const openWhatsApp = (waUrl: string) => {
+    window.open(waUrl, '_blank');
+  };
+
+  if (result) {
+    const waMsgs = result.waMessages ?? [];
+    const waCount = waMsgs.length;
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="font-bold text-slate-800 flex items-center gap-2"><Zap size={16} className="text-green-600" />Cuotas generadas</p>
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl leading-none">&times;</button>
+          </div>
+
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
+            <p className="text-2xl font-bold text-green-700">{result.created}/{result.total}</p>
+            <p className="text-sm text-green-600">cuotas creadas</p>
+          </div>
+
+          {waCount > 0 && (
+            <div className="space-y-3">
+              <p className="text-sm font-semibold text-slate-700">{waCount} WhatsApp listos para enviar</p>
+              <div className="max-h-48 overflow-y-auto space-y-2">
+                {waMsgs.map((w: any, i: number) => (
+                  <div key={i} className="flex items-center justify-between bg-slate-50 rounded-lg p-3">
+                    <div className="text-sm">
+                      <p className="font-medium text-slate-800">{w.name ?? w.playerName}</p>
+                      <p className="text-xs text-slate-400">{w.month} {w.year}</p>
+                    </div>
+                    <button
+                      onClick={() => openWhatsApp(w.waUrl)}
+                      className="px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs font-medium hover:bg-green-600 whitespace-nowrap"
+                      title="Se abre WhatsApp con el mensaje listo. Presioná Enter para enviar."
+                    >
+                      WhatsApp
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={() => waMsgs.forEach((w: any) => openWhatsApp(w.waUrl))}
+                className="w-full px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700"
+              >
+                Enviar todos los WhatsApp ({waCount})
+              </button>
+              <p className="text-xs text-slate-500 text-center">Se abre WhatsApp con el mensaje listo. Presioná <strong>Enter</strong> para enviar cada uno.</p>
+            </div>
+          )}
+
+          <button onClick={onDone} className="w-full px-4 py-2 bg-brand-red text-white rounded-lg text-sm font-medium hover:bg-brand-red-dark">
+            Finalizar
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -64,6 +133,17 @@ function BulkModal({ categories, onClose, onDone }: { categories: any[]; onClose
         <div className="flex items-center justify-between">
           <p className="font-bold text-slate-800 flex items-center gap-2"><Zap size={16} className="text-brand-red" />Generar cuotas masivas</p>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl leading-none">&times;</button>
+        </div>
+
+        <div className="flex gap-2 bg-slate-100 rounded-lg p-1">
+          <button onClick={() => setTarget('players')}
+            className={`flex-1 px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${target === 'players' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+            Jugadores
+          </button>
+          <button onClick={() => setTarget('members')}
+            className={`flex-1 px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${target === 'members' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+            Socios
+          </button>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -94,14 +174,22 @@ function BulkModal({ categories, onClose, onDone }: { categories: any[]; onClose
           </div>
         </div>
 
-        <div>
-          <label className="block text-xs font-medium text-slate-500 mb-1">Categoría (opcional — dejar vacío para todos)</label>
-          <select value={form.clubCategoryId} onChange={(e) => setForm(f => ({ ...f, clubCategoryId: e.target.value }))}
-            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary">
-            <option value="">Todos los jugadores activos</option>
-            {categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-        </div>
+        {target === 'players' && (
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">Categoría (opcional)</label>
+            <select value={form.clubCategoryId} onChange={(e) => setForm(f => ({ ...f, clubCategoryId: e.target.value }))}
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+              <option value="">Todos los jugadores activos</option>
+              {categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+        )}
+
+        <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
+          <input type="checkbox" checked={sendWhatsapp} onChange={(e) => setSendWhatsapp(e.target.checked)}
+            className="rounded border-slate-300 text-brand-red focus:ring-brand-red" />
+          Generar link MP y enviar WhatsApp automáticamente
+        </label>
 
         {error && <p className="text-red-500 text-sm">{error}</p>}
 
@@ -109,7 +197,7 @@ function BulkModal({ categories, onClose, onDone }: { categories: any[]; onClose
           <button onClick={onClose} className="flex-1 px-4 py-2 border border-slate-200 text-slate-600 rounded-lg text-sm hover:bg-slate-50">Cancelar</button>
           <button onClick={handleGenerate} disabled={saving}
             className="flex-1 px-4 py-2 bg-brand-red text-white rounded-lg text-sm font-medium hover:bg-brand-red-dark disabled:opacity-50">
-            {saving ? 'Generando...' : 'Generar cuotas'}
+            {saving ? 'Generando...' : `Generar ${target === 'players' ? 'Jugadores' : 'Socios'}`}
           </button>
         </div>
       </div>

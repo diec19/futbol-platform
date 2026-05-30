@@ -3,7 +3,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BRACKET_STAGE_LABELS } from '@futbol/constants';
+import { BRACKET_STAGE_LABELS } from '../../lib/constants';
 
 function MatchSlot({ match }: { match: any }) {
   const isFinished = match.status === 'FINISHED';

@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { api } from '@/services/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { TOURNAMENT_STATUS_LABELS } from '@futbol/constants';
+import { TOURNAMENT_STATUS_LABELS } from '../../lib/constants';
 
 const STATUS_BG: Record<string, string> = {
   ACTIVE: '#dcfce7',

@@ -5,7 +5,8 @@ import { useLocalSearchParams } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { POSITION_LABELS } from '@futbol/constants';
+import PlayerAvatar from '../../components/PlayerAvatar';
+import { POSITION_LABELS } from '../../lib/constants';
 
 const EVENT_LABELS: Record<string, string> = {
   GOAL: '⚽ Gol',
@@ -63,9 +64,7 @@ export default function PlayerScreen() {
       <ScrollView>
         {/* Header */}
         <View style={s.header}>
-          <View style={s.avatar}>
-            <Text style={s.avatarText}>{player.fullName[0]?.toUpperCase()}</Text>
-          </View>
+          <PlayerAvatar photoUrl={player.photoUrl} name={player.fullName} size={72} style={s.avatar} />
           <Text style={s.name}>{player.fullName}</Text>
           {player.shirtNumber && (
             <Text style={s.shirt}>#{player.shirtNumber}</Text>
@@ -174,8 +173,7 @@ const s = StyleSheet.create({
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   empty: { color: '#9ca3af' },
   header: { backgroundColor: '#16a34a', paddingVertical: 24, alignItems: 'center', paddingHorizontal: 20 },
-  avatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  avatarText: { fontSize: 28, fontWeight: '700', color: '#fff' },
+  avatar: { marginBottom: 8, borderWidth: 3, borderColor: 'rgba(255,255,255,0.3)' },
   name: { fontSize: 20, fontWeight: '700', color: '#fff', textAlign: 'center' },
   shirt: { fontSize: 14, color: '#bbf7d0', marginTop: 2 },
   teamName: { fontSize: 14, color: '#bbf7d0', marginTop: 4 },

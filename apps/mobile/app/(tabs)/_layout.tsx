@@ -1,5 +1,39 @@
-import { Tabs } from 'expo-router';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '../../services/api';
+
+function NotificationBell() {
+  const router = useRouter();
+  const { data } = useQuery({
+    queryKey: ['notifications-count'],
+    queryFn: () => api.notifications.unreadCount(),
+    refetchInterval: 30000,
+  });
+  const count = data?.data?.count ?? 0;
+
+  return (
+    <TouchableOpacity
+      onPress={() => router.push('/notifications')}
+      style={{ marginRight: 16, position: 'relative', padding: 4 }}
+    >
+      <Ionicons name="notifications-outline" size={22} color="#fff" />
+      {count > 0 && (
+        <View style={{
+          position: 'absolute', top: 0, right: 0,
+          backgroundColor: '#DC2626', borderRadius: 8,
+          minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center',
+          paddingHorizontal: 4,
+        }}>
+          <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>
+            {count > 9 ? '9+' : count}
+          </Text>
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+}
 
 export default function TabsLayout() {
   return (
@@ -11,8 +45,19 @@ export default function TabsLayout() {
         headerStyle: { backgroundColor: '#16a34a' },
         headerTintColor: '#fff',
         headerTitleStyle: { fontWeight: 'bold' },
+        headerRight: () => <NotificationBell />,
       }}
     >
+      <Tabs.Screen
+        name="account"
+        options={{
+          title: 'Mi Cuenta',
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person-circle-outline" size={size} color={color} />
+          ),
+        }}
+      />
       <Tabs.Screen
         name="index"
         options={{
@@ -32,30 +77,20 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="standings"
+        name="noticias"
         options={{
-          title: 'Posiciones',
+          title: 'Noticias',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="bar-chart-outline" size={size} color={color} />
+            <Ionicons name="newspaper-outline" size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="stats"
+        name="estado-cuenta"
         options={{
-          title: 'Estadísticas',
+          title: 'Estado de Cuenta',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="stats-chart-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="account"
-        options={{
-          title: 'Mi Cuenta',
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-circle-outline" size={size} color={color} />
+            <Ionicons name="card-outline" size={size} color={color} />
           ),
         }}
       />

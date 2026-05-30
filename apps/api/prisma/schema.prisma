@@ -170,6 +170,7 @@ model Player {
   photoUrl         String?           @db.Text
   shirtNumber      Int?
   position         Position?
+  dominantFoot     String?
   medicalStatus    String?
   observations     String?
   active           Boolean           @default(true)
@@ -467,6 +468,7 @@ model Member {
   active        Boolean        @default(true)
   players       MemberPlayer[]
   subscriptions Subscription[]
+  notifications Notification[]
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
@@ -503,4 +505,18 @@ model Subscription {
 
   @@unique([memberId, month, year])
   @@map("subscriptions")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  memberId  String?
+  member    Member?  @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String   @default("global")
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("notifications")
 }

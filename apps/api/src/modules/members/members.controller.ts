@@ -29,6 +29,16 @@ export const membersController = {
   unlinkPlayer: async (req: Request, res: Response, next: NextFunction) => {
     try { await svc.unlinkPlayer(req.params.id, req.params.playerId); res.status(204).send(); } catch (e) { next(e); }
   },
+  listAllSubscriptions: async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { status, month, year } = req.query;
+      res.json({ data: await svc.listAllSubscriptions({
+        status: status as string | undefined,
+        month: month ? Number(month) : undefined,
+        year: year ? Number(year) : undefined,
+      }) });
+    } catch (e) { next(e); }
+  },
   listSubscriptions: async (req: Request, res: Response, next: NextFunction) => {
     try { res.json({ data: await svc.listSubscriptions(req.params.id) }); } catch (e) { next(e); }
   },
@@ -37,8 +47,8 @@ export const membersController = {
   },
   createBulk: async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { month, year, amount, dueDate } = req.body;
-      res.json({ data: await svc.createBulkSubscriptions(month, year, amount, dueDate) });
+      const { month, year, amount, dueDate, childAmount, sendWhatsapp } = req.body;
+      res.json({ data: await svc.createBulkSubscriptions(month, year, amount, dueDate, childAmount, sendWhatsapp) });
     } catch (e) { next(e); }
   },
   sendLink: async (req: Request, res: Response, next: NextFunction) => {

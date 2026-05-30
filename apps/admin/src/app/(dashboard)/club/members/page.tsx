@@ -19,16 +19,24 @@ const SUB_STATUS = {
   OVERDUE:   { label: 'Vencido',      color: 'bg-red-100 text-red-700',     icon: AlertCircle },
 };
 
-// ── Formulario de creación ────────────────────────────────────────────────────
-function MemberForm({ onSave, onCancel }: { onSave: (d: any) => void; onCancel: () => void }) {
+// ── Formulario de creación / edición ──────────────────────────────────────────
+function MemberForm({ initial, onSave, onCancel }: { initial?: any; onSave: (d: any) => void; onCancel: () => void }) {
   const [showPass, setShowPass] = useState(false);
-  const [form, setForm] = useState({ fullName: '', dni: '', email: '', phone: '', username: '', password: '' });
+  const [form, setForm] = useState({
+    fullName: initial?.fullName ?? '',
+    dni: initial?.dni ?? '',
+    email: initial?.email ?? '',
+    phone: initial?.phone ?? '',
+    username: initial?.username ?? '',
+    password: '',
+  });
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
+  const isEdit = !!initial;
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
         <div className="flex items-center justify-between p-5 border-b border-slate-100">
-          <p className="font-bold text-slate-800">Nuevo Socio</p>
+          <p className="font-bold text-slate-800">{isEdit ? 'Editar Socio' : 'Nuevo Socio'}</p>
           <button onClick={onCancel}><X size={18} className="text-slate-400" /></button>
         </div>
         <div className="p-5 space-y-3">
@@ -39,7 +47,7 @@ function MemberForm({ onSave, onCancel }: { onSave: (d: any) => void; onCancel: 
             <input className="input col-span-2" placeholder="Email *" type="email" value={form.email} onChange={e => set('email', e.target.value)} />
             <input className="input" placeholder="Usuario *" value={form.username} onChange={e => set('username', e.target.value)} />
             <div className="relative">
-              <input className="input pr-10 w-full" placeholder="Contraseña *" type={showPass ? 'text' : 'password'} value={form.password} onChange={e => set('password', e.target.value)} />
+              <input className="input pr-10 w-full" placeholder={isEdit ? 'Nueva contraseña (dejar vacío)' : 'Contraseña *'} type={showPass ? 'text' : 'password'} value={form.password} onChange={e => set('password', e.target.value)} />
               <button type="button" onClick={() => setShowPass(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
                 {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
               </button>
@@ -49,9 +57,14 @@ function MemberForm({ onSave, onCancel }: { onSave: (d: any) => void; onCancel: 
         <div className="flex gap-2 justify-end p-5 pt-0">
           <button onClick={onCancel} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">Cancelar</button>
           <button
-            onClick={() => { if (!form.fullName || !form.dni || !form.email || !form.username || !form.password) return; onSave(form); }}
+            onClick={() => {
+              if (!form.fullName || !form.dni || !form.email || !form.username) return;
+              const payload: any = { ...form };
+              if (isEdit && !payload.password) delete payload.password;
+              onSave(payload);
+            }}
             className="px-4 py-2 text-sm bg-brand-red text-white rounded-lg hover:bg-brand-red-dark"
-          >Crear socio</button>
+          >{isEdit ? 'Guardar cambios' : 'Crear socio'}</button>
         </div>
       </div>
       <style jsx>{`.input { border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 0.5rem 0.75rem; font-size: 0.875rem; outline: none; width: 100%; } .input:focus { border-color: #DC2626; }`}</style>
@@ -65,7 +78,7 @@ function MemberPanel({ memberId, onClose }: { memberId: string; onClose: () => v
   const [tab, setTab] = useState<'data' | 'players' | 'subs'>('subs');
   const [copied, setCopied] = useState<string | null>(null);
   const [showSubForm, setShowSubForm] = useState(false);
-  const [subForm, setSubForm] = useState({ month: new Date().getMonth() + 1, year: new Date().getFullYear(), amount: '', dueDate: '' });
+  const [subForm, setSubForm] = useState({ month: new Date().getMonth() + 1, year: new Date().getFullYear(), amount: '', childAmount: '', dueDate: '' });
 
   const { data, isLoading } = useQuery({ queryKey: ['member', memberId], queryFn: () => api.members.get(memberId) });
   const { data: allPlayers } = useQuery({ queryKey: ['players-all'], queryFn: () => api.players.list({ limit: '200' }) });
@@ -126,7 +139,7 @@ function MemberPanel({ memberId, onClose }: { memberId: string; onClose: () => v
 
           {/* ── Cuotas ── */}
           {tab === 'subs' && (
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-semibold text-slate-700">Historial de cuotas</p>
                 <button onClick={() => setShowSubForm(v => !v)} className="flex items-center gap-1 text-xs text-brand-red hover:underline">
@@ -141,13 +154,23 @@ function MemberPanel({ memberId, onClose }: { memberId: string; onClose: () => v
                       {MONTHS_FULL.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
                     </select>
                     <input className="border border-slate-200 rounded-lg px-3 py-2 text-sm" type="number" placeholder="Año" value={subForm.year} onChange={e => setSubForm(f => ({ ...f, year: +e.target.value }))} />
-                    <input className="border border-slate-200 rounded-lg px-3 py-2 text-sm" type="number" placeholder="Monto $" value={subForm.amount} onChange={e => setSubForm(f => ({ ...f, amount: e.target.value }))} />
+                    <input className="border border-slate-200 rounded-lg px-3 py-2 text-sm" type="number" placeholder="Monto socio $" value={subForm.amount} onChange={e => setSubForm(f => ({ ...f, amount: e.target.value }))} />
                     <input className="border border-slate-200 rounded-lg px-3 py-2 text-sm" type="date" placeholder="Vencimiento" value={subForm.dueDate} onChange={e => setSubForm(f => ({ ...f, dueDate: e.target.value }))} />
+                    <input className="border border-slate-200 rounded-lg px-3 py-2 text-sm" type="number" placeholder="Monto hijo (opcional)" value={subForm.childAmount} onChange={e => setSubForm(f => ({ ...f, childAmount: e.target.value }))} />
                   </div>
                   <div className="flex gap-2 justify-end">
                     <button onClick={() => setShowSubForm(false)} className="text-sm text-slate-500 hover:text-slate-700">Cancelar</button>
                     <button
-                      onClick={() => { if (!subForm.amount || !subForm.dueDate) return; createSubMutation.mutate({ month: subForm.month, year: subForm.year, amount: +subForm.amount, dueDate: subForm.dueDate }); }}
+                      onClick={() => {
+                        if (!subForm.amount || !subForm.dueDate) return;
+                        createSubMutation.mutate({
+                          month: subForm.month,
+                          year: subForm.year,
+                          amount: +subForm.amount,
+                          childAmount: subForm.childAmount ? +subForm.childAmount : undefined,
+                          dueDate: subForm.dueDate,
+                        });
+                      }}
                       disabled={createSubMutation.isPending}
                       className="px-3 py-1.5 bg-brand-red text-white rounded-lg text-sm hover:bg-brand-red-dark"
                     >Crear</button>
@@ -155,68 +178,95 @@ function MemberPanel({ memberId, onClose }: { memberId: string; onClose: () => v
                 </div>
               )}
 
-              {member?.subscriptions?.length === 0 ? (
+              {/* Cuotas del socio */}
+              {member?.subscriptions?.length === 0 && (!member?.players?.length || !member.players.some((mp: any) => mp.player.subscriptions?.length)) ? (
                 <p className="text-slate-400 text-sm text-center py-8">Sin cuotas registradas</p>
               ) : (
-                member?.subscriptions?.map((sub: any) => {
-                  const cfg = SUB_STATUS[sub.status as keyof typeof SUB_STATUS];
-                  const Icon = cfg?.icon ?? Clock;
-                  return (
-                    <div key={sub.id} className="border border-slate-200 rounded-xl p-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-semibold text-slate-800">{MONTHS_FULL[sub.month - 1]} {sub.year}</p>
-                          <p className="text-sm text-slate-500">${sub.amount.toLocaleString('es-AR')} · vence {new Date(sub.dueDate).toLocaleDateString('es-AR')}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium ${cfg?.color}`}>
-                            <Icon size={11} />{cfg?.label}
-                          </span>
-                          <button onClick={() => deleteSubMutation.mutate(sub.id)} className="text-slate-300 hover:text-red-500"><Trash2 size={13} /></button>
-                        </div>
-                      </div>
-
-                      {/* Link MP */}
-                      {sub.mpPaymentLink && (
-                        <div className="bg-slate-50 rounded-lg p-3 space-y-2">
-                          <p className="text-xs text-slate-500 truncate">{sub.mpPaymentLink}</p>
-                          <div className="flex gap-2">
-                            <button onClick={() => copyLink(sub.mpPaymentLink, sub.id)} className="flex items-center gap-1 text-xs px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50">
-                              <Copy size={11} /> {copied === sub.id ? '¡Copiado!' : 'Copiar link'}
-                            </button>
-                            {member.phone && (
-                              <a href={whatsappLink(member.phone, sub.mpPaymentLink, member.fullName, sub.month, sub.year)} target="_blank" rel="noopener noreferrer"
-                                className="flex items-center gap-1 text-xs px-2.5 py-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600">
-                                <MessageCircle size={11} /> WhatsApp
-                              </a>
-                            )}
+                <>
+                  {member?.subscriptions?.map((sub: any) => {
+                    const cfg = SUB_STATUS[sub.status as keyof typeof SUB_STATUS];
+                    const Icon = cfg?.icon ?? Clock;
+                    return (
+                      <div key={sub.id} className="border border-slate-200 rounded-xl p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-semibold text-slate-800">{MONTHS_FULL[sub.month - 1]} {sub.year}</p>
+                            <p className="text-sm text-slate-500">${sub.amount.toLocaleString('es-AR')} · vence {new Date(sub.dueDate).toLocaleDateString('es-AR')}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium ${cfg?.color}`}>
+                              <Icon size={11} />{cfg?.label}
+                            </span>
+                            <button onClick={() => deleteSubMutation.mutate(sub.id)} className="text-slate-300 hover:text-red-500"><Trash2 size={13} /></button>
                           </div>
                         </div>
-                      )}
 
-                      {/* Actions */}
-                      <div className="flex gap-2">
-                        {sub.status !== 'PAID' && (
-                          <>
-                            <button
-                              onClick={() => sendLinkMutation.mutate(sub.id)}
-                              disabled={sendLinkMutation.isPending}
-                              className="flex-1 flex items-center justify-center gap-1.5 text-xs py-2 bg-brand-blue text-white rounded-lg hover:bg-brand-blue-dark disabled:opacity-50"
-                            >
-                              <Send size={12} /> {sub.mpPaymentLink ? 'Regenerar link MP' : 'Generar link MP'}
-                            </button>
-                            <button
-                              onClick={() => markPaidMutation.mutate(sub.id)}
-                              className="flex items-center gap-1.5 text-xs px-3 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200"
-                            >
-                              <CheckCircle size={12} /> Marcar pagado
-                            </button>
-                          </>
+                        <span className="text-xs text-slate-400 flex items-center gap-1"><Users size={11} /> Cuota del socio</span>
+
+                        {sub.mpPaymentLink && (
+                          <div className="bg-slate-50 rounded-lg p-3 space-y-2">
+                            <p className="text-xs text-slate-500 truncate">{sub.mpPaymentLink}</p>
+                            <div className="flex gap-2">
+                              <button onClick={() => copyLink(sub.mpPaymentLink, sub.id)} className="flex items-center gap-1 text-xs px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50">
+                                <Copy size={11} /> {copied === sub.id ? '¡Copiado!' : 'Copiar link'}
+                              </button>
+                              {member.phone && (
+                                <a href={whatsappLink(member.phone, sub.mpPaymentLink, member.fullName, sub.month, sub.year)} target="_blank" rel="noopener noreferrer"
+                                  className="flex items-center gap-1 text-xs px-2.5 py-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600">
+                                  <MessageCircle size={11} /> WhatsApp
+                                </a>
+                              )}
+                            </div>
+                          </div>
                         )}
+
+                        <div className="flex gap-2">
+                          {sub.status !== 'PAID' && (
+                            <>
+                              <button
+                                onClick={() => sendLinkMutation.mutate(sub.id)}
+                                disabled={sendLinkMutation.isPending}
+                                className="flex-1 flex items-center justify-center gap-1.5 text-xs py-2 bg-brand-blue text-white rounded-lg hover:bg-brand-blue-dark disabled:opacity-50"
+                              >
+                                <Send size={12} /> {sub.mpPaymentLink ? 'Regenerar link MP' : 'Generar link MP'}
+                              </button>
+                              <button
+                                onClick={() => markPaidMutation.mutate(sub.id)}
+                                className="flex items-center gap-1.5 text-xs px-3 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200"
+                              >
+                                <CheckCircle size={12} /> Marcar pagado
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })
+                    );
+                  })}
+
+                  {/* Cuotas de hijos vinculados */}
+                  {member?.players?.map((mp: any) =>
+                    mp.player.subscriptions?.map((childSub: any) => {
+                      const cfg = SUB_STATUS[childSub.status as keyof typeof SUB_STATUS];
+                      const Icon = cfg?.icon ?? Clock;
+                      return (
+                        <div key={childSub.id} className="border border-amber-200 rounded-xl p-4 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-semibold text-slate-800">{MONTHS_FULL[childSub.month - 1]} {childSub.year}</p>
+                              <p className="text-sm text-slate-500">${childSub.amount.toLocaleString('es-AR')} · vence {new Date(childSub.dueDate).toLocaleDateString('es-AR')}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium ${cfg?.color}`}>
+                                <Icon size={11} />{cfg?.label}
+                              </span>
+                            </div>
+                          </div>
+                          <p className="text-xs text-amber-600 flex items-center gap-1"><Users size={11} /> Cuota de {mp.player.fullName}</p>
+                        </div>
+                      );
+                    })
+                  )}
+                </>
               )}
             </div>
           )}
@@ -288,9 +338,13 @@ function MemberPanel({ memberId, onClose }: { memberId: string; onClose: () => v
 export default function MembersPage() {
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [editingMember, setEditingMember] = useState<any>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showBulk, setShowBulk] = useState(false);
-  const [bulkForm, setBulkForm] = useState({ month: new Date().getMonth() + 1, year: new Date().getFullYear(), amount: '', dueDate: '' });
+  const [bulkForm, setBulkForm] = useState({ month: new Date().getMonth() + 1, year: new Date().getFullYear(), amount: '', childAmount: '', dueDate: '' });
+  const [bulkSendWa, setBulkSendWa] = useState(false);
+  const [bulkResult, setBulkResult] = useState<any>(null);
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   const { data, isLoading } = useQuery({ queryKey: ['members'], queryFn: () => api.members.list() });
   const members = data?.data ?? [];
@@ -303,14 +357,35 @@ export default function MembersPage() {
     mutationFn: (id: string) => api.members.remove(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['members'] }),
   });
-  const bulkMutation = useMutation({
-    mutationFn: (d: unknown) => api.members.subscriptions.bulk(d),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['members'] }); setShowBulk(false); },
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: unknown }) => api.members.update(id, data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['members'] }); setEditingMember(null); },
   });
+  const handleBulkGenerate = async () => {
+    if (!bulkForm.amount || !bulkForm.dueDate) return;
+    setBulkLoading(true);
+    setBulkResult(null);
+    try {
+      const res = await api.members.subscriptions.bulk({
+        month: bulkForm.month,
+        year: bulkForm.year,
+        amount: +bulkForm.amount,
+        childAmount: bulkForm.childAmount ? +bulkForm.childAmount : undefined,
+        dueDate: bulkForm.dueDate,
+        sendWhatsapp: bulkSendWa,
+      });
+      setBulkResult(res.data ?? res);
+    } catch (e: any) { alert(e.message); } finally { setBulkLoading(false); }
+  };
+
+  const openBulkWa = (waUrl: string) => {
+    window.open(waUrl, '_blank');
+  };
 
   return (
     <div className="p-6 space-y-5">
       {showForm && <MemberForm onSave={(d) => createMutation.mutate(d)} onCancel={() => setShowForm(false)} />}
+      {editingMember && <MemberForm initial={editingMember} onSave={(d) => updateMutation.mutate({ id: editingMember.id, data: d })} onCancel={() => setEditingMember(null)} />}
       {selectedId && <MemberPanel memberId={selectedId} onClose={() => setSelectedId(null)} />}
 
       {/* Header */}
@@ -333,7 +408,7 @@ export default function MembersPage() {
       </div>
 
       {/* Cuotas masivas */}
-      {showBulk && (
+      {showBulk && !bulkResult && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
           <p className="text-sm font-semibold text-blue-800">Generar cuota del mes para todos los socios activos</p>
           <div className="grid grid-cols-4 gap-3">
@@ -341,19 +416,67 @@ export default function MembersPage() {
               {['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'].map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
             </select>
             <input className="border border-blue-200 rounded-lg px-3 py-2 text-sm" type="number" placeholder="Año" value={bulkForm.year} onChange={e => setBulkForm(f => ({ ...f, year: +e.target.value }))} />
-            <input className="border border-blue-200 rounded-lg px-3 py-2 text-sm" type="number" placeholder="Monto $" value={bulkForm.amount} onChange={e => setBulkForm(f => ({ ...f, amount: e.target.value }))} />
+            <input className="border border-blue-200 rounded-lg px-3 py-2 text-sm" type="number" placeholder="Monto socio $" value={bulkForm.amount} onChange={e => setBulkForm(f => ({ ...f, amount: e.target.value }))} />
             <input className="border border-blue-200 rounded-lg px-3 py-2 text-sm" type="date" value={bulkForm.dueDate} onChange={e => setBulkForm(f => ({ ...f, dueDate: e.target.value }))} />
           </div>
+          <div className="flex items-center gap-3">
+            <input className="border border-blue-200 rounded-lg px-3 py-2 text-sm flex-1" type="number" placeholder="Monto hijo (opcional, si tiene jugadores vinculados)" value={bulkForm.childAmount} onChange={e => setBulkForm(f => ({ ...f, childAmount: e.target.value }))} />
+            <span className="text-xs text-blue-600">Si se completa, también genera cuota para los hijos vinculados</span>
+          </div>
+          <label className="flex items-center gap-2 text-sm text-blue-700 cursor-pointer">
+            <input type="checkbox" checked={bulkSendWa} onChange={(e) => setBulkSendWa(e.target.checked)}
+              className="rounded border-blue-300 text-brand-red focus:ring-brand-red" />
+            Generar link MP y enviar WhatsApp automáticamente
+          </label>
           <div className="flex gap-2 justify-end">
             <button onClick={() => setShowBulk(false)} className="text-sm text-slate-500">Cancelar</button>
-            <button
-              onClick={() => { if (!bulkForm.amount || !bulkForm.dueDate) return; bulkMutation.mutate({ month: bulkForm.month, year: bulkForm.year, amount: +bulkForm.amount, dueDate: bulkForm.dueDate }); }}
-              disabled={bulkMutation.isPending}
+            <button onClick={handleBulkGenerate} disabled={bulkLoading}
               className="px-4 py-2 bg-brand-blue text-white rounded-lg text-sm hover:bg-brand-blue-dark disabled:opacity-50"
             >
-              {bulkMutation.isPending ? 'Generando...' : 'Generar cuotas'}
+              {bulkLoading ? 'Generando...' : 'Generar cuotas'}
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Resultado cuotas masivas */}
+      {bulkResult && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold text-green-800">Cuotas generadas</p>
+            <button onClick={() => { setBulkResult(null); setShowBulk(false); qc.invalidateQueries({ queryKey: ['members'] }); }} className="text-green-600 text-xl leading-none">&times;</button>
+          </div>
+          <div className="flex gap-4 text-sm">
+            <span className="text-green-700 font-bold">{bulkResult.created}/{bulkResult.total} socios</span>
+            {bulkResult.childrenCreated > 0 && <span className="text-green-600">+ {bulkResult.childrenCreated} hijos</span>}
+          </div>
+
+          {bulkResult.waMessages?.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-green-700">{bulkResult.waMessages.length} WhatsApp listos</p>
+              <div className="max-h-40 overflow-y-auto space-y-1.5">
+                {bulkResult.waMessages.map((w: any, i: number) => (
+                  <div key={i} className="flex items-center justify-between bg-white rounded-lg p-2.5 border border-green-100">
+                    <span className="text-sm text-slate-700">{w.name}</span>
+                    <button onClick={() => openBulkWa(w.waUrl)}
+                      className="px-3 py-1 bg-green-500 text-white rounded-lg text-xs font-medium hover:bg-green-600"
+                      title="Se abre WhatsApp con el mensaje listo. Presioná Enter para enviar.">
+                      WhatsApp
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <button onClick={() => bulkResult.waMessages.forEach((w: any) => openBulkWa(w.waUrl))}
+                className="w-full px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700">
+                Enviar todos los WhatsApp ({bulkResult.waMessages.length})
+              </button>
+              <p className="text-xs text-slate-500">Se abre WhatsApp con el mensaje listo. Presioná <strong>Enter</strong> para enviar cada uno.</p>
+            </div>
+          )}
+
+          {(!bulkResult.waMessages || bulkResult.waMessages.length === 0) && bulkSendWa && (
+            <p className="text-xs text-amber-600">No se generaron WhatsApp. Revisá que los socios tengan teléfono y que MercadoPago esté configurado. Ver la consola del servidor para más detalles.</p>
+          )}
         </div>
       )}
 
@@ -415,6 +538,9 @@ export default function MembersPage() {
                   </td>
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-1 justify-end" onClick={e => e.stopPropagation()}>
+                      <button onClick={() => setEditingMember(m)} title="Editar socio" className="p-1.5 text-slate-400 hover:text-brand-blue rounded">
+                        <Edit2 size={14} />
+                      </button>
                       <button onClick={() => setSelectedId(m.id)} className="p-1.5 text-slate-400 hover:text-brand-blue rounded">
                         <ChevronRight size={16} />
                       </button>

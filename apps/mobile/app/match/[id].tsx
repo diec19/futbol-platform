@@ -5,7 +5,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MATCH_STATUS_LABELS } from '@futbol/constants';
+import { MATCH_STATUS_LABELS } from '../../lib/constants';
+import PlayerAvatar from '../../components/PlayerAvatar';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   SCHEDULED: { bg: '#f3f4f6', text: '#6b7280' },
@@ -146,8 +147,9 @@ export default function MatchScreen() {
                 const isHome = event.teamId === match.homeTeamId;
                 return (
                   <View key={event.id} style={[s.eventRow, isHome ? s.eventLeft : s.eventRight]}>
-                    {isHome && (
+                    {isHome ? (
                       <>
+                        <PlayerAvatar photoUrl={event.player?.photoUrl} name={event.player?.fullName ?? ''} size={28} style={s.eventAvatar} />
                         <View style={s.eventInfo}>
                           <Text style={s.eventPlayer} numberOfLines={1}>{event.player?.fullName ?? '—'}</Text>
                           <Text style={s.eventTypeLabel}>{EVENT_LABELS[event.type] ?? event.type}</Text>
@@ -158,14 +160,14 @@ export default function MatchScreen() {
                         <Text style={s.eventIcon}>{EVENT_ICONS[event.type] ?? '•'}</Text>
                         <View style={s.eventSpacer} />
                       </>
-                    )}
-                    {!isHome && (
+                    ) : (
                       <>
                         <View style={s.eventSpacer} />
                         <Text style={s.eventIcon}>{EVENT_ICONS[event.type] ?? '•'}</Text>
                         <View style={s.eventMinBox}>
                           <Text style={s.eventMin}>{event.minute != null ? `${event.minute}'` : '—'}</Text>
                         </View>
+                        <PlayerAvatar photoUrl={event.player?.photoUrl} name={event.player?.fullName ?? ''} size={28} style={s.eventAvatar} />
                         <View style={[s.eventInfo, { alignItems: 'flex-end' }]}>
                           <Text style={[s.eventPlayer, { textAlign: 'right' }]} numberOfLines={1}>{event.player?.fullName ?? '—'}</Text>
                           <Text style={[s.eventTypeLabel, { textAlign: 'right' }]}>{EVENT_LABELS[event.type] ?? event.type}</Text>
@@ -225,6 +227,7 @@ const s = StyleSheet.create({
   eventRight: {},
   eventSpacer: { flex: 1 },
   eventInfo: { flex: 1 },
+  eventAvatar: { borderRadius: 14 },
   eventPlayer: { fontSize: 13, fontWeight: '600', color: '#111827' },
   eventTypeLabel: { fontSize: 11, color: '#9ca3af', marginTop: 1 },
   eventIcon: { fontSize: 18, width: 28, textAlign: 'center' },

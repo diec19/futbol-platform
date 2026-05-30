@@ -1,21 +1,13 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, TextInput,
-  StyleSheet, ActivityIndicator, Linking, Image,
+  View, Text, ScrollView, TouchableOpacity,
+  StyleSheet, ActivityIndicator, Modal,
 } from 'react-native';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useFocusEffect } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'expo-router';
 import { api } from '../../services/api';
-
-const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-
-const SUB_COLORS = {
-  PENDING:   { bg: '#F1F5F9', text: '#64748B', label: 'Pendiente' },
-  LINK_SENT: { bg: '#DBEAFE', text: '#1D4ED8', label: 'Link enviado' },
-  PAID:      { bg: '#DCFCE7', text: '#16A34A', label: '✓ Pagada' },
-  OVERDUE:   { bg: '#FEE2E2', text: '#DC2626', label: 'Vencida' },
-};
+import { useAuth } from '../../services/auth';
+import PlayerAvatar from '../../components/PlayerAvatar';
 
 function getPlayerStats(player: any) {
   const events = player.events ?? [];
@@ -26,82 +18,118 @@ function getPlayerStats(player: any) {
   };
 }
 
-// ── Login screen ─────────────────────────────────────────────────────────────
-function LoginScreen({ onLogin }: { onLogin: () => void }) {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+function calcAge(birthDate: string) {
+  const birth = new Date(birthDate);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  return age;
+}
 
-  const handleLogin = async () => {
-    if (!username || !password) return;
-    setLoading(true);
-    setError('');
-    try {
-      const res = await api.members.login(username, password);
-      await AsyncStorage.setItem('member_token', res.data.accessToken);
-      await AsyncStorage.setItem('member_data', JSON.stringify(res.data.member));
-      onLogin();
-    } catch (e: any) {
-      setError(e.message ?? 'Credenciales inválidas');
-    } finally {
-      setLoading(false);
-    }
-  };
+const POSITION_LABELS: Record<string, string> = {
+  GOALKEEPER: 'Arquero',
+  DEFENDER: 'Defensor',
+  MIDFIELDER: 'Mediocampista',
+  FORWARD: 'Delantero',
+};
+
+function PlayerSummaryModal({
+  player,
+  visible,
+  onClose,
+}: {
+  player: any;
+  visible: boolean;
+  onClose: () => void;
+}) {
+  if (!player) return null;
+  const stats = getPlayerStats(player);
+  const age = calcAge(player.birthDate);
+  const team = player.team;
 
   return (
-    <View style={styles.loginContainer}>
-      <View style={styles.loginCard}>
-        {/* Logo */}
-        <Image
-          source={require('../../assets/logo.png')}
-          style={styles.logo}
-          resizeMode="contain"
-        />
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <TouchableOpacity style={styles.modalClose} onPress={onClose}>
+            <Text style={styles.modalCloseText}>✕</Text>
+          </TouchableOpacity>
 
-        <Text style={styles.loginTitle}>Área de Socios</Text>
-        <Text style={styles.loginSubtitle}>Accedé con tu usuario y contraseña</Text>
+          <PlayerAvatar photoUrl={player.photoUrl} name={player.fullName} size={100} style={styles.modalAvatar} />
+          <Text style={styles.modalName}>{player.fullName}</Text>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Usuario</Text>
-          <TextInput
-            style={styles.input}
-            value={username}
-            onChangeText={setUsername}
-            placeholder="tu.usuario"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
+          <View style={styles.modalInfoGrid}>
+            {player.position && (
+              <View style={styles.modalInfoItem}>
+                <Text style={styles.modalInfoLabel}>Posición</Text>
+                <Text style={styles.modalInfoValue}>{POSITION_LABELS[player.position] ?? player.position}</Text>
+              </View>
+            )}
+            <View style={styles.modalInfoItem}>
+              <Text style={styles.modalInfoLabel}>Edad</Text>
+              <Text style={styles.modalInfoValue}>{age} años</Text>
+            </View>
+            {player.shirtNumber && (
+              <View style={styles.modalInfoItem}>
+                <Text style={styles.modalInfoLabel}>Camiseta</Text>
+                <Text style={styles.modalInfoValue}>#{player.shirtNumber}</Text>
+              </View>
+            )}
+            <View style={styles.modalInfoItem}>
+              <Text style={styles.modalInfoLabel}>Goles</Text>
+              <Text style={styles.modalInfoValue}>{stats.goals}</Text>
+            </View>
+            <View style={styles.modalInfoItem}>
+              <Text style={styles.modalInfoLabel}>Amarillas</Text>
+              <Text style={styles.modalInfoValue}>{stats.yellow}</Text>
+            </View>
+            <View style={styles.modalInfoItem}>
+              <Text style={styles.modalInfoLabel}>Rojas</Text>
+              <Text style={styles.modalInfoValue}>{stats.red}</Text>
+            </View>
+          </View>
+
+          {team && (
+            <View style={styles.modalTeamSection}>
+              <Text style={styles.modalTeamLabel}>Equipo</Text>
+              <Text style={styles.modalTeamValue}>{team.name}</Text>
+              {team.category && (
+                <Text style={styles.modalCategoryValue}>{team.category.name}</Text>
+              )}
+            </View>
+          )}
+
+          {player.sanctions?.length > 0 && (
+            <View style={styles.modalSanctions}>
+              <Text style={styles.modalSanctionsTitle}>⚠️ Sanciones ({player.sanctions.length})</Text>
+              {player.sanctions.map((s: any, i: number) => (
+                <Text key={i} style={styles.modalSanctionItem}>{s.description ?? s.reason}</Text>
+              ))}
+            </View>
+          )}
         </View>
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Contraseña</Text>
-          <TextInput
-            style={styles.input}
-            value={password}
-            onChangeText={setPassword}
-            placeholder="••••••••"
-            secureTextEntry
-          />
-        </View>
-
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-        <TouchableOpacity style={styles.loginBtn} onPress={handleLogin} disabled={loading}>
-          {loading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.loginBtnText}>Ingresar</Text>}
-        </TouchableOpacity>
       </View>
-    </View>
+    </Modal>
   );
 }
 
-// ── Member dashboard ──────────────────────────────────────────────────────────
-function MemberDashboard({ onLogout }: { onLogout: () => void }) {
+function MemberDashboard() {
+  const { logout } = useAuth();
+  const router = useRouter();
   const qc = useQueryClient();
-  const { data, isLoading, error, refetch } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['member-me'],
     queryFn: () => api.members.me(),
     retry: false,
   });
+  const [selectedPlayer, setSelectedPlayer] = useState<any>(null);
+
+  const handleLogout = async () => {
+    await logout();
+    qc.removeQueries({ queryKey: ['member-me'] });
+    router.replace('/auth/login');
+  };
 
   if (isLoading) {
     return (
@@ -112,18 +140,14 @@ function MemberDashboard({ onLogout }: { onLogout: () => void }) {
   }
 
   if (error) {
-    onLogout();
+    handleLogout();
     return null;
   }
 
   const member = data?.data;
-  const now = new Date();
-  const currentSub = member?.subscriptions?.[0];
-  const subCfg = currentSub ? SUB_COLORS[currentSub.status as keyof typeof SUB_COLORS] : null;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
-      {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerAvatar}>
           <Text style={styles.headerAvatarText}>{member?.fullName?.[0]}</Text>
@@ -132,60 +156,40 @@ function MemberDashboard({ onLogout }: { onLogout: () => void }) {
           <Text style={styles.headerGreeting}>Hola, {member?.fullName?.split(' ')[0]} 👋</Text>
           <Text style={styles.headerSub}>@{member?.username}</Text>
         </View>
-        <TouchableOpacity onPress={onLogout} style={styles.logoutBtn}>
+        <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
           <Text style={styles.logoutText}>Salir</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Cuota actual */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>
-          📅 Cuota {MONTH_NAMES[(currentSub?.month ?? now.getMonth() + 1) - 1]} {currentSub?.year ?? now.getFullYear()}
-        </Text>
-        {currentSub ? (
-          <View style={[styles.subCard, { backgroundColor: subCfg?.bg ?? '#F1F5F9' }]}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Text style={[styles.subStatus, { color: subCfg?.text }]}>{subCfg?.label}</Text>
-              <Text style={styles.subAmount}>${currentSub.amount.toLocaleString('es-AR')}</Text>
-            </View>
-            <Text style={styles.subDue}>Vence: {new Date(currentSub.dueDate).toLocaleDateString('es-AR')}</Text>
-            {currentSub.mpPaymentLink && currentSub.status !== 'PAID' && (
-              <TouchableOpacity
-                style={styles.payBtn}
-                onPress={() => Linking.openURL(currentSub.mpPaymentLink)}
-              >
-                <Text style={styles.payBtnText}>💳 Pagar ahora</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        ) : (
-          <View style={styles.subCard}>
-            <Text style={{ color: '#94A3B8', fontSize: 14 }}>No hay cuota generada este mes</Text>
-          </View>
-        )}
-      </View>
+      <Text style={styles.pageTitle}>Mi Cuenta</Text>
 
-      {/* Hijos */}
       {member?.players?.length > 0 && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>⚽ Mis hijos en el club</Text>
-          <View style={styles.playersGrid}>
-            {member.players.map((mp: any) => {
-              const p = mp.player;
-              const stats = getPlayerStats(p);
-              return (
-                <View key={mp.id} style={styles.playerCard}>
-                  <View style={styles.playerAvatar}>
-                    <Text style={styles.playerAvatarText}>{p.fullName[0]}</Text>
-                  </View>
-                  <Text style={styles.playerName} numberOfLines={1}>{p.fullName}</Text>
-                  <Text style={styles.playerCategory} numberOfLines={1}>
-                    {p.team?.category?.name ?? ''}
-                  </Text>
-                  {p.shirtNumber ? (
+          <Text style={styles.sectionTitle}>⚽ Mis jugadores</Text>
+          {member.players.map((mp: any) => {
+            const p = mp.player;
+            const stats = getPlayerStats(p);
+            return (
+              <TouchableOpacity key={mp.id} style={styles.playerCard} onPress={() => setSelectedPlayer(p)} activeOpacity={0.7}>
+                <PlayerAvatar photoUrl={p.photoUrl} name={p.fullName} size={72} style={styles.playerAvatar} />
+                <View style={styles.playerInfo}>
+                  <Text style={styles.playerName}>{p.fullName}</Text>
+                  {p.clubCategory?.name && (
+                    <Text style={styles.playerCategory}>📋 {p.clubCategory.name}</Text>
+                  )}
+                  {p.clubCategory?.coach && (
+                    <Text style={styles.playerCoach}>👨‍🏫 {p.clubCategory.coach}</Text>
+                  )}
+                  {p.dominantFoot && (
+                    <Text style={styles.playerFoot}>🦶 {p.dominantFoot === 'LEFT' ? 'Pierna izquierda' : 'Pierna derecha'}</Text>
+                  )}
+                  {p.team?.category?.name && (
+                    <Text style={styles.playerTeam}>⚽ {p.team.category.name}</Text>
+                  )}
+                  {p.shirtNumber && (
                     <Text style={styles.playerNumber}>#{p.shirtNumber}</Text>
-                  ) : null}
-                  <View style={styles.playerStats}>
+                  )}
+                  <View style={styles.playerStatsRow}>
                     <Text style={styles.statItem}>⚽ {stats.goals}</Text>
                     <Text style={styles.statItem}>🟨 {stats.yellow}</Text>
                     <Text style={styles.statItem}>🟥 {stats.red}</Text>
@@ -196,73 +200,34 @@ function MemberDashboard({ onLogout }: { onLogout: () => void }) {
                     </View>
                   )}
                 </View>
-              );
-            })}
+                <Text style={styles.chevron}>›</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
+
+      {member?.players?.length === 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>⚽ Mis jugadores</Text>
+          <View style={styles.emptyCard}>
+            <Text style={{ color: '#94A3B8', fontSize: 14, textAlign: 'center' }}>No hay jugadores vinculados a tu cuenta</Text>
+            <Text style={{ color: '#CBD5E1', fontSize: 12, marginTop: 4, textAlign: 'center' }}>Contactá al club para vincular a tus hijos</Text>
           </View>
         </View>
       )}
 
-      {/* Sin hijos */}
-      {member?.players?.length === 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>⚽ Mis hijos en el club</Text>
-          <View style={[styles.subCard, { alignItems: 'center' }]}>
-            <Text style={{ color: '#94A3B8', fontSize: 14 }}>No hay jugadores vinculados a tu cuenta</Text>
-            <Text style={{ color: '#CBD5E1', fontSize: 12, marginTop: 4 }}>Contactá al club para vincular a tus hijos</Text>
-          </View>
-        </View>
-      )}
+      <PlayerSummaryModal player={selectedPlayer} visible={!!selectedPlayer} onClose={() => setSelectedPlayer(null)} />
     </ScrollView>
   );
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
 export default function AccountScreen() {
-  const [token, setToken] = useState<string | null | undefined>(undefined);
-  const qc = useQueryClient();
-
-  useFocusEffect(
-    useCallback(() => {
-      AsyncStorage.getItem('member_token').then(setToken);
-    }, [])
-  );
-
-  const handleLogin = () => {
-    AsyncStorage.getItem('member_token').then(setToken);
-    qc.invalidateQueries({ queryKey: ['member-me'] });
-  };
-
-  const handleLogout = async () => {
-    await AsyncStorage.removeItem('member_token');
-    await AsyncStorage.removeItem('member_data');
-    qc.removeQueries({ queryKey: ['member-me'] });
-    setToken(null);
-  };
-
-  if (token === undefined) {
-    return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator color="#DC2626" /></View>;
-  }
-
-  return token
-    ? <MemberDashboard onLogout={handleLogout} />
-    : <LoginScreen onLogin={handleLogin} />;
+  return <MemberDashboard />;
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
-  // Login
-  loginContainer: { flex: 1, backgroundColor: '#0F172A', justifyContent: 'center', alignItems: 'center', padding: 24 },
-  loginCard: { backgroundColor: '#1E293B', borderRadius: 20, padding: 28, width: '100%', maxWidth: 380, alignItems: 'center' },
-  logo: { width: 88, height: 88, borderRadius: 44, marginBottom: 20 },
-  loginTitle: { fontSize: 22, fontWeight: '700', color: '#FFFFFF', marginBottom: 6 },
-  loginSubtitle: { fontSize: 14, color: '#94A3B8', marginBottom: 24, textAlign: 'center' },
-  inputGroup: { width: '100%', marginBottom: 14 },
-  label: { fontSize: 12, color: '#94A3B8', marginBottom: 6, fontWeight: '600' },
-  input: { backgroundColor: '#0F172A', borderWidth: 1, borderColor: '#334155', borderRadius: 10, padding: 12, color: '#FFFFFF', fontSize: 15 },
-  errorText: { color: '#F87171', fontSize: 13, marginBottom: 12, textAlign: 'center' },
-  loginBtn: { width: '100%', backgroundColor: '#DC2626', borderRadius: 12, padding: 15, alignItems: 'center', marginTop: 4 },
-  loginBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 16 },
-  // Dashboard
   header: { backgroundColor: '#0F172A', flexDirection: 'row', alignItems: 'center', gap: 12, padding: 20, paddingTop: 56 },
   headerAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#DC2626', alignItems: 'center', justifyContent: 'center' },
   headerAvatarText: { color: '#fff', fontWeight: '700', fontSize: 18 },
@@ -270,23 +235,46 @@ const styles = StyleSheet.create({
   headerSub: { color: '#94A3B8', fontSize: 12, marginTop: 2 },
   logoutBtn: { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#1E293B', borderRadius: 8 },
   logoutText: { color: '#94A3B8', fontSize: 13 },
+  pageTitle: { fontSize: 20, fontWeight: '800', color: '#0F172A', paddingHorizontal: 16, paddingTop: 20 },
   section: { paddingHorizontal: 16, paddingTop: 20 },
   sectionTitle: { fontSize: 15, fontWeight: '700', color: '#1E293B', marginBottom: 10 },
-  subCard: { backgroundColor: '#FFFFFF', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#E2E8F0' },
-  subStatus: { fontSize: 15, fontWeight: '700' },
-  subAmount: { fontSize: 18, fontWeight: '800', color: '#1E293B' },
-  subDue: { fontSize: 12, color: '#94A3B8', marginTop: 4 },
-  payBtn: { marginTop: 12, backgroundColor: '#1D4ED8', borderRadius: 10, padding: 12, alignItems: 'center' },
-  payBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 15 },
-  playersGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  playerCard: { backgroundColor: '#FFFFFF', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#E2E8F0', width: '47%', alignItems: 'center' },
-  playerAvatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#0F172A', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  playerAvatarText: { color: '#FFFFFF', fontWeight: '700', fontSize: 20 },
-  playerName: { fontSize: 13, fontWeight: '700', color: '#1E293B', textAlign: 'center' },
-  playerCategory: { fontSize: 11, color: '#DC2626', fontWeight: '600', marginTop: 2, textAlign: 'center' },
-  playerNumber: { fontSize: 11, color: '#94A3B8', marginTop: 2 },
-  playerStats: { flexDirection: 'row', gap: 8, marginTop: 8 },
-  statItem: { fontSize: 12, color: '#475569' },
-  sanctionBadge: { marginTop: 6, backgroundColor: '#FEF2F2', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+  playerCard: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF',
+    borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#E2E8F0',
+    marginBottom: 12,
+  },
+  playerAvatar: { marginRight: 14 },
+  playerInfo: { flex: 1 },
+  playerName: { fontSize: 16, fontWeight: '700', color: '#1E293B' },
+  playerCategory: { fontSize: 13, color: '#DC2626', fontWeight: '600', marginTop: 2 },
+  playerCoach: { fontSize: 12, color: '#16a34a', fontWeight: '500', marginTop: 1 },
+  playerFoot: { fontSize: 12, color: '#64748B', marginTop: 1 },
+  playerTeam: { fontSize: 12, color: '#64748B', marginTop: 1 },
+  playerNumber: { fontSize: 13, color: '#64748B', marginTop: 2 },
+  playerStatsRow: { flexDirection: 'row', gap: 12, marginTop: 6 },
+  statItem: { fontSize: 13, color: '#475569' },
+  sanctionBadge: { marginTop: 6, backgroundColor: '#FEF2F2', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start' },
   sanctionText: { fontSize: 11, color: '#DC2626', fontWeight: '600' },
+  chevron: { fontSize: 24, color: '#CBD5E1', marginLeft: 8 },
+  emptyCard: { backgroundColor: '#FFFFFF', borderRadius: 14, padding: 24, borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalContent: {
+    backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    padding: 24, paddingBottom: 40, alignItems: 'center', maxHeight: '85%',
+  },
+  modalClose: { alignSelf: 'flex-end', padding: 4 },
+  modalCloseText: { fontSize: 20, color: '#94A3B8', fontWeight: '700' },
+  modalAvatar: { marginBottom: 12, marginTop: 4 },
+  modalName: { fontSize: 20, fontWeight: '800', color: '#0F172A', marginBottom: 16 },
+  modalInfoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center', marginBottom: 16 },
+  modalInfoItem: { backgroundColor: '#F8FAFC', borderRadius: 10, padding: 10, minWidth: 80, alignItems: 'center' },
+  modalInfoLabel: { fontSize: 11, color: '#94A3B8', marginBottom: 2 },
+  modalInfoValue: { fontSize: 16, fontWeight: '700', color: '#1E293B' },
+  modalTeamSection: { backgroundColor: '#F8FAFC', borderRadius: 12, padding: 14, width: '100%', alignItems: 'center', marginBottom: 12 },
+  modalTeamLabel: { fontSize: 11, color: '#94A3B8', marginBottom: 2 },
+  modalTeamValue: { fontSize: 15, fontWeight: '700', color: '#1E293B' },
+  modalCategoryValue: { fontSize: 13, color: '#DC2626', fontWeight: '600', marginTop: 2 },
+  modalSanctions: { backgroundColor: '#FEF2F2', borderRadius: 12, padding: 14, width: '100%' },
+  modalSanctionsTitle: { fontSize: 13, fontWeight: '700', color: '#DC2626', marginBottom: 6 },
+  modalSanctionItem: { fontSize: 12, color: '#991B1B', marginBottom: 2 },
 });

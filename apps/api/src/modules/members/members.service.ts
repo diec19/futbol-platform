@@ -31,7 +31,6 @@ export const membersService = {
   },
 
   async me(memberId: string) {
-    const now = new Date();
     const member = await db.member.findUnique({
       where: { id: memberId },
       select: {
@@ -40,17 +39,17 @@ export const membersService = {
           include: {
             player: {
               include: {
+                clubCategory: { select: { id: true, name: true, coach: true } },
                 team: { include: { category: true } },
                 events: { include: { match: true } },
                 sanctions: { where: { resolved: false } },
+                subscriptions: { orderBy: [{ year: 'desc' }, { month: 'desc' }] },
               },
             },
           },
         },
         subscriptions: {
-          where: { year: now.getFullYear(), month: now.getMonth() + 1 },
-          orderBy: { createdAt: 'desc' },
-          take: 1,
+          orderBy: [{ year: 'desc' }, { month: 'desc' }],
         },
       },
     });
@@ -77,7 +76,14 @@ export const membersService = {
       select: {
         ...memberSelect,
         players: {
-          include: { player: { include: { team: { include: { category: true } } } } },
+          include: {
+            player: {
+              include: {
+                team: { include: { category: true } },
+                subscriptions: { orderBy: [{ year: 'desc' }, { month: 'desc' }] },
+              },
+            },
+          },
         },
         subscriptions: { orderBy: [{ year: 'desc' }, { month: 'desc' }] },
       },
@@ -123,6 +129,32 @@ export const membersService = {
   },
 
   // ── Subscriptions ─────────────────────────────────────────────────────────
+  async listAllSubscriptions(params: { status?: string; month?: number; year?: number }) {
+    const { status, month, year } = params;
+    return db.subscription.findMany({
+      where: {
+        ...(status ? { status: status as any } : {}),
+        ...(month ? { month } : {}),
+        ...(year ? { year } : {}),
+      },
+      include: {
+        member: {
+          select: {
+            id: true, fullName: true, email: true, phone: true, username: true,
+            players: {
+              include: {
+                player: {
+                  select: { id: true, fullName: true, clubCategory: { select: { id: true, name: true } } },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: [{ year: 'desc' }, { month: 'desc' }, { member: { fullName: 'asc' } }],
+    });
+  },
+
   async listSubscriptions(memberId: string) {
     return db.subscription.findMany({
       where: { memberId },
@@ -131,16 +163,49 @@ export const membersService = {
   },
 
   async createSubscription(memberId: string, data: {
-    month: number; year: number; amount: number; dueDate: string; notes?: string;
+    month: number; year: number; amount: number; dueDate: string; notes?: string; childAmount?: number;
   }) {
-    return db.subscription.create({
-      data: { memberId, ...data, dueDate: new Date(data.dueDate) },
+    const { childAmount, ...rest } = data;
+    const sub = await db.subscription.create({
+      data: { memberId, ...rest, dueDate: new Date(rest.dueDate) },
     });
+
+    // Create PlayerSubscriptions for linked players if childAmount provided
+    if (childAmount) {
+      const links = await db.memberPlayer.findMany({
+        where: { memberId },
+        select: { playerId: true },
+      });
+      await Promise.allSettled(
+        links.map((link) =>
+          db.playerSubscription.upsert({
+            where: { playerId_month_year: { playerId: link.playerId, month: data.month, year: data.year } },
+            create: { playerId: link.playerId, month: data.month, year: data.year, amount: childAmount, dueDate: new Date(data.dueDate) },
+            update: {},
+          })
+        )
+      );
+    }
+
+    return sub;
   },
 
-  async createBulkSubscriptions(month: number, year: number, amount: number, dueDateStr: string) {
-    const members = await db.member.findMany({ where: { active: true }, select: { id: true } });
+  async createBulkSubscriptions(month: number, year: number, amount: number, dueDateStr: string, childAmount?: number, sendWhatsapp?: boolean) {
+    const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    const monthName = MONTHS[month - 1];
+    const normalizePhone = (phone: string) => {
+      const d = phone.replace(/\D/g, '');
+      if (d.startsWith('549')) return d;
+      if (d.startsWith('54')) return `9${d}`;
+      return `549${d}`;
+    };
+
+    const members = await db.member.findMany({
+      where: { active: true },
+      include: { players: { select: { playerId: true } } },
+    });
     const dueDate = new Date(dueDateStr);
+
     const results = await Promise.allSettled(
       members.map((m) =>
         db.subscription.upsert({
@@ -151,17 +216,78 @@ export const membersService = {
       )
     );
     const created = results.filter((r) => r.status === 'fulfilled').length;
-    return { created, total: members.length };
+
+    // Also create PlayerSubscriptions for linked children if childAmount provided
+    let childrenCreated = 0;
+    if (childAmount) {
+      for (const m of members) {
+        for (const link of m.players) {
+          try {
+            await db.playerSubscription.upsert({
+              where: { playerId_month_year: { playerId: link.playerId, month, year } },
+              create: { playerId: link.playerId, month, year, amount: childAmount, dueDate },
+              update: {},
+            });
+            childrenCreated++;
+          } catch { /* skip individual failures */ }
+        }
+      }
+    }
+
+    // Generate WhatsApp messages if requested (without MP links to avoid MP errors)
+    const APP_URL = env.APP_URL ?? '';
+    const waMessages: { phone: string; name: string; link: string; month: string; year: number; waUrl: string }[] = [];
+    if (sendWhatsapp) {
+      const fulfilled = results.filter((r) => r.status === 'fulfilled') as PromiseFulfilledResult<any>[];
+      for (const result of fulfilled) {
+        const sub = result.value as any;
+        try {
+          const member = await db.member.findUnique({
+            where: { id: sub.memberId },
+            select: { fullName: true, phone: true },
+          });
+          if (!member) continue;
+
+          if (member.phone && member.phone.trim()) {
+            const phone = normalizePhone(member.phone);
+            const msg = encodeURIComponent(`Hola ${member.fullName}! 👋 La cuota de ${monthName} ${year} ya está generada. Ingresá a la app para pagarla: ${APP_URL}`);
+            waMessages.push({ phone, name: member.fullName, link: '', month: monthName, year, waUrl: `https://wa.me/${phone}?text=${msg}` });
+          }
+        } catch { /* skip individual errors */ }
+      }
+    }
+
+    return { created, total: members.length, childrenCreated, waMessages };
   },
 
   async sendPaymentLink(subId: string) {
     const sub = await db.subscription.findUniqueOrThrow({
       where: { id: subId },
-      include: { member: true },
+      include: {
+        member: {
+          include: {
+            players: {
+              include: { player: { select: { id: true, fullName: true } } },
+            },
+          },
+        },
+      },
     });
     if (sub.status === 'PAID') throw new AppError('La cuota ya está pagada', 400);
 
-    const { preferenceId, paymentLink } = await mpService.createPreference(sub, sub.member);
+    // Also fetch children's PlayerSubscriptions for same month/year
+    const childSubs = sub.member?.players?.length
+      ? await db.playerSubscription.findMany({
+          where: {
+            playerId: { in: sub.member.players.map((p) => p.playerId) },
+            month: sub.month,
+            year: sub.year,
+          },
+          include: { player: { select: { fullName: true } } },
+        })
+      : [];
+
+    const { preferenceId, paymentLink } = await mpService.createPreference(sub, sub.member, childSubs);
 
     return db.subscription.update({
       where: { id: subId },
@@ -170,10 +296,33 @@ export const membersService = {
   },
 
   async markPaid(subId: string) {
-    return db.subscription.update({
+    const sub = await db.subscription.findUnique({
+      where: { id: subId },
+      include: {
+        member: { include: { players: { select: { playerId: true } } } },
+      },
+    });
+    if (!sub) throw new AppError('Cuota no encontrada', 404);
+
+    const updated = await db.subscription.update({
       where: { id: subId },
       data: { status: 'PAID', paidAt: new Date() },
     });
+
+    // Auto-mark linked children's PlayerSubscriptions for same month/year as PAID
+    if (sub.member?.players?.length) {
+      await db.playerSubscription.updateMany({
+        where: {
+          playerId: { in: sub.member.players.map((p) => p.playerId) },
+          month: sub.month,
+          year: sub.year,
+          status: { not: 'PAID' },
+        },
+        data: { status: 'PAID', paidAt: new Date() },
+      });
+    }
+
+    return updated;
   },
 
   async markOverdue(subId: string) {

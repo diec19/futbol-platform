@@ -12,15 +12,7 @@ const ctrl = new PlayersController();
 const wrap = (fn: (req: Request, res: Response, next: NextFunction) => Promise<any>) =>
   (req: Request, res: Response, next: NextFunction) => fn(req, res, next).catch(next);
 
-// ── Players CRUD ─────────────────────────────────────────────────────────────
-router.get('/', ctrl.findAll);
-router.get('/:id', ctrl.findById);
-router.post('/', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'OPERATOR', 'DELEGATE'), validate(createPlayerSchema), ctrl.create);
-router.put('/:id', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'OPERATOR', 'DELEGATE'), validate(updatePlayerSchema), ctrl.update);
-router.patch('/:id/toggle', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'OPERATOR'), ctrl.toggle);
-router.delete('/:id', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), ctrl.remove);
-
-// ── Player Subscriptions (cuotas) ────────────────────────────────────────────
+// ── Player Subscriptions (must precede /:id to avoid route conflict) ────────
 router.get('/subscriptions/all', authenticate, wrap(async (req, res) => {
   const { clubCategoryId, status, month, year } = req.query as Record<string, string>;
   const data = await subs.listAll({
@@ -56,6 +48,14 @@ router.delete('/subscriptions/:subId', authenticate, authorize('ADMIN', 'SUPER_A
   await subs.remove(req.params.subId);
   res.status(204).send();
 }));
+
+// ── Players CRUD ─────────────────────────────────────────────────────────────
+router.get('/', ctrl.findAll);
+router.get('/:id', ctrl.findById);
+router.post('/', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'OPERATOR', 'DELEGATE'), validate(createPlayerSchema), ctrl.create);
+router.put('/:id', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'OPERATOR', 'DELEGATE'), validate(updatePlayerSchema), ctrl.update);
+router.patch('/:id/toggle', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'OPERATOR'), ctrl.toggle);
+router.delete('/:id', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), ctrl.remove);
 
 router.get('/:id/subscriptions', authenticate, wrap(async (req, res) => {
   const data = await subs.listByPlayer(req.params.id);
