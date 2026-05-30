@@ -47,6 +47,10 @@ ctxFiles.forEach((ctxFile) => {
     /'\.\/app'/g,
     "'../../app'"
   );
+  content = content.replace(
+    /process\.env\.EXPO_ROUTER_IMPORT_MODE/g,
+    "'sync'"
+  );
 
   if (content !== original) {
     fs.writeFileSync(filePath, content, 'utf8');
