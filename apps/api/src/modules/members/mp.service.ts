@@ -37,6 +37,7 @@ export const mpService = {
     sub: { id: string; month: number; year: number; amount: number; dueDate: Date },
     member: { email: string; fullName: string },
     childSubs: { id: string; player: { fullName: string }; amount: number }[] = [],
+    customAmount?: number,
   ) {
     if (!env.MP_ACCESS_TOKEN) throw new Error('MP_ACCESS_TOKEN no configurado');
 
@@ -45,7 +46,7 @@ export const mpService = {
       id: sub.id,
       title: `Cuota ${monthName} ${sub.year} — ${member.fullName}`,
       quantity: 1,
-      unit_price: sub.amount,
+      unit_price: customAmount ?? sub.amount,
       currency_id: 'ARS',
     }];
 
@@ -65,7 +66,7 @@ export const mpService = {
       external_reference: sub.id,
       statement_descriptor: 'Club Futbol',
       expires: true,
-      expiration_date_to: new Date(sub.dueDate.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      expiration_date_to: new Date(sub.dueDate).toISOString(),
     };
 
     return mpRequest(body);

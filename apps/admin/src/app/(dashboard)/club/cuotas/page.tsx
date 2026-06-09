@@ -42,7 +42,7 @@ function BulkModal({ categories, onClose, onDone }: { categories: any[]; onClose
   });
   const [sendWhatsapp, setSendWhatsapp] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [result, setResult] = useState<{ created: number; total: number; waMessages?: any[] } | null>(null);
+  const [result, setResult] = useState<{ created: number; total: number; skipped?: number; waMessages?: any[] } | null>(null);
   const [error, setError] = useState('');
 
   const handleGenerate = async () => {
@@ -86,7 +86,10 @@ function BulkModal({ categories, onClose, onDone }: { categories: any[]; onClose
 
           <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
             <p className="text-2xl font-bold text-green-700">{result.created}/{result.total}</p>
-            <p className="text-sm text-green-600">cuotas creadas</p>
+            <p className="text-sm text-green-600">
+              cuotas creadas
+              {result.skipped ? <span className="text-amber-600 ml-1">({result.skipped} ya existían)</span> : null}
+            </p>
           </div>
 
           {waCount > 0 && (
@@ -205,6 +208,106 @@ function BulkModal({ categories, onClose, onDone }: { categories: any[]; onClose
   );
 }
 
+// ── Individual cuota modal ──────────────────────────────────────────────────────
+function IndividualModal({ categories, players, onClose, onDone }: { categories: any[]; players: any[]; onClose: () => void; onDone: () => void }) {
+  const now = new Date();
+  const qc = useQueryClient();
+  const [playerId, setPlayerId] = useState('');
+  const [form, setForm] = useState({
+    month: String(now.getMonth() + 1),
+    year: String(now.getFullYear()),
+    amount: '',
+    dueDate: '',
+  });
+  const [generarLink, setGenerarLink] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleCreate = async () => {
+    if (!playerId || !form.amount || !form.dueDate) { setError('Completá todos los campos'); return; }
+    setSaving(true);
+    setError('');
+    try {
+      const res = await api.players.subscriptions.create(playerId, {
+        month: Number(form.month),
+        year: Number(form.year),
+        amount: Number(form.amount),
+        dueDate: new Date(form.dueDate).toISOString(),
+      });
+      const sub = res.data ?? res;
+      if (generarLink) {
+        await api.players.subscriptions.sendLink(sub.id);
+      }
+      qc.invalidateQueries({ queryKey: ['player-subs'] });
+      onDone();
+    } catch (e: any) { setError(e.message ?? 'Error'); } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <p className="font-bold text-slate-800">Agregar cuota individual</p>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl leading-none">&times;</button>
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-slate-500 mb-1">Jugador</label>
+          <select value={playerId} onChange={(e) => setPlayerId(e.target.value)}
+            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+            <option value="">Seleccionar jugador...</option>
+            {players.map((p: any) => <option key={p.id} value={p.id}>{p.fullName}</option>)}
+          </select>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">Mes</label>
+            <select value={form.month} onChange={(e) => setForm(f => ({ ...f, month: e.target.value }))}
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+              {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">Año</label>
+            <input type="number" value={form.year} onChange={(e) => setForm(f => ({ ...f, year: e.target.value }))}
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">Monto ($)</label>
+            <input type="number" value={form.amount} onChange={(e) => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="3500"
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">Vencimiento</label>
+            <input type="date" value={form.dueDate} onChange={(e) => setForm(f => ({ ...f, dueDate: e.target.value }))}
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+          </div>
+        </div>
+
+        <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
+          <input type="checkbox" checked={generarLink} onChange={(e) => setGenerarLink(e.target.checked)}
+            className="rounded border-slate-300 text-brand-red focus:ring-brand-red" />
+          Generar link de pago MP
+        </label>
+
+        {error && <p className="text-red-500 text-sm">{error}</p>}
+
+        <div className="flex gap-3">
+          <button onClick={onClose} className="flex-1 px-4 py-2 border border-slate-200 text-slate-600 rounded-lg text-sm hover:bg-slate-50">Cancelar</button>
+          <button onClick={handleCreate} disabled={saving}
+            className="flex-1 px-4 py-2 bg-brand-red text-white rounded-lg text-sm font-medium hover:bg-brand-red-dark disabled:opacity-50">
+            {saving ? 'Creando...' : 'Crear cuota'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function CuotasPage() {
   const qc = useQueryClient();
@@ -215,10 +318,19 @@ export default function CuotasPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [showBulk, setShowBulk] = useState(false);
+  const [showIndividual, setShowIndividual] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [mpAmountOpen, setMpAmountOpen] = useState<string | null>(null);
+  const [mpAmountValue, setMpAmountValue] = useState<number>(0);
 
   const { data: catData } = useQuery({ queryKey: ['club-categories'], queryFn: () => api.club.categories.list() });
   const categories = catData?.data ?? [];
+
+  const { data: playersData } = useQuery({
+    queryKey: ['players-all'],
+    queryFn: () => api.players.list({ isClubPlayer: 'true', limit: '500' }),
+  });
+  const players = playersData?.data ?? [];
 
   const params: Record<string, string> = {
     month: monthFilter,
@@ -232,9 +344,15 @@ export default function CuotasPage() {
     queryFn: () => api.players.subscriptions.all(params),
   });
 
-  const sendLinkMutation = useMutation({
-    mutationFn: (subId: string) => api.players.subscriptions.sendLink(subId),
+  const createMutation = useMutation({
+    mutationFn: ({ playerId, data }: { playerId: string; data: unknown }) => api.players.subscriptions.create(playerId, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['player-subs'] }),
+  });
+
+  const sendLinkMutation = useMutation({
+    mutationFn: ({ subId, amount }: { subId: string; amount?: number }) =>
+      api.players.subscriptions.sendLink(subId, amount !== undefined ? { amount } : {}),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['player-subs'] }); setMpAmountOpen(null); },
   });
 
   const markPaidMutation = useMutation({
@@ -278,6 +396,14 @@ export default function CuotasPage() {
           onDone={() => { setShowBulk(false); qc.invalidateQueries({ queryKey: ['player-subs'] }); }}
         />
       )}
+      {showIndividual && (
+        <IndividualModal
+          categories={categories}
+          players={players}
+          onClose={() => setShowIndividual(false)}
+          onDone={() => { setShowIndividual(false); qc.invalidateQueries({ queryKey: ['player-subs'] }); }}
+        />
+      )}
 
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -285,11 +411,18 @@ export default function CuotasPage() {
           <h1 className="text-2xl font-bold text-gray-900">Cuotas de Jugadores</h1>
           <p className="text-gray-500 text-sm mt-1">{subs.length} cuotas — {MONTHS[Number(monthFilter) - 1]} {yearFilter}</p>
         </div>
-        <button onClick={() => setShowBulk(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-brand-red text-white rounded-xl text-sm font-medium hover:bg-brand-red-dark transition-colors">
-          <Zap size={15} />
-          Generar cuotas masivas
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => setShowIndividual(true)}
+            className="flex items-center gap-2 px-4 py-2 border border-brand-red text-brand-red rounded-xl text-sm font-medium hover:bg-brand-red/5 transition-colors">
+            <Plus size={15} />
+            Agregar cuota
+          </button>
+          <button onClick={() => setShowBulk(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-brand-red text-white rounded-xl text-sm font-medium hover:bg-brand-red-dark transition-colors">
+            <Zap size={15} />
+            Generar cuotas masivas
+          </button>
+        </div>
       </div>
 
       {/* Summary cards */}
@@ -421,15 +554,29 @@ export default function CuotasPage() {
                       <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                         {/* Generar / Enviar link MP */}
                         {sub.status !== 'PAID' && (
-                          <button
-                            onClick={() => sendLinkMutation.mutate(sub.id)}
-                            disabled={sendLinkMutation.isPending}
-                            title="Generar link MP"
-                            className="px-2.5 py-1 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-50 whitespace-nowrap"
-                          >
-                            <Send size={11} className="inline mr-1" />
-                            {sub.mpPaymentLink ? 'Reenviar' : 'Link MP'}
-                          </button>
+                          mpAmountOpen === sub.id ? (
+                            <div className="flex items-center gap-1">
+                              <input type="number"
+                                value={mpAmountValue}
+                                onChange={(e) => setMpAmountValue(+e.target.value)}
+                                className="w-20 px-1.5 py-1 border border-slate-200 rounded text-xs text-center"
+                                autoFocus />
+                              <button onClick={() => sendLinkMutation.mutate({ subId: sub.id, amount: mpAmountValue })}
+                                disabled={sendLinkMutation.isPending}
+                                className="px-2 py-1 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-50">OK</button>
+                              <button onClick={() => setMpAmountOpen(null)}
+                                className="px-2 py-1 text-slate-400 hover:text-slate-600 text-xs">X</button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => { setMpAmountOpen(sub.id); setMpAmountValue(sub.amount); }}
+                              title="Generar link MP"
+                              className="px-2.5 py-1 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 whitespace-nowrap"
+                            >
+                              <Send size={11} className="inline mr-1" />
+                              {sub.mpPaymentLink ? 'Reenviar' : 'Link MP'}
+                            </button>
+                          )
                         )}
 
                         {/* Copy link */}

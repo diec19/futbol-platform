@@ -206,27 +206,45 @@ export const membersService = {
     });
     const dueDate = new Date(dueDateStr);
 
+    // Find existing subscriptions for this month/year to skip them
+    const existingSubs = await db.subscription.findMany({
+      where: {
+        memberId: { in: members.map(m => m.id) },
+        month, year,
+      },
+      select: { memberId: true },
+    });
+    const existingIds = new Set(existingSubs.map(s => s.memberId));
+    const membersToCreate = members.filter(m => !existingIds.has(m.id));
+
     const results = await Promise.allSettled(
-      members.map((m) =>
-        db.subscription.upsert({
-          where: { memberId_month_year: { memberId: m.id, month, year } },
-          create: { memberId: m.id, month, year, amount, dueDate },
-          update: {},
+      membersToCreate.map((m) =>
+        db.subscription.create({
+          data: { memberId: m.id, month, year, amount, dueDate },
         })
       )
     );
-    const created = results.filter((r) => r.status === 'fulfilled').length;
+    const createdCount = results.filter((r) => r.status === 'fulfilled').length;
+    const skipped = members.length - membersToCreate.length;
 
     // Also create PlayerSubscriptions for linked children if childAmount provided
     let childrenCreated = 0;
     if (childAmount) {
+      const existingChildSubs = await db.playerSubscription.findMany({
+        where: {
+          playerId: { in: members.flatMap(m => m.players.map(l => l.playerId)) },
+          month, year,
+        },
+        select: { playerId: true },
+      });
+      const existingChildIds = new Set(existingChildSubs.map(s => s.playerId));
+
       for (const m of members) {
         for (const link of m.players) {
+          if (existingChildIds.has(link.playerId)) continue;
           try {
-            await db.playerSubscription.upsert({
-              where: { playerId_month_year: { playerId: link.playerId, month, year } },
-              create: { playerId: link.playerId, month, year, amount: childAmount, dueDate },
-              update: {},
+            await db.playerSubscription.create({
+              data: { playerId: link.playerId, month, year, amount: childAmount, dueDate },
             });
             childrenCreated++;
           } catch { /* skip individual failures */ }
@@ -285,10 +303,10 @@ export const membersService = {
       }
     }
 
-    return { created, total: members.length, childrenCreated, waMessages };
+    return { created: createdCount, total: members.length, skipped, childrenCreated, waMessages };
   },
 
-  async sendPaymentLink(subId: string) {
+  async sendPaymentLink(subId: string, customAmount?: number) {
     const sub = await db.subscription.findUniqueOrThrow({
       where: { id: subId },
       include: {
@@ -315,7 +333,7 @@ export const membersService = {
         })
       : [];
 
-    const { id: preferenceId, init_point: paymentLink } = await mpService.createPreference(sub, sub.member, childSubs);
+    const { id: preferenceId, init_point: paymentLink } = await mpService.createPreference(sub, sub.member, childSubs, customAmount);
 
     return db.subscription.update({
       where: { id: subId },
@@ -361,32 +379,4 @@ export const membersService = {
     return db.subscription.delete({ where: { id: subId } });
   },
 
-  // ── Webhook ───────────────────────────────────────────────────────────────
-  async handleMpWebhook(body: any) {
-    const type = body.type ?? body.action;
-    if (type !== 'payment') return { ignored: true };
-
-    const paymentId = body.data?.id ?? body.id;
-    if (!paymentId) return { ignored: true };
-
-    // Fetch payment details from MP to get external_reference
-    const { env: envCfg } = await import('../../config/env');
-    const response = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
-      headers: { Authorization: `Bearer ${envCfg.MP_ACCESS_TOKEN}` },
-    });
-    if (!response.ok) return { ignored: true };
-
-    const payment = await response.json() as { status: string; external_reference?: string };
-    if (payment.status !== 'approved') return { ignored: true };
-
-    const subId = payment.external_reference;
-    if (!subId) return { ignored: true };
-
-    await db.subscription.updateMany({
-      where: { id: subId, status: { not: 'PAID' } },
-      data: { status: 'PAID', paidAt: new Date(), mpPaymentId: String(paymentId) },
-    });
-
-    return { processed: true, subId };
-  },
 };

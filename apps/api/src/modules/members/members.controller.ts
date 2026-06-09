@@ -52,7 +52,7 @@ export const membersController = {
     } catch (e) { next(e); }
   },
   sendLink: async (req: Request, res: Response, next: NextFunction) => {
-    try { res.json({ data: await svc.sendPaymentLink(req.params.subId) }); } catch (e) { next(e); }
+    try { res.json({ data: await svc.sendPaymentLink(req.params.subId, req.body.amount) }); } catch (e) { next(e); }
   },
   markPaid: async (req: Request, res: Response, next: NextFunction) => {
     try { res.json({ data: await svc.markPaid(req.params.subId) }); } catch (e) { next(e); }

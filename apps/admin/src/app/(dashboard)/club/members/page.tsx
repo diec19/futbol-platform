@@ -79,6 +79,9 @@ function MemberPanel({ memberId, onClose }: { memberId: string; onClose: () => v
   const [copied, setCopied] = useState<string | null>(null);
   const [showSubForm, setShowSubForm] = useState(false);
   const [subForm, setSubForm] = useState({ month: new Date().getMonth() + 1, year: new Date().getFullYear(), amount: '', childAmount: '', dueDate: '' });
+  const [generarLinkMp, setGenerarLinkMp] = useState(false);
+  const [mpAmountOpen, setMpAmountOpen] = useState<string | null>(null);
+  const [mpAmountValue, setMpAmountValue] = useState<number>(0);
 
   const { data, isLoading } = useQuery({ queryKey: ['member', memberId], queryFn: () => api.members.get(memberId) });
   const { data: allPlayers } = useQuery({ queryKey: ['players-all'], queryFn: () => api.players.list({ limit: '200' }) });
@@ -89,10 +92,21 @@ function MemberPanel({ memberId, onClose }: { memberId: string; onClose: () => v
   const linkMutation = useMutation({ mutationFn: (playerId: string) => api.members.linkPlayer(memberId, playerId), onSuccess: () => qc.invalidateQueries({ queryKey: ['member', memberId] }) });
   const unlinkMutation = useMutation({ mutationFn: (playerId: string) => api.members.unlinkPlayer(memberId, playerId), onSuccess: () => qc.invalidateQueries({ queryKey: ['member', memberId] }) });
   const createSubMutation = useMutation({
-    mutationFn: (d: any) => api.members.subscriptions.create(memberId, d),
+    mutationFn: async (d: any) => {
+      const res = await api.members.subscriptions.create(memberId, d);
+      const sub = res.data ?? res;
+      if (generarLinkMp) {
+        await api.members.subscriptions.sendLink(sub.id);
+      }
+      return sub;
+    },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['member', memberId] }); setShowSubForm(false); },
   });
-  const sendLinkMutation = useMutation({ mutationFn: (subId: string) => api.members.subscriptions.sendLink(subId), onSuccess: () => qc.invalidateQueries({ queryKey: ['member', memberId] }) });
+  const sendLinkMutation = useMutation({
+    mutationFn: ({ subId, amount }: { subId: string; amount?: number }) =>
+      api.members.subscriptions.sendLink(subId, amount !== undefined ? { amount } : {}),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['member', memberId] }); setMpAmountOpen(null); },
+  });
   const markPaidMutation = useMutation({ mutationFn: (subId: string) => api.members.subscriptions.markPaid(subId), onSuccess: () => qc.invalidateQueries({ queryKey: ['member', memberId] }) });
   const deleteSubMutation = useMutation({ mutationFn: (subId: string) => api.members.subscriptions.remove(subId), onSuccess: () => qc.invalidateQueries({ queryKey: ['member', memberId] }) });
 
@@ -158,6 +172,11 @@ function MemberPanel({ memberId, onClose }: { memberId: string; onClose: () => v
                     <input className="border border-slate-200 rounded-lg px-3 py-2 text-sm" type="date" placeholder="Vencimiento" value={subForm.dueDate} onChange={e => setSubForm(f => ({ ...f, dueDate: e.target.value }))} />
                     <input className="border border-slate-200 rounded-lg px-3 py-2 text-sm" type="number" placeholder="Monto hijo (opcional)" value={subForm.childAmount} onChange={e => setSubForm(f => ({ ...f, childAmount: e.target.value }))} />
                   </div>
+                  <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
+                    <input type="checkbox" checked={generarLinkMp} onChange={(e) => setGenerarLinkMp(e.target.checked)}
+                      className="rounded border-slate-300 text-brand-red focus:ring-brand-red" />
+                    Generar link de pago MP
+                  </label>
                   <div className="flex gap-2 justify-end">
                     <button onClick={() => setShowSubForm(false)} className="text-sm text-slate-500 hover:text-slate-700">Cancelar</button>
                     <button
@@ -223,13 +242,27 @@ function MemberPanel({ memberId, onClose }: { memberId: string; onClose: () => v
                         <div className="flex gap-2">
                           {sub.status !== 'PAID' && (
                             <>
-                              <button
-                                onClick={() => sendLinkMutation.mutate(sub.id)}
-                                disabled={sendLinkMutation.isPending}
-                                className="flex-1 flex items-center justify-center gap-1.5 text-xs py-2 bg-brand-blue text-white rounded-lg hover:bg-brand-blue-dark disabled:opacity-50"
-                              >
-                                <Send size={12} /> {sub.mpPaymentLink ? 'Regenerar link MP' : 'Generar link MP'}
-                              </button>
+                              {mpAmountOpen === sub.id ? (
+                                <div className="flex-1 flex items-center gap-1">
+                                  <input type="number"
+                                    value={mpAmountValue}
+                                    onChange={(e) => setMpAmountValue(+e.target.value)}
+                                    className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs text-center"
+                                    autoFocus />
+                                  <button onClick={() => sendLinkMutation.mutate({ subId: sub.id, amount: mpAmountValue })}
+                                    disabled={sendLinkMutation.isPending}
+                                    className="px-2.5 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-50">OK</button>
+                                  <button onClick={() => setMpAmountOpen(null)}
+                                    className="px-2 py-1.5 text-slate-400 hover:text-slate-600 text-xs">X</button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => { setMpAmountOpen(sub.id); setMpAmountValue(sub.amount); }}
+                                  className="flex-1 flex items-center justify-center gap-1.5 text-xs py-2 bg-brand-blue text-white rounded-lg hover:bg-brand-blue-dark"
+                                >
+                                  <Send size={12} /> {sub.mpPaymentLink ? 'Regenerar link MP' : 'Generar link MP'}
+                                </button>
+                              )}
                               <button
                                 onClick={() => markPaidMutation.mutate(sub.id)}
                                 className="flex items-center gap-1.5 text-xs px-3 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200"
@@ -448,6 +481,7 @@ export default function MembersPage() {
           </div>
           <div className="flex gap-4 text-sm">
             <span className="text-green-700 font-bold">{bulkResult.created}/{bulkResult.total} socios</span>
+            {bulkResult.skipped ? <span className="text-amber-600">({bulkResult.skipped} ya existían)</span> : null}
             {bulkResult.childrenCreated > 0 && <span className="text-green-600">+ {bulkResult.childrenCreated} hijos</span>}
           </div>
 

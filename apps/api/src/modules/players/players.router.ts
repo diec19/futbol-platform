@@ -30,7 +30,7 @@ router.post('/subscriptions/bulk', authenticate, authorize('ADMIN', 'SUPER_ADMIN
 }));
 
 router.patch('/subscriptions/:subId/send-link', authenticate, wrap(async (req, res) => {
-  const data = await subs.sendPaymentLink(req.params.subId);
+  const data = await subs.sendPaymentLink(req.params.subId, req.body.amount);
   res.json({ data });
 }));
 

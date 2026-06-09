@@ -33,7 +33,7 @@ function mpRequest(body: any): Promise<{ id: string; init_point: string }> {
   });
 }
 
-async function createMpPreference(sub: any, player: any) {
+async function createMpPreference(sub: any, player: any, customAmount?: number) {
   if (!env.MP_ACCESS_TOKEN) throw new AppError('MercadoPago no configurado', 500);
 
   const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -44,18 +44,21 @@ async function createMpPreference(sub: any, player: any) {
     include: { member: { select: { email: true, fullName: true } } },
   });
 
+  const dueDate = sub.dueDate ? new Date(sub.dueDate) : new Date();
   const body = {
     items: [{
       id: uniqueId,
       title: `Cuota ${MONTHS[sub.month - 1]} ${sub.year} — ${player.fullName}`,
       quantity: 1,
-      unit_price: sub.amount,
+      unit_price: customAmount ?? sub.amount,
       currency_id: 'ARS',
     }],
     payer: memberLink
       ? { email: memberLink.member.email, name: memberLink.member.fullName }
       : { email: `jugador-${player.id}@club.com` },
     external_reference: sub.id,
+    expires: true,
+    expiration_date_to: dueDate.toISOString(),
   };
 
   const result = await mpRequest(body);
@@ -139,23 +142,34 @@ export const playerSubscriptionsService = {
       },
     });
 
+    // Find existing subscriptions for this month/year to skip them
+    const existingSubs = await db.playerSubscription.findMany({
+      where: {
+        playerId: { in: players.map(p => p.id) },
+        month: data.month,
+        year: data.year,
+      },
+      select: { playerId: true },
+    });
+    const existingIds = new Set(existingSubs.map(s => s.playerId));
+    const playersToCreate = players.filter(p => !existingIds.has(p.id));
+
     const results = await Promise.allSettled(
-      players.map((p) =>
-        db.playerSubscription.upsert({
-          where: { playerId_month_year: { playerId: p.id, month: data.month, year: data.year } },
-          create: {
+      playersToCreate.map((p) =>
+        db.playerSubscription.create({
+          data: {
             playerId: p.id,
             month: data.month,
             year: data.year,
             amount: data.amount,
             dueDate: new Date(data.dueDate),
           },
-          update: {},
         })
       )
     );
+    const createdCount = results.filter((r) => r.status === 'fulfilled').length;
+    const skipped = players.length - playersToCreate.length;
 
-    const created = results.filter((r) => r.status === 'fulfilled').length;
     const monthName = MONTHS[data.month - 1];
     const APP_URL = env.APP_URL ?? '';
     const waMessages: { phone: string; playerName: string; link: string; month: string; year: number; waUrl: string }[] = [];
@@ -196,10 +210,10 @@ export const playerSubscriptionsService = {
       }
     }
 
-    return { created, total: players.length, waMessages };
+    return { created: createdCount, total: players.length, skipped, waMessages };
   },
 
-  async sendPaymentLink(subId: string) {
+  async sendPaymentLink(subId: string, customAmount?: number) {
     const sub = await db.playerSubscription.findUnique({
       where: { id: subId },
       include: { player: true },
@@ -207,7 +221,7 @@ export const playerSubscriptionsService = {
     if (!sub) throw new AppError('Cuota no encontrada', 404);
     if (sub.status === 'PAID') throw new AppError('La cuota ya está pagada', 400);
 
-    const { preferenceId, paymentLink } = await createMpPreference(sub, sub.player);
+    const { preferenceId, paymentLink } = await createMpPreference(sub, sub.player, customAmount);
 
     return db.playerSubscription.update({
       where: { id: subId },
