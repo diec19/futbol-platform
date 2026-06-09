@@ -212,7 +212,9 @@ function BulkModal({ categories, onClose, onDone }: { categories: any[]; onClose
 function IndividualModal({ categories, players, onClose, onDone }: { categories: any[]; players: any[]; onClose: () => void; onDone: () => void }) {
   const now = new Date();
   const qc = useQueryClient();
+  const [search, setSearch] = useState('');
   const [playerId, setPlayerId] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
   const [form, setForm] = useState({
     month: String(now.getMonth() + 1),
     year: String(now.getFullYear()),
@@ -222,6 +224,12 @@ function IndividualModal({ categories, players, onClose, onDone }: { categories:
   const [generarLink, setGenerarLink] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [result, setResult] = useState<{ sub: any; paymentLink?: string } | null>(null);
+
+  const filtered = players.filter((p: any) =>
+    !search || p.fullName?.toLowerCase().includes(search.toLowerCase())
+  );
+  const selectedPlayer = players.find((p: any) => p.id === playerId);
 
   const handleCreate = async () => {
     if (!playerId || !form.amount || !form.dueDate) { setError('Completá todos los campos'); return; }
@@ -235,13 +243,58 @@ function IndividualModal({ categories, players, onClose, onDone }: { categories:
         dueDate: new Date(form.dueDate).toISOString(),
       });
       const sub = res.data ?? res;
+      let paymentLink: string | undefined;
       if (generarLink) {
-        await api.players.subscriptions.sendLink(sub.id);
+        const linkRes = await api.players.subscriptions.sendLink(sub.id);
+        paymentLink = (linkRes.data as any)?.mpPaymentLink ?? '';
       }
       qc.invalidateQueries({ queryKey: ['player-subs'] });
-      onDone();
+      setResult({ sub, paymentLink });
     } catch (e: any) { setError(e.message ?? 'Error'); } finally { setSaving(false); }
   };
+
+  const sendWhatsApp = () => {
+    if (!result?.paymentLink) return;
+    const monthName = MONTHS[Number(form.month) - 1];
+    const msg = encodeURIComponent(
+      `Hola! 👋 Te enviamos el link de pago de la cuota de ${monthName} ${form.year}: ${result.paymentLink}`
+    );
+    window.open(`https://wa.me/?text=${msg}`, '_blank');
+  };
+
+  if (result) {
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="font-bold text-green-700">✓ Cuota creada</p>
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl leading-none">&times;</button>
+          </div>
+          <p className="text-sm text-slate-600">
+            Cuota de <strong>{MONTHS[Number(form.month) - 1]} {form.year}</strong> — <strong>{selectedPlayer?.fullName}</strong>
+          </p>
+          {result.paymentLink && (
+            <div className="bg-slate-50 rounded-xl p-4 space-y-2">
+              <p className="text-xs text-slate-500 truncate">{result.paymentLink}</p>
+              <div className="flex gap-2">
+                <button onClick={() => { navigator.clipboard.writeText(result.paymentLink!); }}
+                  className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-medium hover:bg-slate-50">
+                  Copiar link
+                </button>
+                <button onClick={sendWhatsApp}
+                  className="flex-1 px-3 py-2 bg-green-500 text-white rounded-lg text-xs font-medium hover:bg-green-600">
+                  WhatsApp
+                </button>
+              </div>
+            </div>
+          )}
+          <button onClick={onDone} className="w-full px-4 py-2 bg-brand-red text-white rounded-lg text-sm font-medium hover:bg-brand-red-dark">
+            Finalizar
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -251,13 +304,34 @@ function IndividualModal({ categories, players, onClose, onDone }: { categories:
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl leading-none">&times;</button>
         </div>
 
-        <div>
+        <div className="relative">
           <label className="block text-xs font-medium text-slate-500 mb-1">Jugador</label>
-          <select value={playerId} onChange={(e) => setPlayerId(e.target.value)}
-            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary">
-            <option value="">Seleccionar jugador...</option>
-            {players.map((p: any) => <option key={p.id} value={p.id}>{p.fullName}</option>)}
-          </select>
+          <input
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setShowDropdown(true); }}
+            onFocus={() => setShowDropdown(true)}
+            placeholder="Buscar jugador..."
+            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+          {playerId && !showDropdown && (
+            <p className="text-xs text-green-600 mt-1">{selectedPlayer?.fullName}</p>
+          )}
+          {showDropdown && filtered.length > 0 && (
+            <div className="absolute z-10 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+              {filtered.map((p: any) => (
+                <button key={p.id} type="button"
+                  onClick={() => { setPlayerId(p.id); setSearch(p.fullName); setShowDropdown(false); }}
+                  className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-50 ${p.id === playerId ? 'bg-brand-red/5 font-medium' : ''}`}>
+                  {p.fullName}
+                </button>
+              ))}
+            </div>
+          )}
+          {showDropdown && search && filtered.length === 0 && (
+            <p className="absolute z-10 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg p-3 text-sm text-slate-400">
+              Sin resultados
+            </p>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-3">
