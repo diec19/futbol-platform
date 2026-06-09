@@ -1,11 +1,35 @@
-import MercadoPagoConfig, { Preference } from 'mercadopago';
 import { env } from '../../config/env';
+import https from 'https';
 
 const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
-function getClient() {
-  if (!env.MP_ACCESS_TOKEN) throw new Error('MP_ACCESS_TOKEN no configurado');
-  return new MercadoPagoConfig({ accessToken: env.MP_ACCESS_TOKEN });
+function mpRequest(body: any): Promise<{ id: string; init_point: string }> {
+  return new Promise((resolve, reject) => {
+    const data = JSON.stringify(body);
+    const req = https.request({
+      hostname: 'api.mercadopago.com',
+      path: '/checkout/preferences',
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${env.MP_ACCESS_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+    }, (res) => {
+      let b = '';
+      res.on('data', c => b += c);
+      res.on('end', () => {
+        if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+          try { resolve(JSON.parse(b)); }
+          catch { reject(new Error(`Invalid JSON: ${b}`)); }
+        } else {
+          reject(new Error(`MP error ${res.statusCode}: ${b}`));
+        }
+      });
+    });
+    req.on('error', reject);
+    req.write(data);
+    req.end();
+  });
 }
 
 export const mpService = {
@@ -14,8 +38,7 @@ export const mpService = {
     member: { email: string; fullName: string },
     childSubs: { id: string; player: { fullName: string }; amount: number }[] = [],
   ) {
-    const client = getClient();
-    const preference = new Preference(client);
+    if (!env.MP_ACCESS_TOKEN) throw new Error('MP_ACCESS_TOKEN no configurado');
 
     const monthName = MONTH_NAMES[sub.month - 1];
     const items: any[] = [{
@@ -26,7 +49,6 @@ export const mpService = {
       currency_id: 'ARS',
     }];
 
-    // Add children's subscriptions as additional items
     for (const cs of childSubs) {
       items.push({
         id: cs.id,
@@ -37,30 +59,15 @@ export const mpService = {
       });
     }
 
-    const result = await preference.create({
-      body: {
-        items,
-        payer: {
-          email: member.email,
-          name: member.fullName,
-        },
-        back_urls: {
-          success: `${env.APP_URL}/payment/success`,
-          failure: `${env.APP_URL}/payment/failure`,
-          pending: `${env.APP_URL}/payment/pending`,
-        },
-        auto_return: 'approved',
-        notification_url: `${env.APP_URL}/api/v1/webhooks/mp`,
-        external_reference: sub.id,
-        statement_descriptor: 'Club Futbol',
-        expires: true,
-        expiration_date_to: new Date(sub.dueDate.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-      },
-    });
-
-    return {
-      preferenceId: result.id!,
-      paymentLink: result.init_point!,
+    const body = {
+      items,
+      payer: { email: member.email, name: member.fullName },
+      external_reference: sub.id,
+      statement_descriptor: 'Club Futbol',
+      expires: true,
+      expiration_date_to: new Date(sub.dueDate.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     };
+
+    return mpRequest(body);
   },
 };

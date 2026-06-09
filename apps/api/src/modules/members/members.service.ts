@@ -234,7 +234,7 @@ export const membersService = {
       }
     }
 
-    // Generate WhatsApp messages if requested (without MP links to avoid MP errors)
+    // Generate MP links and WhatsApp messages if requested
     const APP_URL = env.APP_URL ?? '';
     const waMessages: { phone: string; name: string; link: string; month: string; year: number; waUrl: string }[] = [];
     if (sendWhatsapp) {
@@ -244,14 +244,42 @@ export const membersService = {
         try {
           const member = await db.member.findUnique({
             where: { id: sub.memberId },
-            select: { fullName: true, phone: true },
+            select: { fullName: true, email: true, phone: true },
           });
           if (!member) continue;
 
+          // Fetch child subs for this member
+          const links = await db.memberPlayer.findMany({
+            where: { memberId: sub.memberId },
+            include: { player: { select: { id: true, fullName: true } } },
+          });
+          const childSubs = links.length
+            ? await db.playerSubscription.findMany({
+                where: {
+                  playerId: { in: links.map(l => l.playerId) },
+                  month, year,
+                },
+                include: { player: { select: { fullName: true } } },
+              })
+            : [];
+
+          let paymentLink = '';
+          try {
+            const { id: preferenceId, init_point: mpLink } = await mpService.createPreference(sub, member, childSubs);
+            paymentLink = mpLink;
+            await db.subscription.update({
+              where: { id: sub.id },
+              data: { mpPreferenceId: preferenceId, mpPaymentLink: paymentLink, status: 'LINK_SENT' },
+            });
+          } catch (e) { console.error(`[MP] Error al generar link para ${member.fullName}:`, e); }
+
           if (member.phone && member.phone.trim()) {
             const phone = normalizePhone(member.phone);
-            const msg = encodeURIComponent(`Hola ${member.fullName}! 👋 La cuota de ${monthName} ${year} ya está generada. Ingresá a la app para pagarla: ${APP_URL}`);
-            waMessages.push({ phone, name: member.fullName, link: '', month: monthName, year, waUrl: `https://wa.me/${phone}?text=${msg}` });
+            const link = paymentLink || APP_URL;
+            const msg = paymentLink
+              ? encodeURIComponent(`Hola ${member.fullName}! 👋 Te enviamos el link de pago de la cuota de ${monthName} ${year}: ${paymentLink}`)
+              : encodeURIComponent(`Hola ${member.fullName}! 👋 La cuota de ${monthName} ${year} ya está generada. Ingresá a la app para pagarla: ${APP_URL}`);
+            waMessages.push({ phone, name: member.fullName, link: paymentLink, month: monthName, year, waUrl: `https://wa.me/${phone}?text=${msg}` });
           }
         } catch { /* skip individual errors */ }
       }
@@ -287,7 +315,7 @@ export const membersService = {
         })
       : [];
 
-    const { preferenceId, paymentLink } = await mpService.createPreference(sub, sub.member, childSubs);
+    const { id: preferenceId, init_point: paymentLink } = await mpService.createPreference(sub, sub.member, childSubs);
 
     return db.subscription.update({
       where: { id: subId },
