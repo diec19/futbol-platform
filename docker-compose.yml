@@ -27,6 +27,30 @@ services:
       - redis_data:/data
     command: redis-server --appendonly yes
 
+  evolution:
+    image: atendai/evolution-api:latest
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - SERVER_URL=http://localhost:8080
+      - AUTHENTICATION_API_KEY=${WHATSAPP_API_KEY:-futbol-secret-key-change-me}
+      - DATABASE_ENABLED=true
+      - DATABASE_PROVIDER=postgresql
+      - DATABASE_CONNECTION_URI=postgresql://${POSTGRES_USER:-futbol}:${POSTGRES_PASSWORD:-futbol123}@postgres:5432/${POSTGRES_DB:-futbol_platform}
+      - DATABASE_CONNECTION_CLIENT_NAME=evolution
+      - DATABASE_SAVE_DATA_INSTANCE=true
+      - DATABASE_SAVE_DATA_NEW_MESSAGE=true
+      - DATABASE_SAVE_DATA_CONTACTS=true
+      - DATABASE_SAVE_DATA_CHATS=true
+      - LOG_LEVEL=WARN
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - evolution_instances:/evolution/instances
+
 volumes:
   postgres_data:
   redis_data:
+  evolution_instances:
