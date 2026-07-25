@@ -17,13 +17,21 @@
 
 ## Paso 1: Crear servicio Evolution API en Railway
 
-1. Entrá a tu dashboard de **Railway**
-2. Click **"+ New"** → **"Docker Image"**
-3. En el campo Image, poné: `atendai/evolution-api:latest`
-4. En **Settings**:
+### 1a. Crear Redis (requerido por Evolution API v2.3+)
+
+1. Click **"+ New"** → **"Database"** → **"Redis"**
+2. Railway asigna un servicio Redis con variables como `REDIS_URL`
+3. Copiá la **Private Network URL** (algo como `redis://red-xxxx.railway.internal:6379`)
+
+### 1b. Crear Evolution API
+
+1. Click **"+ New"** → **"Docker Image"**
+2. En el campo Image, poné: **`evoapicloud/evolution-api:v2.3.7`**
+   - **IMPORTANTE**: Usá `evoapicloud`, NO `atendai` (la imagen `atendai` es legacy y falla en Railway)
+3. En **Settings**:
    - **Port**: `8080`
    - **Healthcheck Path**: `/`
-5. En **Variables**, agregá:
+4. En **Variables**, agregá:
 
 ```env
 SERVER_URL=https://tu-evolution-api.up.railway.app
@@ -36,10 +44,14 @@ DATABASE_SAVE_DATA_INSTANCE=true
 DATABASE_SAVE_DATA_NEW_MESSAGE=true
 DATABASE_SAVE_DATA_CONTACTS=true
 DATABASE_SAVE_DATA_CHATS=true
+REDIS_ENABLED=true
+REDIS_URI=redis://red-xxxx.railway.internal:6379
 LOG_LEVEL=WARN
 ```
 
-**IMPORTANTE**: El `DATABASE_CONNECTION_URI` debe ser el **mismo** de tu API de futbol-platform (la misma DB).
+**IMPORTANTE**: 
+- El `DATABASE_CONNECTION_URI` debe ser el de tu DB de futbol-platform (la misma DB está bien, Evolution crea sus propias tablas con prefijo `Evolution`)
+- `REDIS_URI` debe ser la **Private Network URL** de tu servicio Redis en Railway (no la pública)
 
 6. Copiá la URL que Railway te asigna (algo como `https://evolution-api-xxxx.up.railway.app`)
 
@@ -136,3 +148,8 @@ El número no tiene WhatsApp. Verificar que sea correcto con código de país.
 
 ### Evolution API no conecta a la DB
 Verificar que el `DATABASE_CONNECTION_URI` apunte a la misma DB que la API.
+
+### Evolution API no inicia / "Failed to create deployment"
+1. Verificar que la imagen sea `evoapicloud/evolution-api:v2.3.7` (NO `atendai/evolution-api`)
+2. Verificar que Redis esté corriendo y `REDIS_URI` esté seteado correctamente
+3. Verificar que `DATABASE_CONNECTION_URI` sea válido y accesible desde Railway
