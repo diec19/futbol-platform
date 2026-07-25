@@ -19,6 +19,7 @@ export const clubService = {
     name?: string; shortName?: string; description?: string; foundedYear?: number;
     logo?: string; colors?: string; address?: string; phone?: string; email?: string;
     website?: string; instagram?: string; facebook?: string; whatsapp?: string;
+    mpAccessToken?: string; mpWebhookSecret?: string;
   }) {
     const club = await getOrCreateClub();
     return db.club.update({ where: { id: club.id }, data });

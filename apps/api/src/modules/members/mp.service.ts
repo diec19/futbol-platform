@@ -1,9 +1,9 @@
-import { env } from '../../config/env';
+import { getClubMpToken } from '../../lib/mp';
 import https from 'https';
 
 const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
-function mpRequest(body: any): Promise<{ id: string; init_point: string }> {
+function mpRequest(accessToken: string, body: any): Promise<{ id: string; init_point: string }> {
   return new Promise((resolve, reject) => {
     const data = JSON.stringify(body);
     const req = https.request({
@@ -11,7 +11,7 @@ function mpRequest(body: any): Promise<{ id: string; init_point: string }> {
       path: '/checkout/preferences',
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${env.MP_ACCESS_TOKEN}`,
+        'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
     }, (res) => {
@@ -39,7 +39,7 @@ export const mpService = {
     childSubs: { id: string; player: { fullName: string }; amount: number }[] = [],
     customAmount?: number,
   ) {
-    if (!env.MP_ACCESS_TOKEN) throw new Error('MP_ACCESS_TOKEN no configurado');
+    const { accessToken } = await getClubMpToken();
 
     const monthName = MONTH_NAMES[sub.month - 1];
     const items: any[] = [{
@@ -69,6 +69,6 @@ export const mpService = {
       expiration_date_to: new Date(sub.dueDate).toISOString(),
     };
 
-    return mpRequest(body);
+    return mpRequest(accessToken, body);
   },
 };

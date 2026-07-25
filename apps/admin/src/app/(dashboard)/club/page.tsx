@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { Building2, Save, Globe, Phone, Mail, Instagram, Facebook, MessageCircle } from 'lucide-react';
+import { Building2, Save, Globe, Phone, Mail, Instagram, Facebook, MessageCircle, CreditCard, Eye, EyeOff } from 'lucide-react';
 
 export default function ClubInfoPage() {
   const qc = useQueryClient();
@@ -12,6 +12,8 @@ export default function ClubInfoPage() {
 
   const [form, setForm] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
+  const [showMpToken, setShowMpToken] = useState(false);
+  const [showMpSecret, setShowMpSecret] = useState(false);
 
   const updateMutation = useMutation({
     mutationFn: (d: unknown) => api.club.update(d),
@@ -110,6 +112,54 @@ export default function ClubInfoPage() {
             <div>
               <label className="text-xs text-slate-500 mb-1 flex items-center gap-1"><Facebook size={11} />Facebook</label>
               <input className="input-base" value={val('facebook')} onChange={(e) => set('facebook', e.target.value)} placeholder="facebook.com/club" />
+            </div>
+          </div>
+        </div>
+
+        {/* Mercado Pago */}
+        <div className="p-5 space-y-4">
+          <p className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+            <CreditCard size={14} /> Mercado Pago
+          </p>
+          <p className="text-xs text-slate-400">Configuración de cobros con Mercado Pago. Cada cliente usa su propio Access Token.</p>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-slate-500 mb-1 block">Access Token</label>
+              <div className="flex gap-2">
+                <input
+                  className="input-base flex-1"
+                  type={showMpToken ? 'text' : 'password'}
+                  value={val('mpAccessToken')}
+                  onChange={(e) => set('mpAccessToken', e.target.value)}
+                  placeholder="APP_USR-..."
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowMpToken(!showMpToken)}
+                  className="px-3 border border-slate-200 rounded-lg text-slate-400 hover:text-slate-600"
+                >
+                  {showMpToken ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-slate-500 mb-1 block">Webhook Secret (opcional)</label>
+              <div className="flex gap-2">
+                <input
+                  className="input-base flex-1"
+                  type={showMpSecret ? 'text' : 'password'}
+                  value={val('mpWebhookSecret')}
+                  onChange={(e) => set('mpWebhookSecret', e.target.value)}
+                  placeholder="Tu Webhook Secret"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowMpSecret(!showMpSecret)}
+                  className="px-3 border border-slate-200 rounded-lg text-slate-400 hover:text-slate-600"
+                >
+                  {showMpSecret ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
             </div>
           </div>
         </div>

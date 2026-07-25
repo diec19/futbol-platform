@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { db } from '../../config/database';
+import { getClubMpToken } from '../../lib/mp';
 
 export const webhooksRouter = Router();
 
@@ -8,21 +9,24 @@ webhooksRouter.post('/mp', async (req, res) => {
     const body = req.body;
     const query = req.query as Record<string, string>;
 
-    // Log everything to Railway console
     console.error('[WEBHOOK] Received:', JSON.stringify({ body, query }));
 
-    // MP sends payment ID in body.data.id (webhooks) OR query param (IPN)
     const paymentId = body.data?.id ?? body.id ?? query.id;
     if (!paymentId) { console.error('[WEBHOOK] No payment ID'); return res.json({ ignored: true }); }
 
     console.error('[WEBHOOK] Payment ID:', paymentId);
 
-    // Fetch payment details from MP
-    const { env } = await import('../../config/env');
-    if (!env.MP_ACCESS_TOKEN) { console.error('[WEBHOOK] No MP_ACCESS_TOKEN'); return res.json({ ignored: true }); }
+    let accessToken: string;
+    try {
+      const mpToken = await getClubMpToken();
+      accessToken = mpToken.accessToken;
+    } catch {
+      console.error('[WEBHOOK] No MP_ACCESS_TOKEN en el club');
+      return res.json({ ignored: true });
+    }
 
     const response = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
-      headers: { Authorization: `Bearer ${env.MP_ACCESS_TOKEN}` },
+      headers: { Authorization: `Bearer ${accessToken}` },
     });
     if (!response.ok) {
       const text = await response.text();
@@ -68,7 +72,6 @@ webhooksRouter.post('/mp', async (req, res) => {
   }
 });
 
-// Also handle GET (MP sends GET for IPN validation)
 webhooksRouter.get('/mp', async (req, res) => {
   console.error('[WEBHOOK] GET received:', JSON.stringify(req.query));
   res.status(200).send('OK');

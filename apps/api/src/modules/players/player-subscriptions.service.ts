@@ -1,10 +1,11 @@
 import { SubscriptionStatus } from '@prisma/client';
 import { db } from '../../config/database';
 import { AppError } from '../../lib/app-error';
+import { getClubMpToken } from '../../lib/mp';
 import { env } from '../../config/env';
 import https from 'https';
 
-function mpRequest(body: any): Promise<{ id: string; init_point: string }> {
+function mpRequest(accessToken: string, body: any): Promise<{ id: string; init_point: string }> {
   return new Promise((resolve, reject) => {
     const data = JSON.stringify(body);
     const req = https.request({
@@ -12,7 +13,7 @@ function mpRequest(body: any): Promise<{ id: string; init_point: string }> {
       path: '/checkout/preferences',
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${env.MP_ACCESS_TOKEN}`,
+        'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
     }, (res) => {
@@ -34,7 +35,7 @@ function mpRequest(body: any): Promise<{ id: string; init_point: string }> {
 }
 
 async function createMpPreference(sub: any, player: any, customAmount?: number) {
-  if (!env.MP_ACCESS_TOKEN) throw new AppError('MercadoPago no configurado', 500);
+  const { accessToken } = await getClubMpToken();
 
   const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   const uniqueId = `${sub.id}-${Date.now()}`;
@@ -61,7 +62,7 @@ async function createMpPreference(sub: any, player: any, customAmount?: number) 
     expiration_date_to: dueDate.toISOString(),
   };
 
-  const result = await mpRequest(body);
+  const result = await mpRequest(accessToken, body);
   return { preferenceId: result.id, paymentLink: result.init_point };
 }
 

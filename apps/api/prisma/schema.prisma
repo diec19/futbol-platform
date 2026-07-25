@@ -344,26 +344,28 @@ model Sanction {
 // ── Club Management ──────────────────────────────────────────────────────────
 
 model Club {
-  id          String        @id @default(cuid())
-  name        String
-  shortName   String?
-  description String?
-  foundedYear Int?
-  logo        String?
-  colors      String?
-  address     String?
-  phone       String?
-  email       String?
-  website     String?
-  instagram   String?
-  facebook    String?
-  whatsapp    String?
-  news        ClubNews[]
-  gallery     ClubGallery[]
-  staff       ClubStaff[]
-  fields      Field[]
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id             String        @id @default(cuid())
+  name           String
+  shortName      String?
+  description    String?
+  foundedYear    Int?
+  logo           String?
+  colors         String?
+  address        String?
+  phone          String?
+  email          String?
+  website        String?
+  instagram      String?
+  facebook       String?
+  whatsapp       String?
+  mpAccessToken  String?
+  mpWebhookSecret String?
+  news           ClubNews[]
+  gallery        ClubGallery[]
+  staff          ClubStaff[]
+  fields         Field[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   @@map("clubs")
 }

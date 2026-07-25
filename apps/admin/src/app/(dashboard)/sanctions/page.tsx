@@ -6,32 +6,16 @@ import { api } from '@/lib/api';
 import { AlertTriangle, Plus, X, CheckCircle, Trash2 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 
-const TYPE_LABELS: Record<string, string> = {
-  YELLOW_CARD: '🟨 Amarilla',
-  RED_CARD: '🟥 Roja',
-  DOUBLE_YELLOW: '🟨🟥 Doble amarilla',
-  SUSPENSION: '🚫 Suspensión',
-  FINE: '💰 Multa',
-};
-
-const TYPE_COLORS: Record<string, string> = {
-  YELLOW_CARD: 'bg-yellow-100 text-yellow-700',
-  RED_CARD: 'bg-red-100 text-red-700',
-  DOUBLE_YELLOW: 'bg-orange-100 text-orange-700',
-  SUSPENSION: 'bg-red-100 text-red-800',
-  FINE: 'bg-purple-100 text-purple-700',
-};
-
 export default function SanctionsPage() {
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [filterResolved, setFilterResolved] = useState('');
   const [form, setForm] = useState({
     playerId: '',
-    type: 'YELLOW_CARD',
     reason: '',
-    matchesOut: '',
-    fine: '',
+    matchesBan: '',
+    startDate: '',
+    notes: '',
   });
   const [error, setError] = useState('');
 
@@ -55,15 +39,15 @@ export default function SanctionsPage() {
   const create = useMutation({
     mutationFn: () => api.sanctions.create({
       playerId: form.playerId,
-      type: form.type,
-      reason: form.reason || undefined,
-      matchesOut: form.matchesOut ? Number(form.matchesOut) : undefined,
-      fine: form.fine ? Number(form.fine) : undefined,
+      reason: form.reason,
+      matchesBan: Number(form.matchesBan),
+      startDate: form.startDate || new Date().toISOString(),
+      notes: form.notes || undefined,
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['sanctions'] });
       setShowForm(false);
-      setForm({ playerId: '', type: 'YELLOW_CARD', reason: '', matchesOut: '', fine: '' });
+      setForm({ playerId: '', reason: '', matchesBan: '', startDate: '', notes: '' });
       setError('');
     },
     onError: (err: any) => setError(err.message),
@@ -136,26 +120,22 @@ export default function SanctionsPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de sanción *</label>
-              <select value={form.type} onChange={set('type')}
-                className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary">
-                {Object.entries(TYPE_LABELS).map(([val, label]) => (
-                  <option key={val} value={val}>{label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Fechas a cumplir</label>
-              <input type="number" min={0} value={form.matchesOut} onChange={set('matchesOut')} placeholder="0"
+              <label className="block text-sm font-medium text-gray-700 mb-1">Fechas de suspensión *</label>
+              <input type="number" min={1} value={form.matchesBan} onChange={set('matchesBan')} placeholder="1"
                 className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Multa ($)</label>
-              <input type="number" min={0} value={form.fine} onChange={set('fine')} placeholder="0"
+              <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de inicio *</label>
+              <input type="date" value={form.startDate} onChange={set('startDate')}
+                className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Notas</label>
+              <input type="text" value={form.notes} onChange={set('notes')} placeholder="Notas adicionales"
                 className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
             </div>
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Motivo</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Motivo *</label>
               <textarea value={form.reason} onChange={set('reason')} rows={2} placeholder="Descripción del motivo de la sanción"
                 className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
             </div>
@@ -165,7 +145,7 @@ export default function SanctionsPage() {
             <button onClick={() => setShowForm(false)} className="px-4 py-2 border rounded-lg text-sm hover:bg-gray-50">Cancelar</button>
             <button
               onClick={() => create.mutate()}
-              disabled={create.isPending || !form.playerId}
+              disabled={create.isPending || !form.playerId || !form.reason || !form.matchesBan}
               className="px-5 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
             >
               {create.isPending ? 'Guardando...' : 'Crear sanción'}
@@ -187,11 +167,9 @@ export default function SanctionsPage() {
             <thead className="bg-gray-50 border-b">
               <tr>
                 <th className="text-left px-6 py-3 text-gray-500 font-medium">Jugador</th>
-                <th className="text-left px-6 py-3 text-gray-500 font-medium">Tipo</th>
                 <th className="text-left px-6 py-3 text-gray-500 font-medium">Motivo</th>
                 <th className="text-left px-6 py-3 text-gray-500 font-medium">Fechas</th>
-                <th className="text-left px-6 py-3 text-gray-500 font-medium">Multa</th>
-                <th className="text-left px-6 py-3 text-gray-500 font-medium">Fecha</th>
+                <th className="text-left px-6 py-3 text-gray-500 font-medium">Inicio</th>
                 <th className="text-left px-6 py-3 text-gray-500 font-medium">Estado</th>
                 <th className="px-6 py-3" />
               </tr>
@@ -203,15 +181,9 @@ export default function SanctionsPage() {
                     <p className="font-medium text-gray-900">{s.player?.fullName ?? '—'}</p>
                     <p className="text-xs text-gray-400">{s.player?.team?.name}</p>
                   </td>
-                  <td className="px-6 py-4">
-                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${TYPE_COLORS[s.type] ?? 'bg-gray-100 text-gray-600'}`}>
-                      {TYPE_LABELS[s.type] ?? s.type}
-                    </span>
-                  </td>
                   <td className="px-6 py-4 text-gray-600 text-xs max-w-xs truncate">{s.reason ?? '—'}</td>
-                  <td className="px-6 py-4 text-gray-600">{s.matchesOut ?? '—'}</td>
-                  <td className="px-6 py-4 text-gray-600">{s.fine ? `$${s.fine}` : '—'}</td>
-                  <td className="px-6 py-4 text-gray-500 text-xs">{formatDate(s.createdAt)}</td>
+                  <td className="px-6 py-4 text-gray-600">{s.matchesBan ?? '—'}</td>
+                  <td className="px-6 py-4 text-gray-500 text-xs">{formatDate(s.startDate)}</td>
                   <td className="px-6 py-4">
                     <span className={`text-xs font-medium px-2 py-1 rounded-full ${s.resolved ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                       {s.resolved ? 'Resuelta' : 'Pendiente'}
