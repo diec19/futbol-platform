@@ -1,70 +1,10 @@
 import { SubscriptionStatus } from '@prisma/client';
 import { db } from '../../config/database';
 import { AppError } from '../../lib/app-error';
-import { getClubMpToken } from '../../lib/mp';
+import { createPlayerMpPreference, mapWithConcurrency, normalizePhone, buildWhatsAppUrl } from '../../lib/mp';
 import { env } from '../../config/env';
-import https from 'https';
 
-function mpRequest(accessToken: string, body: any): Promise<{ id: string; init_point: string }> {
-  return new Promise((resolve, reject) => {
-    const data = JSON.stringify(body);
-    const req = https.request({
-      hostname: 'api.mercadopago.com',
-      path: '/checkout/preferences',
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-    }, (res) => {
-      let b = '';
-      res.on('data', c => b += c);
-      res.on('end', () => {
-        if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
-          try { resolve(JSON.parse(b)); }
-          catch { reject(new Error(`Invalid JSON: ${b}`)); }
-        } else {
-          reject(new Error(`MP error ${res.statusCode}: ${b}`));
-        }
-      });
-    });
-    req.on('error', reject);
-    req.write(data);
-    req.end();
-  });
-}
-
-async function createMpPreference(sub: any, player: any, customAmount?: number) {
-  const { accessToken } = await getClubMpToken();
-
-  const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  const uniqueId = `${sub.id}-${Date.now()}`;
-
-  const memberLink = await db.memberPlayer.findFirst({
-    where: { playerId: player.id },
-    include: { member: { select: { email: true, fullName: true } } },
-  });
-
-  const dueDate = sub.dueDate ? new Date(sub.dueDate) : new Date();
-  const body = {
-    items: [{
-      id: uniqueId,
-      title: `Cuota ${MONTHS[sub.month - 1]} ${sub.year} — ${player.fullName}`,
-      quantity: 1,
-      unit_price: customAmount ?? sub.amount,
-      currency_id: 'ARS',
-    }],
-    payer: memberLink
-      ? { email: memberLink.member.email, name: memberLink.member.fullName }
-      : { email: `jugador-${player.id}@club.com` },
-    external_reference: sub.id,
-    expires: true,
-    expiration_date_to: dueDate.toISOString(),
-  };
-
-  const result = await mpRequest(accessToken, body);
-  return { preferenceId: result.id, paymentLink: result.init_point };
-}
+const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
 export const playerSubscriptionsService = {
   async listByPlayer(playerId: string) {
@@ -76,7 +16,6 @@ export const playerSubscriptionsService = {
 
   async listAll(params: { clubCategoryId?: string; status?: string; month?: number; year?: number }) {
     const { clubCategoryId, status, month, year } = params;
-    const now = new Date();
 
     return db.playerSubscription.findMany({
       where: {
@@ -126,15 +65,6 @@ export const playerSubscriptionsService = {
   async createBulk(data: {
     month: number; year: number; amount: number; dueDate: string; clubCategoryId?: string; sendWhatsapp?: boolean;
   }) {
-    const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-
-    const normalizePhone = (phone: string) => {
-      const d = phone.replace(/\D/g, '');
-      if (d.startsWith('549')) return d;
-      if (d.startsWith('54')) return `9${d}`;
-      return `549${d}`;
-    };
-
     const players = await db.player.findMany({
       where: {
         isClubPlayer: true,
@@ -143,7 +73,6 @@ export const playerSubscriptionsService = {
       },
     });
 
-    // Find existing subscriptions for this month/year to skip them
     const existingSubs = await db.playerSubscription.findMany({
       where: {
         playerId: { in: players.map(p => p.id) },
@@ -174,44 +103,52 @@ export const playerSubscriptionsService = {
     const monthName = MONTHS[data.month - 1];
     const APP_URL = env.APP_URL ?? '';
     const waMessages: { phone: string; playerName: string; link: string; month: string; year: number; waUrl: string }[] = [];
+    const mpErrors: { playerName: string; error: string }[] = [];
 
-    // Generate MP links and WhatsApp messages if requested
     if (data.sendWhatsapp) {
       const fulfilled = results.filter((r) => r.status === 'fulfilled') as PromiseFulfilledResult<any>[];
-      for (const result of fulfilled) {
+
+      const { results: mpResults, errors: mpErrs } = await mapWithConcurrency(fulfilled, 3, async (result) => {
         const sub = result.value as any;
+        const player = players.find(p => p.id === sub.playerId);
+        if (!player) return null;
+
+        let paymentLink = '';
         try {
-          const player = players.find(p => p.id === sub.playerId);
-          if (!player) continue;
-
-          let paymentLink = '';
-          try {
-            const { preferenceId, paymentLink: mpLink } = await createMpPreference(sub, player);
-            paymentLink = mpLink;
-            await db.playerSubscription.update({
-              where: { id: sub.id },
-              data: { mpPreferenceId: preferenceId, mpPaymentLink: paymentLink, status: 'LINK_SENT' },
-            });
-          } catch (e) { console.error(`[MP] Error al generar link para ${player.fullName}:`, e); }
-
-          const memberLink = await db.memberPlayer.findFirst({
-            where: { playerId: sub.playerId },
-            include: { member: { select: { fullName: true, phone: true } } },
+          const { preferenceId, paymentLink: mpLink } = await createPlayerMpPreference(sub, player);
+          paymentLink = mpLink;
+          await db.playerSubscription.update({
+            where: { id: sub.id },
+            data: { mpPreferenceId: preferenceId, mpPaymentLink: paymentLink, status: 'LINK_SENT' },
           });
+        } catch (e: any) {
+          mpErrors.push({ playerName: player.fullName, error: e.message });
+        }
 
-          if (memberLink?.member.phone && memberLink.member.phone.trim()) {
-            const phone = normalizePhone(memberLink.member.phone);
-            const link = paymentLink || APP_URL;
-            const msg = paymentLink
-              ? encodeURIComponent(`Hola! 👋 Te enviamos el link de pago de la cuota ${monthName} ${data.year} de ${player.fullName}: ${paymentLink}`)
-              : encodeURIComponent(`Hola! 👋 La cuota de ${monthName} ${data.year} de ${player.fullName} ya está generada. Ingresá a la app para pagarla: ${APP_URL}`);
-            waMessages.push({ phone, playerName: player.fullName, link: paymentLink, month: monthName, year: data.year, waUrl: `https://wa.me/${phone}?text=${msg}` });
-          }
-        } catch { /* skip individual errors */ }
+        const memberLink = await db.memberPlayer.findFirst({
+          where: { playerId: sub.playerId },
+          include: { member: { select: { fullName: true, phone: true } } },
+        });
+
+        if (memberLink?.member.phone && memberLink.member.phone.trim()) {
+          const phone = normalizePhone(memberLink.member.phone);
+          const link = paymentLink || APP_URL;
+          const msg = paymentLink
+            ? `Hola! 👋 Te enviamos el link de pago de la cuota ${monthName} ${data.year} de ${player.fullName}: ${paymentLink}`
+            : `Hola! 👋 La cuota de ${monthName} ${data.year} de ${player.fullName} ya está generada. Ingresá a la app para pagarla: ${APP_URL}`;
+          waMessages.push({ phone, playerName: player.fullName, link: paymentLink, month: monthName, year: data.year, waUrl: buildWhatsAppUrl(phone, msg) });
+        }
+
+        return { subId: sub.id, playerName: player.fullName };
+      });
+
+      for (const err of mpErrs) {
+        const player = fulfilled[err.index]?.value;
+        mpErrors.push({ playerName: players.find(p => p.id === player?.value?.playerId)?.fullName ?? '??', error: String(err.error) });
       }
     }
 
-    return { created: createdCount, total: players.length, skipped, waMessages };
+    return { created: createdCount, total: players.length, skipped, waMessages, mpErrors };
   },
 
   async sendPaymentLink(subId: string, customAmount?: number) {
@@ -222,12 +159,12 @@ export const playerSubscriptionsService = {
     if (!sub) throw new AppError('Cuota no encontrada', 404);
     if (sub.status === 'PAID') throw new AppError('La cuota ya está pagada', 400);
 
-    const { preferenceId, paymentLink } = await createMpPreference(sub, sub.player, customAmount);
+    const { preferenceId, paymentLink } = await createPlayerMpPreference(sub, sub.player, customAmount);
 
-    return db.playerSubscription.update({
-      where: { id: subId },
-      data: { mpPreferenceId: preferenceId, mpPaymentLink: paymentLink, status: 'LINK_SENT' },
-    });
+    const updateData: any = { mpPreferenceId: preferenceId, mpPaymentLink: paymentLink, status: 'LINK_SENT' };
+    if (customAmount) updateData.amount = customAmount;
+
+    return db.playerSubscription.update({ where: { id: subId }, data: updateData });
   },
 
   async markPaid(subId: string) {
@@ -246,7 +183,6 @@ export const playerSubscriptionsService = {
       data: { status: 'PAID', paidAt: new Date() },
     });
 
-    // Auto-mark linked member's Subscription for same month/year as PAID
     if (sub.player?.memberLinks?.length) {
       await db.subscription.updateMany({
         where: {

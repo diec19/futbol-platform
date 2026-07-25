@@ -261,6 +261,16 @@ export const api = {
     create: (data: unknown) => post<{ data: any }>('/notifications', data),
     remove: (id: string) => del<void>(`/notifications/${id}`),
   },
+  whatsapp: {
+    status: () => get<{ data: { connected: boolean } }>('/whatsapp/status'),
+    send: (phone: string, message: string) => post<{ data: any }>('/whatsapp/send', { phone, message }),
+    sendSubscription: (subId: string, type: string = 'player') =>
+      post<{ data: any }>(`/whatsapp/send-subscription/${subId}`, { type }),
+    bulkSendPlayer: (subscriptionIds: string[]) =>
+      post<{ data: any }>('/whatsapp/bulk-send-player', { subscriptionIds }),
+    bulkSendMember: (subscriptionIds: string[]) =>
+      post<{ data: any }>('/whatsapp/bulk-send-member', { subscriptionIds }),
+  },
   club: {
     get: () => get<{ data: any }>('/club'),
     update: (data: unknown) => put<{ data: any }>('/club', data),

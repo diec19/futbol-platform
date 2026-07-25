@@ -14,6 +14,9 @@ const envSchema = z.object({
   MP_ACCESS_TOKEN: z.string().optional(),
   MP_WEBHOOK_SECRET: z.string().optional(),
   APP_URL: z.string().default('http://localhost:3001'),
+  WHATSAPP_API_URL: z.string().optional(),
+  WHATSAPP_API_KEY: z.string().optional(),
+  WHATSAPP_INSTANCE: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

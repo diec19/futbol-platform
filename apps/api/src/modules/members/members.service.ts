@@ -4,6 +4,7 @@ import { db } from '../../config/database';
 import { env } from '../../config/env';
 import { AppError } from '../../lib/app-error';
 import { mpService } from './mp.service';
+import { mapWithConcurrency, normalizePhone, buildWhatsAppUrl } from '../../lib/mp';
 
 const memberSelect = {
   id: true, fullName: true, dni: true, email: true,
@@ -193,12 +194,6 @@ export const membersService = {
   async createBulkSubscriptions(month: number, year: number, amount: number, dueDateStr: string, childAmount?: number, sendWhatsapp?: boolean) {
     const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
     const monthName = MONTHS[month - 1];
-    const normalizePhone = (phone: string) => {
-      const d = phone.replace(/\D/g, '');
-      if (d.startsWith('549')) return d;
-      if (d.startsWith('54')) return `9${d}`;
-      return `549${d}`;
-    };
 
     const members = await db.member.findMany({
       where: { active: true },
@@ -206,7 +201,6 @@ export const membersService = {
     });
     const dueDate = new Date(dueDateStr);
 
-    // Find existing subscriptions for this month/year to skip them
     const existingSubs = await db.subscription.findMany({
       where: {
         memberId: { in: members.map(m => m.id) },
@@ -227,7 +221,6 @@ export const membersService = {
     const createdCount = results.filter((r) => r.status === 'fulfilled').length;
     const skipped = members.length - membersToCreate.length;
 
-    // Also create PlayerSubscriptions for linked children if childAmount provided
     let childrenCreated = 0;
     if (childAmount) {
       const existingChildSubs = await db.playerSubscription.findMany({
@@ -252,58 +245,66 @@ export const membersService = {
       }
     }
 
-    // Generate MP links and WhatsApp messages if requested
     const APP_URL = env.APP_URL ?? '';
     const waMessages: { phone: string; name: string; link: string; month: string; year: number; waUrl: string }[] = [];
+    const mpErrors: { name: string; error: string }[] = [];
+
     if (sendWhatsapp) {
       const fulfilled = results.filter((r) => r.status === 'fulfilled') as PromiseFulfilledResult<any>[];
-      for (const result of fulfilled) {
+
+      const { errors: mpErrs } = await mapWithConcurrency(fulfilled, 3, async (result) => {
         const sub = result.value as any;
+        const member = await db.member.findUnique({
+          where: { id: sub.memberId },
+          select: { fullName: true, email: true, phone: true },
+        });
+        if (!member) return null;
+
+        const links = await db.memberPlayer.findMany({
+          where: { memberId: sub.memberId },
+          include: { player: { select: { id: true, fullName: true } } },
+        });
+        const childSubs = links.length
+          ? await db.playerSubscription.findMany({
+              where: {
+                playerId: { in: links.map(l => l.playerId) },
+                month, year,
+              },
+              include: { player: { select: { fullName: true } } },
+            })
+          : [];
+
+        let paymentLink = '';
         try {
-          const member = await db.member.findUnique({
-            where: { id: sub.memberId },
-            select: { fullName: true, email: true, phone: true },
+          const { preferenceId, paymentLink: mpLink } = await mpService.createPreference(sub, member, childSubs);
+          paymentLink = mpLink;
+          await db.subscription.update({
+            where: { id: sub.id },
+            data: { mpPreferenceId: preferenceId, mpPaymentLink: paymentLink, status: 'LINK_SENT' },
           });
-          if (!member) continue;
+        } catch (e: any) {
+          mpErrors.push({ name: member.fullName, error: e.message });
+        }
 
-          // Fetch child subs for this member
-          const links = await db.memberPlayer.findMany({
-            where: { memberId: sub.memberId },
-            include: { player: { select: { id: true, fullName: true } } },
-          });
-          const childSubs = links.length
-            ? await db.playerSubscription.findMany({
-                where: {
-                  playerId: { in: links.map(l => l.playerId) },
-                  month, year,
-                },
-                include: { player: { select: { fullName: true } } },
-              })
-            : [];
+        if (member.phone && member.phone.trim()) {
+          const phone = normalizePhone(member.phone);
+          const link = paymentLink || APP_URL;
+          const msg = paymentLink
+            ? `Hola ${member.fullName}! 👋 Te enviamos el link de pago de la cuota de ${monthName} ${year}: ${paymentLink}`
+            : `Hola ${member.fullName}! 👋 La cuota de ${monthName} ${year} ya está generada. Ingresá a la app para pagarla: ${APP_URL}`;
+          waMessages.push({ phone, name: member.fullName, link: paymentLink, month: monthName, year, waUrl: buildWhatsAppUrl(phone, msg) });
+        }
 
-          let paymentLink = '';
-          try {
-            const { id: preferenceId, init_point: mpLink } = await mpService.createPreference(sub, member, childSubs);
-            paymentLink = mpLink;
-            await db.subscription.update({
-              where: { id: sub.id },
-              data: { mpPreferenceId: preferenceId, mpPaymentLink: paymentLink, status: 'LINK_SENT' },
-            });
-          } catch (e) { console.error(`[MP] Error al generar link para ${member.fullName}:`, e); }
+        return { subId: sub.id, name: member.fullName };
+      });
 
-          if (member.phone && member.phone.trim()) {
-            const phone = normalizePhone(member.phone);
-            const link = paymentLink || APP_URL;
-            const msg = paymentLink
-              ? encodeURIComponent(`Hola ${member.fullName}! 👋 Te enviamos el link de pago de la cuota de ${monthName} ${year}: ${paymentLink}`)
-              : encodeURIComponent(`Hola ${member.fullName}! 👋 La cuota de ${monthName} ${year} ya está generada. Ingresá a la app para pagarla: ${APP_URL}`);
-            waMessages.push({ phone, name: member.fullName, link: paymentLink, month: monthName, year, waUrl: `https://wa.me/${phone}?text=${msg}` });
-          }
-        } catch { /* skip individual errors */ }
+      for (const err of mpErrs) {
+        const sub = fulfilled[err.index]?.value;
+        mpErrors.push({ name: sub?.value?.memberId ?? '??', error: String(err.error) });
       }
     }
 
-    return { created: createdCount, total: members.length, skipped, childrenCreated, waMessages };
+    return { created: createdCount, total: members.length, skipped, childrenCreated, waMessages, mpErrors };
   },
 
   async sendPaymentLink(subId: string, customAmount?: number) {
@@ -333,11 +334,14 @@ export const membersService = {
         })
       : [];
 
-    const { id: preferenceId, init_point: paymentLink } = await mpService.createPreference(sub, sub.member, childSubs, customAmount);
+    const { preferenceId, paymentLink } = await mpService.createPreference(sub, sub.member, childSubs, customAmount);
+
+    const updateData: any = { mpPreferenceId: preferenceId, mpPaymentLink: paymentLink, status: 'LINK_SENT' };
+    if (customAmount) updateData.amount = customAmount;
 
     return db.subscription.update({
       where: { id: subId },
-      data: { mpPreferenceId: preferenceId, mpPaymentLink: paymentLink, status: 'LINK_SENT' },
+      data: updateData,
     });
   },
 

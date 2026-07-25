@@ -2,10 +2,13 @@ import 'dotenv/config';
 import { app } from './app';
 import { env } from './config/env';
 import { db } from './config/database';
+import { startOverdueCron } from './lib/cron';
 
 async function main() {
   await db.$connect();
   console.log('Database connected');
+
+  startOverdueCron();
 
   app.listen(env.PORT, () => {
     console.log(`API running on http://localhost:${env.PORT}`);

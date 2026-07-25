@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db } from '../../config/database';
-import { getClubMpToken } from '../../lib/mp';
+import { getClubMpToken, fetchMpPayment, validateWebhookSignature } from '../../lib/mp';
 
 export const webhooksRouter = Router();
 
@@ -9,63 +9,131 @@ webhooksRouter.post('/mp', async (req, res) => {
     const body = req.body;
     const query = req.query as Record<string, string>;
 
-    console.error('[WEBHOOK] Received:', JSON.stringify({ body, query }));
+    console.log('[WEBHOOK] Received:', JSON.stringify({ body, query }));
 
+    // ── Signature Validation ───────────────────────────────────────────────
+    try {
+      const { webhookSecret } = await getClubMpToken();
+      if (webhookSecret) {
+        const rawBody = JSON.stringify(body);
+        const isValid = validateWebhookSignature(rawBody, req.headers as Record<string, string>, webhookSecret);
+        if (!isValid) {
+          console.error('[WEBHOOK] Invalid signature — rejecting');
+          return res.status(401).json({ error: 'Invalid signature' });
+        }
+      }
+    } catch {
+      // If no secret configured, skip validation (backwards compat)
+    }
+
+    // ── Extract Payment ID ─────────────────────────────────────────────────
     const paymentId = body.data?.id ?? body.id ?? query.id;
-    if (!paymentId) { console.error('[WEBHOOK] No payment ID'); return res.json({ ignored: true }); }
-
-    console.error('[WEBHOOK] Payment ID:', paymentId);
+    if (!paymentId) { console.log('[WEBHOOK] No payment ID'); return res.json({ ignored: true }); }
 
     let accessToken: string;
     try {
       const mpToken = await getClubMpToken();
       accessToken = mpToken.accessToken;
     } catch {
-      console.error('[WEBHOOK] No MP_ACCESS_TOKEN en el club');
+      console.error('[WEBHOOK] No MP_ACCESS_TOKEN configurado');
       return res.json({ ignored: true });
     }
 
-    const response = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    if (!response.ok) {
-      const text = await response.text();
-      console.error('[WEBHOOK] MP API error:', response.status, text);
+    // ── Fetch Payment Details from MP ──────────────────────────────────────
+    let payment;
+    try {
+      payment = await fetchMpPayment(String(paymentId), accessToken);
+    } catch (e: any) {
+      console.error('[WEBHOOK] Error fetching payment:', e.message);
       return res.json({ ignored: true });
     }
 
-    const payment = await response.json() as { status: string; external_reference?: string };
-    console.error('[WEBHOOK] Payment status:', payment.status, 'external_reference:', payment.external_reference);
+    console.log('[WEBHOOK] Payment status:', payment.status, 'external_reference:', payment.external_reference);
 
-    if (payment.status !== 'approved') return res.json({ ignored: true });
+    // ── Handle Different Payment Statuses ──────────────────────────────────
+    if (payment.status === 'approved') {
+      const subId = payment.external_reference;
+      if (!subId) { console.log('[WEBHOOK] No external_reference'); return res.json({ ignored: true }); }
 
-    const subId = payment.external_reference;
-    if (!subId) { console.error('[WEBHOOK] No external_reference'); return res.json({ ignored: true }); }
-
-    // Try to update PlayerSubscription first
-    const playerSub = await db.playerSubscription.findUnique({ where: { id: subId } });
-    if (playerSub) {
-      console.error('[WEBHOOK] Updating player subscription:', subId);
-      await db.playerSubscription.update({
+      // Try PlayerSubscription first
+      const playerSub = await db.playerSubscription.findUnique({
         where: { id: subId },
-        data: { status: 'PAID', paidAt: new Date(), mpPaymentId: String(paymentId) },
+        include: { player: { include: { memberLinks: { select: { memberId: true } } } } },
       });
-      return res.json({ processed: true, type: 'player', subId });
-    }
+      if (playerSub) {
+        console.log('[WEBHOOK] Updating player subscription:', subId);
+        await db.playerSubscription.update({
+          where: { id: subId },
+          data: { status: 'PAID', paidAt: new Date(), mpPaymentId: String(paymentId) },
+        });
 
-    // Fallback to Member Subscription
-    const memberSub = await db.subscription.findUnique({ where: { id: subId } });
-    if (memberSub) {
-      console.error('[WEBHOOK] Updating member subscription:', subId);
-      await db.subscription.update({
+        // Cross-sync: auto-mark linked Member Subscriptions as PAID
+        if (playerSub.player?.memberLinks?.length) {
+          await db.subscription.updateMany({
+            where: {
+              memberId: { in: playerSub.player.memberLinks.map(l => l.memberId) },
+              month: playerSub.month,
+              year: playerSub.year,
+              status: { not: 'PAID' },
+            },
+            data: { status: 'PAID', paidAt: new Date() },
+          });
+        }
+
+        return res.json({ processed: true, type: 'player', subId });
+      }
+
+      // Fallback to Member Subscription
+      const memberSub = await db.subscription.findUnique({
         where: { id: subId },
-        data: { status: 'PAID', paidAt: new Date(), mpPaymentId: String(paymentId) },
+        include: { member: { include: { players: { select: { playerId: true } } } } },
       });
-      return res.json({ processed: true, type: 'member', subId });
-    }
+      if (memberSub) {
+        console.log('[WEBHOOK] Updating member subscription:', subId);
+        await db.subscription.update({
+          where: { id: subId },
+          data: { status: 'PAID', paidAt: new Date(), mpPaymentId: String(paymentId) },
+        });
 
-    console.error('[WEBHOOK] Subscription not found for external_reference:', subId);
-    res.json({ ignored: true, reason: 'subscription not found' });
+        // Cross-sync: auto-mark linked PlayerSubscriptions as PAID
+        if (memberSub.member?.players?.length) {
+          await db.playerSubscription.updateMany({
+            where: {
+              playerId: { in: memberSub.member.players.map(p => p.playerId) },
+              month: memberSub.month,
+              year: memberSub.year,
+              status: { not: 'PAID' },
+            },
+            data: { status: 'PAID', paidAt: new Date() },
+          });
+        }
+
+        return res.json({ processed: true, type: 'member', subId });
+      }
+
+      console.log('[WEBHOOK] Subscription not found for external_reference:', subId);
+      res.json({ ignored: true, reason: 'subscription not found' });
+
+    } else if (['cancelled', 'refunded', 'charged_back'].includes(payment.status)) {
+      // Handle rejected/refunded payments
+      const subId = payment.external_reference;
+      if (subId) {
+        await db.playerSubscription.updateMany({
+          where: { id: subId, status: { not: 'PAID' } },
+          data: { status: 'PENDING', mpPaymentId: null },
+        });
+        await db.subscription.updateMany({
+          where: { id: subId, status: { not: 'PAID' } },
+          data: { status: 'PENDING', mpPaymentId: null },
+        });
+        console.log(`[WEBHOOK] Reverted subscription ${subId} due to payment ${payment.status}`);
+      }
+      res.json({ processed: true, action: 'reverted', status: payment.status });
+
+    } else {
+      console.log(`[WEBHOOK] Ignoring payment status: ${payment.status}`);
+      res.json({ ignored: true, status: payment.status });
+    }
   } catch (e) {
     console.error('[WEBHOOK] Error:', e);
     res.status(200).json({ ignored: true });
@@ -73,6 +141,5 @@ webhooksRouter.post('/mp', async (req, res) => {
 });
 
 webhooksRouter.get('/mp', async (req, res) => {
-  console.error('[WEBHOOK] GET received:', JSON.stringify(req.query));
   res.status(200).send('OK');
 });

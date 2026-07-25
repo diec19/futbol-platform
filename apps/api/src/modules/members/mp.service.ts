@@ -1,36 +1,4 @@
-import { getClubMpToken } from '../../lib/mp';
-import https from 'https';
-
-const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-
-function mpRequest(accessToken: string, body: any): Promise<{ id: string; init_point: string }> {
-  return new Promise((resolve, reject) => {
-    const data = JSON.stringify(body);
-    const req = https.request({
-      hostname: 'api.mercadopago.com',
-      path: '/checkout/preferences',
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-    }, (res) => {
-      let b = '';
-      res.on('data', c => b += c);
-      res.on('end', () => {
-        if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
-          try { resolve(JSON.parse(b)); }
-          catch { reject(new Error(`Invalid JSON: ${b}`)); }
-        } else {
-          reject(new Error(`MP error ${res.statusCode}: ${b}`));
-        }
-      });
-    });
-    req.on('error', reject);
-    req.write(data);
-    req.end();
-  });
-}
+import { createMemberMpPreference } from '../../lib/mp';
 
 export const mpService = {
   async createPreference(
@@ -39,36 +7,6 @@ export const mpService = {
     childSubs: { id: string; player: { fullName: string }; amount: number }[] = [],
     customAmount?: number,
   ) {
-    const { accessToken } = await getClubMpToken();
-
-    const monthName = MONTH_NAMES[sub.month - 1];
-    const items: any[] = [{
-      id: sub.id,
-      title: `Cuota ${monthName} ${sub.year} — ${member.fullName}`,
-      quantity: 1,
-      unit_price: customAmount ?? sub.amount,
-      currency_id: 'ARS',
-    }];
-
-    for (const cs of childSubs) {
-      items.push({
-        id: cs.id,
-        title: `Cuota ${monthName} ${sub.year} — ${cs.player.fullName}`,
-        quantity: 1,
-        unit_price: cs.amount,
-        currency_id: 'ARS',
-      });
-    }
-
-    const body = {
-      items,
-      payer: { email: member.email, name: member.fullName },
-      external_reference: sub.id,
-      statement_descriptor: 'Club Futbol',
-      expires: true,
-      expiration_date_to: new Date(sub.dueDate).toISOString(),
-    };
-
-    return mpRequest(accessToken, body);
+    return createMemberMpPreference(sub, member, childSubs, customAmount);
   },
 };
