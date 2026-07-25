@@ -106,8 +106,8 @@ export async function checkWhatsAppConnection(): Promise<boolean> {
       headers: { 'apikey': config.apiKey },
     });
     if (!response.ok) return false;
-    const data = await response.json() as { state?: string };
-    return data.state === 'open';
+    const data = await response.json() as { instance?: { state?: string } };
+    return data.instance?.state === 'open';
   } catch {
     return false;
   }
