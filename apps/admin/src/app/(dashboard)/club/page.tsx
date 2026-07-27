@@ -166,6 +166,28 @@ export default function ClubInfoPage() {
           </div>
         </div>
 
+        {/* WhatsApp / Evolution API */}
+        <div className="p-5 space-y-4">
+          <p className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+            <MessageCircle size={14} /> WhatsApp (Evolution API)
+          </p>
+          <p className="text-xs text-slate-400">Conexión con Evolution API para envío automático de links de pago por WhatsApp.</p>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-slate-500 mb-1 block">API URL</label>
+              <input className="input-base" value={val('whatsappApiUrl')} onChange={(e) => set('whatsappApiUrl', e.target.value)} placeholder="https://evolution-api-tuclub.up.railway.app" />
+            </div>
+            <div>
+              <label className="text-xs text-slate-500 mb-1 block">API Key</label>
+              <input className="input-base" type="password" value={val('whatsappApiKey')} onChange={(e) => set('whatsappApiKey', e.target.value)} placeholder="Tu API Key de Evolution" />
+            </div>
+            <div>
+              <label className="text-xs text-slate-500 mb-1 block">Nombre de instancia</label>
+              <input className="input-base" value={val('whatsappInstance')} onChange={(e) => set('whatsappInstance', e.target.value)} placeholder="club-futbol" />
+            </div>
+          </div>
+        </div>
+
         {/* Cuotas mensuales */}
         <div className="p-5 space-y-4">
           <p className="text-sm font-semibold text-slate-700">Cuotas mensuales</p>

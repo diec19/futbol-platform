@@ -366,8 +366,11 @@ model Club {
   website        String?
   instagram      String?
   facebook       String?
-  whatsapp       String?
-  mpAccessToken   String?
+  whatsapp          String?
+  whatsappApiUrl    String?
+  whatsappApiKey    String?
+  whatsappInstance  String?
+  mpAccessToken     String?
   mpWebhookSecret String?
   monthlyPlayerFee Float?
   monthlyMemberFee Float?
