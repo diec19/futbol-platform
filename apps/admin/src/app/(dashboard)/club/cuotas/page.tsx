@@ -32,12 +32,10 @@ function StatusBadge({ status }: { status: string }) {
 // ── Bulk generation modal ─────────────────────────────────────────────────────
 function BulkModal({ categories, onClose, onDone }: { categories: any[]; onClose: () => void; onDone: () => void }) {
   const now = new Date();
-  const [target, setTarget] = useState<'players' | 'members'>('players');
   const [form, setForm] = useState({
     month: String(now.getMonth() + 1),
     year: String(now.getFullYear()),
     amount: '',
-    dueDate: '',
     clubCategoryId: '',
   });
   const [sendWhatsapp, setSendWhatsapp] = useState(false);
@@ -46,7 +44,7 @@ function BulkModal({ categories, onClose, onDone }: { categories: any[]; onClose
   const [error, setError] = useState('');
 
   const handleGenerate = async () => {
-    if (!form.amount || !form.dueDate) { setError('Monto y vencimiento son requeridos'); return; }
+    if (!form.amount) { setError('El monto es requerido'); return; }
     setSaving(true);
     setError('');
     setResult(null);
@@ -55,16 +53,10 @@ function BulkModal({ categories, onClose, onDone }: { categories: any[]; onClose
         month: Number(form.month),
         year: Number(form.year),
         amount: Number(form.amount),
-        dueDate: new Date(form.dueDate).toISOString(),
+        clubCategoryId: form.clubCategoryId || undefined,
         sendWhatsapp,
       };
-      let res: any;
-      if (target === 'players') {
-        payload.clubCategoryId = form.clubCategoryId || undefined;
-        res = await api.players.subscriptions.bulk(payload);
-      } else {
-        res = await api.members.subscriptions.bulk(payload);
-      }
+      const res = await api.players.subscriptions.bulk(payload);
       setResult(res.data ?? res);
     } catch (e: any) { setError(e.message ?? 'Error'); } finally { setSaving(false); }
   };
@@ -77,7 +69,7 @@ function BulkModal({ categories, onClose, onDone }: { categories: any[]; onClose
     const waMsgs = result.waMessages ?? [];
     const waCount = waMsgs.length;
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-between gap-2 px-4 py-4 z-50 p-4">
         <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
           <div className="flex items-center justify-between">
             <p className="font-bold text-slate-800 flex items-center gap-2"><Zap size={16} className="text-green-600" />Cuotas generadas</p>
@@ -91,6 +83,8 @@ function BulkModal({ categories, onClose, onDone }: { categories: any[]; onClose
               {result.skipped ? <span className="text-amber-600 ml-1">({result.skipped} ya existían)</span> : null}
             </p>
           </div>
+
+          <p className="text-xs text-slate-500 text-center">Vencimiento automático: día 10 de cada mes. Recargo del 10% después del vencimiento.</p>
 
           {waCount > 0 && (
             <div className="space-y-3">
@@ -138,17 +132,6 @@ function BulkModal({ categories, onClose, onDone }: { categories: any[]; onClose
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl leading-none">&times;</button>
         </div>
 
-        <div className="flex gap-2 bg-slate-100 rounded-lg p-1">
-          <button onClick={() => setTarget('players')}
-            className={`flex-1 px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${target === 'players' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-            Jugadores
-          </button>
-          <button onClick={() => setTarget('members')}
-            className={`flex-1 px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${target === 'members' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-            Socios
-          </button>
-        </div>
-
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-medium text-slate-500 mb-1">Mes</label>
@@ -164,29 +147,21 @@ function BulkModal({ categories, onClose, onDone }: { categories: any[]; onClose
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Monto ($)</label>
-            <input type="number" value={form.amount} onChange={(e) => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="3500"
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Vencimiento</label>
-            <input type="date" value={form.dueDate} onChange={(e) => setForm(f => ({ ...f, dueDate: e.target.value }))}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-          </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-500 mb-1">Monto ($)</label>
+          <input type="number" value={form.amount} onChange={(e) => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="3500"
+            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+          <p className="text-xs text-slate-400 mt-1">Vence automáticamente el día 10. Recargo 10% después del vencimiento.</p>
         </div>
 
-        {target === 'players' && (
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Categoría (opcional)</label>
-            <select value={form.clubCategoryId} onChange={(e) => setForm(f => ({ ...f, clubCategoryId: e.target.value }))}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary">
-              <option value="">Todos los jugadores activos</option>
-              {categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </div>
-        )}
+        <div>
+          <label className="block text-xs font-medium text-slate-500 mb-1">Categoría (opcional)</label>
+          <select value={form.clubCategoryId} onChange={(e) => setForm(f => ({ ...f, clubCategoryId: e.target.value }))}
+            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+            <option value="">Todos los jugadores activos</option>
+            {categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
 
         <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
           <input type="checkbox" checked={sendWhatsapp} onChange={(e) => setSendWhatsapp(e.target.checked)}
@@ -200,7 +175,7 @@ function BulkModal({ categories, onClose, onDone }: { categories: any[]; onClose
           <button onClick={onClose} className="flex-1 px-4 py-2 border border-slate-200 text-slate-600 rounded-lg text-sm hover:bg-slate-50">Cancelar</button>
           <button onClick={handleGenerate} disabled={saving}
             className="flex-1 px-4 py-2 bg-brand-red text-white rounded-lg text-sm font-medium hover:bg-brand-red-dark disabled:opacity-50">
-            {saving ? 'Generando...' : `Generar ${target === 'players' ? 'Jugadores' : 'Socios'}`}
+            {saving ? 'Generando...' : 'Generar Jugadores'}
           </button>
         </div>
       </div>
@@ -219,7 +194,6 @@ function IndividualModal({ categories, players, onClose, onDone }: { categories:
     month: String(now.getMonth() + 1),
     year: String(now.getFullYear()),
     amount: '',
-    dueDate: '',
   });
   const [generarLink, setGenerarLink] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -232,7 +206,7 @@ function IndividualModal({ categories, players, onClose, onDone }: { categories:
   const selectedPlayer = players.find((p: any) => p.id === playerId);
 
   const handleCreate = async () => {
-    if (!playerId || !form.amount || !form.dueDate) { setError('Completá todos los campos'); return; }
+    if (!playerId || !form.amount) { setError('Completá todos los campos'); return; }
     setSaving(true);
     setError('');
     try {
@@ -240,7 +214,6 @@ function IndividualModal({ categories, players, onClose, onDone }: { categories:
         month: Number(form.month),
         year: Number(form.year),
         amount: Number(form.amount),
-        dueDate: new Date(form.dueDate).toISOString(),
       });
       const sub = res.data ?? res;
       let paymentLink: string | undefined;
@@ -349,17 +322,11 @@ function IndividualModal({ categories, players, onClose, onDone }: { categories:
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Monto ($)</label>
-            <input type="number" value={form.amount} onChange={(e) => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="3500"
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Vencimiento</label>
-            <input type="date" value={form.dueDate} onChange={(e) => setForm(f => ({ ...f, dueDate: e.target.value }))}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-          </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-500 mb-1">Monto ($)</label>
+          <input type="number" value={form.amount} onChange={(e) => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="3500"
+            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+          <p className="text-xs text-slate-400 mt-1">Vence el día 10. Recargo 10% después del vencimiento.</p>
         </div>
 
         <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
@@ -459,7 +426,7 @@ export default function CuotasPage() {
   const pending = subs.filter((s: any) => s.status === 'PENDING').length;
   const linkSent = subs.filter((s: any) => s.status === 'LINK_SENT').length;
   const overdue = subs.filter((s: any) => s.status === 'OVERDUE').length;
-  const totalCollected = subs.filter((s: any) => s.status === 'PAID').reduce((a: number, s: any) => a + s.amount, 0);
+  const totalCollected = subs.filter((s: any) => s.status === 'PAID').reduce((a: number, s: any) => a + (s.totalAmount ?? s.amount), 0);
 
   return (
     <div className="space-y-6">
@@ -572,6 +539,8 @@ export default function CuotasPage() {
                 <th className="text-left px-5 py-3 text-gray-500 font-medium">Jugador</th>
                 <th className="text-left px-5 py-3 text-gray-500 font-medium">Categoría / Profe</th>
                 <th className="text-left px-5 py-3 text-gray-500 font-medium">Monto</th>
+                <th className="text-left px-5 py-3 text-gray-500 font-medium">Recargo</th>
+                <th className="text-left px-5 py-3 text-gray-500 font-medium">Total</th>
                 <th className="text-left px-5 py-3 text-gray-500 font-medium">Vence</th>
                 <th className="text-left px-5 py-3 text-gray-500 font-medium">Estado</th>
                 <th className="px-5 py-3"></th>
@@ -617,6 +586,16 @@ export default function CuotasPage() {
                     </td>
                     <td className="px-5 py-3.5 font-bold text-slate-800">
                       ${sub.amount.toLocaleString('es-AR')}
+                    </td>
+                    <td className="px-5 py-3.5 text-xs">
+                      {sub.lateFee > 0 ? (
+                        <span className="text-amber-600 font-medium">+${sub.lateFee.toLocaleString('es-AR')}</span>
+                      ) : (
+                        <span className="text-slate-300">—</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3.5 font-bold text-slate-800">
+                      ${(sub.totalAmount ?? sub.amount).toLocaleString('es-AR')}
                     </td>
                     <td className="px-5 py-3.5 text-slate-500 text-xs">
                       {new Date(sub.dueDate).toLocaleDateString('es-AR')}

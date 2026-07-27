@@ -271,6 +271,39 @@ export const api = {
     bulkSendMember: (subscriptionIds: string[]) =>
       post<{ data: any }>('/whatsapp/bulk-send-member', { subscriptionIds }),
   },
+  sponsors: {
+    list: () => get<{ data: any[] }>('/sponsors'),
+    get: (id: string) => get<{ data: any }>(`/sponsors/${id}`),
+    create: (data: unknown) => post<{ data: any }>('/sponsors', data),
+    update: (id: string, data: unknown) => put<{ data: any }>(`/sponsors/${id}`, data),
+    toggle: (id: string) => patch<{ data: any }>(`/sponsors/${id}/toggle`, {}),
+    remove: (id: string) => del<void>(`/sponsors/${id}`),
+    plans: {
+      list: (sponsorId: string) => get<{ data: any[] }>(`/sponsors/${sponsorId}/plans`),
+      create: (sponsorId: string, data: unknown) => post<{ data: any }>(`/sponsors/${sponsorId}/plans`, data),
+      update: (planId: string, data: unknown) => put<{ data: any }>(`/sponsors/plans/${planId}`, data),
+      remove: (planId: string) => del<void>(`/sponsors/plans/${planId}`),
+    },
+  },
+  sponsorships: {
+    list: (params?: Record<string, string>) => {
+      const qs = params ? '?' + new URLSearchParams(params).toString() : '';
+      return get<{ data: any[] }>(`/sponsorships${qs}`);
+    },
+    create: (data: unknown) => post<{ data: any }>('/sponsorships', data),
+    cancel: (id: string) => patch<{ data: any }>(`/sponsorships/${id}/cancel`, {}),
+    payments: {
+      list: (params?: Record<string, string>) => {
+        const qs = params ? '?' + new URLSearchParams(params).toString() : '';
+        return get<{ data: any[] }>(`/sponsorships/payments${qs}`);
+      },
+      generate: (sponsorshipId: string, data: unknown) =>
+        post<{ data: any }>(`/sponsorships/${sponsorshipId}/payments`, data),
+      bulk: (data: unknown) => post<{ data: any }>('/sponsorships/payments/bulk', data),
+      markPaid: (paymentId: string) => patch<{ data: any }>(`/sponsorships/payments/${paymentId}/pay`, {}),
+      remove: (paymentId: string) => del<void>(`/sponsorships/payments/${paymentId}`),
+    },
+  },
   club: {
     get: () => get<{ data: any }>('/club'),
     update: (data: unknown) => put<{ data: any }>('/club', data),

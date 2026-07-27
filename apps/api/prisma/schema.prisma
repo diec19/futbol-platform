@@ -80,6 +80,13 @@ enum SubscriptionStatus {
   OVERDUE
 }
 
+enum SponsorshipStatus {
+  ACTIVE
+  PAUSED
+  EXPIRED
+  CANCELLED
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -192,6 +199,8 @@ model PlayerSubscription {
   month          Int
   year           Int
   amount         Float
+  lateFee        Float              @default(0)
+  totalAmount    Float              @default(0)
   status         SubscriptionStatus @default(PENDING)
   mpPreferenceId String?
   mpPaymentLink  String?
@@ -521,4 +530,79 @@ model Notification {
   updatedAt DateTime @updatedAt
 
   @@map("notifications")
+}
+
+// ── Auspiciantes ────────────────────────────────────────────────────────────
+
+model Sponsor {
+  id             String            @id @default(cuid())
+  name           String
+  contactName    String?
+  phone          String?
+  email          String?
+  logoUrl        String?
+  website        String?
+  active         Boolean           @default(true)
+  plans          SponsorPlan[]
+  sponsorships   Sponsorship[]
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@map("sponsors")
+}
+
+model SponsorPlan {
+  id              String          @id @default(cuid())
+  sponsorId       String
+  sponsor         Sponsor         @relation(fields: [sponsorId], references: [id], onDelete: Cascade)
+  name            String
+  monthlyAmount   Float
+  durationMonths  Int             @default(6)
+  description     String?
+  active          Boolean         @default(true)
+  sponsorships    Sponsorship[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@map("sponsor_plans")
+}
+
+model Sponsorship {
+  id              String               @id @default(cuid())
+  sponsorId       String
+  sponsor         Sponsor              @relation(fields: [sponsorId], references: [id], onDelete: Cascade)
+  planId          String
+  plan            SponsorPlan          @relation(fields: [planId], references: [id])
+  startDate       DateTime
+  endDate         DateTime
+  status          SponsorshipStatus    @default(ACTIVE)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  payments        SponsorshipPayment[]
+
+  @@map("sponsorships")
+}
+
+model SponsorshipPayment {
+  id              String             @id @default(cuid())
+  sponsorshipId   String
+  sponsorship     Sponsorship        @relation(fields: [sponsorshipId], references: [id], onDelete: Cascade)
+  month           Int
+  year            Int
+  amount          Float
+  lateFee         Float              @default(0)
+  totalAmount     Float              @default(0)
+  status          SubscriptionStatus @default(PENDING)
+  dueDate         DateTime
+  paidAt          DateTime?
+  mpPreferenceId  String?
+  mpPaymentLink   String?
+  mpPaymentId     String?
+  notes           String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@unique([sponsorshipId, month, year])
+  @@map("sponsorship_payments")
 }

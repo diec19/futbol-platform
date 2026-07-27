@@ -5,6 +5,17 @@ import { createPlayerMpPreference, mapWithConcurrency, normalizePhone, buildWhat
 import { env } from '../../config/env';
 
 const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const DUE_DAY = 10;
+const LATE_FEE_PERCENT = 10;
+
+function getDueDate(month: number, year: number): Date {
+  return new Date(year, month - 1, DUE_DAY);
+}
+
+function calculateLateFee(amount: number, paidDate: Date, dueDate: Date): number {
+  if (paidDate <= dueDate) return 0;
+  return Math.round(amount * LATE_FEE_PERCENT / 100);
+}
 
 export const playerSubscriptionsService = {
   async listByPlayer(playerId: string) {
@@ -41,7 +52,7 @@ export const playerSubscriptionsService = {
     });
   },
 
-  async create(playerId: string, data: { month: number; year: number; amount: number; dueDate: string; notes?: string }) {
+  async create(playerId: string, data: { month: number; year: number; amount: number; notes?: string }) {
     const player = await db.player.findUnique({ where: { id: playerId } });
     if (!player) throw new AppError('Jugador no encontrado', 404);
 
@@ -50,20 +61,23 @@ export const playerSubscriptionsService = {
     });
     if (existing) throw new AppError('Ya existe una cuota para ese mes/año', 409);
 
+    const dueDate = getDueDate(data.month, data.year);
+
     return db.playerSubscription.create({
       data: {
         playerId,
         month: data.month,
         year: data.year,
         amount: data.amount,
-        dueDate: new Date(data.dueDate),
+        totalAmount: data.amount,
+        dueDate,
         notes: data.notes,
       },
     });
   },
 
   async createBulk(data: {
-    month: number; year: number; amount: number; dueDate: string; clubCategoryId?: string; sendWhatsapp?: boolean;
+    month: number; year: number; amount: number; clubCategoryId?: string; sendWhatsapp?: boolean;
   }) {
     const players = await db.player.findMany({
       where: {
@@ -84,6 +98,8 @@ export const playerSubscriptionsService = {
     const existingIds = new Set(existingSubs.map(s => s.playerId));
     const playersToCreate = players.filter(p => !existingIds.has(p.id));
 
+    const dueDate = getDueDate(data.month, data.year);
+
     const results = await Promise.allSettled(
       playersToCreate.map((p) =>
         db.playerSubscription.create({
@@ -92,7 +108,8 @@ export const playerSubscriptionsService = {
             month: data.month,
             year: data.year,
             amount: data.amount,
-            dueDate: new Date(data.dueDate),
+            totalAmount: data.amount,
+            dueDate,
           },
         })
       )
@@ -178,9 +195,17 @@ export const playerSubscriptionsService = {
     });
     if (!sub) throw new AppError('Cuota no encontrada', 404);
 
+    const now = new Date();
+    const lateFee = calculateLateFee(sub.amount, now, sub.dueDate);
+
     const updated = await db.playerSubscription.update({
       where: { id: subId },
-      data: { status: 'PAID', paidAt: new Date() },
+      data: {
+        status: 'PAID',
+        paidAt: now,
+        lateFee,
+        totalAmount: sub.amount + lateFee,
+      },
     });
 
     if (sub.player?.memberLinks?.length) {
@@ -191,7 +216,7 @@ export const playerSubscriptionsService = {
           year: sub.year,
           status: { not: 'PAID' },
         },
-        data: { status: 'PAID', paidAt: new Date() },
+        data: { status: 'PAID', paidAt: now },
       });
     }
 

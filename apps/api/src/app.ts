@@ -21,6 +21,8 @@ import { membersRouter } from './modules/members/members.router';
 import { webhooksRouter } from './modules/webhooks/webhooks.router';
 import { notificationsRouter } from './modules/notifications/notifications.router';
 import { whatsappRouter } from './modules/whatsapp/whatsapp.router';
+import { sponsorsRouter } from './modules/sponsors/sponsors.router';
+import { sponsorshipsRouter } from './modules/sponsorships/sponsorships.router';
 
 const app = express();
 
@@ -58,6 +60,8 @@ app.use(`${v1}/members`, membersRouter);
 app.use(`${v1}/webhooks`, webhooksRouter);
 app.use(`${v1}/notifications`, notificationsRouter);
 app.use(`${v1}/whatsapp`, whatsappRouter);
+app.use(`${v1}/sponsors`, sponsorsRouter);
+app.use(`${v1}/sponsorships`, sponsorshipsRouter);
 
 app.use(errorMiddleware);
 

@@ -29,6 +29,7 @@ import {
   Shirt,
   Layers,
   Banknote,
+  Handshake,
 } from 'lucide-react';
 
 const clubNav = [
@@ -37,6 +38,7 @@ const clubNav = [
   { name: 'Categorías', href: '/club/categorias', icon: Layers },
   { name: 'Plantel', href: '/club/plantel', icon: Shirt },
   { name: 'Cuotas', href: '/club/cuotas', icon: Banknote },
+  { name: 'Auspiciantes', href: '/club/sponsors', icon: Handshake },
   { name: 'Socios', href: '/club/members', icon: Users },
   { name: 'Noticias', href: '/club/news', icon: Newspaper },
   { name: 'Notificaciones', href: '/club/notifications', icon: Bell },

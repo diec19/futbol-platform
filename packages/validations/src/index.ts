@@ -138,3 +138,32 @@ export const createUserSchema = z.object({
   fullName: z.string().min(2).max(100),
   role: z.enum(ROLE).default('OPERATOR'),
 });
+
+// ── Sponsors ────────────────────────────────────────────────────────────────
+
+export const createSponsorSchema = z.object({
+  name: z.string().min(2).max(120),
+  contactName: z.string().max(100).optional(),
+  phone: z.string().max(30).optional(),
+  email: z.string().email().optional(),
+  logoUrl: z.string().url().optional(),
+  website: z.string().url().optional(),
+});
+
+export const updateSponsorSchema = createSponsorSchema.partial();
+
+export const createSponsorPlanSchema = z.object({
+  name: z.string().min(2).max(80),
+  monthlyAmount: z.number().positive(),
+  durationMonths: z.number().int().min(1).max(24).default(6),
+  description: z.string().max(300).optional(),
+});
+
+export const updateSponsorPlanSchema = createSponsorPlanSchema.partial();
+
+export const createSponsorshipSchema = z.object({
+  sponsorId: z.string().cuid(),
+  planId: z.string().cuid(),
+  startDate: z.string().datetime(),
+  endDate: z.string().datetime(),
+});
