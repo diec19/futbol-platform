@@ -1,126 +1,163 @@
-import { View, Text, FlatList, ActivityIndicator, StyleSheet, TouchableOpacity } from 'react-native';
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
-import { api } from '@/services/api';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { MATCH_STATUS_LABELS } from '../../lib/constants';
+import { View, Text, FlatList, ActivityIndicator, StyleSheet, TouchableOpacity } from 'react-native'
+import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { useRouter } from 'expo-router'
+import { Ionicons } from '@expo/vector-icons'
+import { api } from '../../services/api'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import Card from '../../components/ui/Card'
+import Badge from '../../components/ui/Badge'
+import { colors } from '../../theme/colors'
 
-const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  SCHEDULED: { bg: '#f3f4f6', text: '#6b7280' },
-  LIVE: { bg: '#dcfce7', text: '#15803d' },
-  FINISHED: { bg: '#dbeafe', text: '#1d4ed8' },
-  POSTPONED: { bg: '#fef9c3', text: '#a16207' },
-  CANCELLED: { bg: '#fee2e2', text: '#dc2626' },
-};
-
-function formatDate(d: string) {
-  return new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(d));
+const STATUS_VARIANT: Record<string, 'success' | 'warning' | 'error' | 'info' | 'default'> = {
+  SCHEDULED: 'info',
+  LIVE: 'success',
+  FINISHED: 'default',
+  POSTPONED: 'warning',
+  CANCELLED: 'error',
 }
 
-export default function FixturesTab() {
-  const [filter, setFilter] = useState<'upcoming' | 'finished'>('upcoming');
-  const router = useRouter();
+const STATUS_LABELS: Record<string, string> = {
+  SCHEDULED: 'Programado',
+  LIVE: 'EN VIVO',
+  FINISHED: 'Finalizado',
+  POSTPONED: 'Postergado',
+  CANCELLED: 'Cancelado',
+}
+
+function formatDateTime(dateStr: string) {
+  const d = new Date(dateStr)
+  return {
+    date: new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: 'short' }).format(d),
+    time: new Intl.DateTimeFormat('es-AR', { hour: '2-digit', minute: '2-digit' }).format(d),
+  }
+}
+
+export default function FixturesScreen() {
+  const router = useRouter()
+  const [filter, setFilter] = useState<'all' | 'upcoming' | 'finished'>('all')
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['matches', filter],
-    queryFn: () =>
-      api.matches.list({
-        status: filter === 'upcoming' ? 'SCHEDULED' : 'FINISHED',
-        limit: '30',
-      }),
-  });
+    queryKey: ['matches'],
+    queryFn: () => api.matches.list({}),
+  })
 
-  const matches = data?.data ?? [];
+  const matches = (data?.data ?? []).filter((m: any) => {
+    if (filter === 'upcoming') return m.status === 'SCHEDULED'
+    if (filter === 'finished') return m.status === 'FINISHED'
+    return true
+  })
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      <View style={styles.filterRow}>
-        {(['upcoming', 'finished'] as const).map((f) => (
+      <View style={styles.filters}>
+      {['all', 'upcoming', 'finished'].map((f) => (
           <TouchableOpacity
             key={f}
-            style={[styles.filterBtn, filter === f && styles.filterBtnActive]}
-            onPress={() => setFilter(f)}
+            style={[styles.filterBtn, filter === f && styles.filterActive]}
+            onPress={() => setFilter(f as any)}
           >
             <Text style={[styles.filterText, filter === f && styles.filterTextActive]}>
-              {f === 'upcoming' ? 'Próximos' : 'Jugados'}
+              {f === 'all' ? 'Todos' : f === 'upcoming' ? 'Próximos' : 'Finalizados'}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      {isLoading ? (
-        <View style={styles.centered}><ActivityIndicator color="#16a34a" /></View>
-      ) : (
-        <FlatList
-          data={matches}
-          keyExtractor={(item) => item.id}
-          onRefresh={refetch}
-          refreshing={isLoading}
-          contentContainerStyle={styles.list}
-          ListEmptyComponent={<Text style={styles.empty}>No hay partidos</Text>}
-          renderItem={({ item }) => {
-            const sc = STATUS_COLORS[item.status] ?? STATUS_COLORS.SCHEDULED;
-            return (
-              <TouchableOpacity
-                style={styles.card}
-                onPress={() => router.push(`/match/${item.id}`)}
-              >
-                <View style={styles.cardTop}>
-                  <Text style={styles.meta}>{formatDate(item.scheduledAt)}</Text>
-                  <View style={[styles.badge, { backgroundColor: sc.bg }]}>
-                    <Text style={[styles.badgeText, { color: sc.text }]}>
-                      {MATCH_STATUS_LABELS[item.status] ?? item.status}
-                    </Text>
+      <FlatList
+        data={matches}
+        keyExtractor={(item) => item.id}
+        onRefresh={refetch}
+        refreshing={isLoading}
+        contentContainerStyle={styles.list}
+        ListEmptyComponent={
+          <View style={styles.emptyBox}>
+            <Ionicons name="calendar-outline" size={48} color={colors.gray[300]} />
+            <Text style={styles.emptyText}>No hay partidos</Text>
+          </View>
+        }
+        renderItem={({ item }) => {
+          const dt = formatDateTime(item.date ?? item.startDate)
+          const isLive = item.status === 'LIVE'
+
+          return (
+            <TouchableOpacity onPress={() => router.push(`/match/${item.id}`)} activeOpacity={0.7}>
+              <Card style={styles.matchCard}>
+                {isLive && (
+                  <View style={styles.liveBadge}>
+                    <View style={styles.liveDot} />
+                    <Text style={styles.liveText}>EN VIVO</Text>
+                  </View>
+                )}
+                <View style={styles.matchHeader}>
+                  <Text style={styles.matchDate}>{dt.date}</Text>
+                  <Badge label={STATUS_LABELS[item.status] ?? item.status} variant={STATUS_VARIANT[item.status] ?? 'default'} />
+                </View>
+                <View style={styles.matchTeams}>
+                  <View style={styles.teamCol}>
+                    <View style={styles.teamIcon}>
+                      <Ionicons name="shield-outline" size={20} color={colors.textSecondary} />
+                    </View>
+                    <Text style={styles.teamName} numberOfLines={1}>{item.homeTeam?.name ?? 'Local'}</Text>
+                  </View>
+                  <View style={styles.scoreCol}>
+                    {item.status === 'FINISHED' || item.status === 'LIVE' ? (
+                      <View style={styles.scoreBox}>
+                        <Text style={styles.scoreText}>{item.homeScore ?? '-'}</Text>
+                        <Text style={styles.scoreDivider}>-</Text>
+                        <Text style={styles.scoreText}>{item.awayScore ?? '-'}</Text>
+                      </View>
+                    ) : (
+                      <Text style={styles.matchTime}>{dt.time}</Text>
+                    )}
+                  </View>
+                  <View style={styles.teamCol}>
+                    <View style={styles.teamIcon}>
+                      <Ionicons name="shield-outline" size={20} color={colors.textSecondary} />
+                    </View>
+                    <Text style={styles.teamName} numberOfLines={1}>{item.awayTeam?.name ?? 'Visitante'}</Text>
                   </View>
                 </View>
-                <View style={styles.matchRow}>
-                  <Text style={styles.teamName} numberOfLines={1}>{item.homeTeam?.name}</Text>
-                  {item.status === 'FINISHED' ? (
-                    <Text style={styles.score}>{item.homeScore} - {item.awayScore}</Text>
-                  ) : (
-                    <Text style={styles.vs}>vs</Text>
-                  )}
-                  <Text style={[styles.teamName, styles.teamRight]} numberOfLines={1}>{item.awayTeam?.name}</Text>
-                </View>
-                {item.venue && <Text style={styles.venue}>{item.venue}</Text>}
-              </TouchableOpacity>
-            );
-          }}
-        />
-      )}
+                {item.venue && (
+                  <View style={styles.matchFooter}>
+                    <Ionicons name="location-outline" size={12} color={colors.textTertiary} />
+                    <Text style={styles.matchVenue}>{item.venue}</Text>
+                  </View>
+                )}
+              </Card>
+            </TouchableOpacity>
+          )
+        }}
+      />
     </SafeAreaView>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f9fafb' },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  filterRow: { flexDirection: 'row', margin: 16, gap: 8 },
-  filterBtn: { flex: 1, paddingVertical: 8, borderRadius: 8, backgroundColor: '#e5e7eb', alignItems: 'center' },
-  filterBtnActive: { backgroundColor: '#16a34a' },
-  filterText: { fontSize: 14, fontWeight: '500', color: '#6b7280' },
-  filterTextActive: { color: '#fff' },
-  list: { paddingHorizontal: 16, paddingBottom: 16, gap: 10 },
-  empty: { textAlign: 'center', color: '#9ca3af', marginTop: 40 },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 14,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 2,
-  },
-  cardTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-  meta: { fontSize: 12, color: '#9ca3af' },
-  matchRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  teamName: { flex: 1, fontSize: 14, fontWeight: '600', color: '#111827' },
-  teamRight: { textAlign: 'right' },
-  score: { fontSize: 18, fontWeight: '700', color: '#16a34a', minWidth: 60, textAlign: 'center' },
-  vs: { fontSize: 13, color: '#9ca3af', minWidth: 30, textAlign: 'center' },
-  venue: { fontSize: 11, color: '#9ca3af', marginTop: 6 },
-  badge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 20 },
-  badgeText: { fontSize: 10, fontWeight: '600' },
-});
+  container: { flex: 1, backgroundColor: colors.background },
+  filters: { flexDirection: 'row', padding: 16, paddingBottom: 8, gap: 8 },
+  filterBtn: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, backgroundColor: colors.gray[100] },
+  filterActive: { backgroundColor: colors.primary },
+  filterText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
+  filterTextActive: { color: '#FFFFFF' },
+  list: { padding: 16, paddingTop: 8 },
+  emptyBox: { alignItems: 'center', paddingTop: 40, gap: 12 },
+  emptyText: { fontSize: 14, color: colors.textTertiary },
+  matchCard: { marginBottom: 12, padding: 16, position: 'relative' },
+  liveBadge: { position: 'absolute', top: 12, right: 12, flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.error, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#FFFFFF' },
+  liveText: { fontSize: 10, fontWeight: '700', color: '#FFFFFF' },
+  matchHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  matchDate: { fontSize: 13, color: colors.textSecondary, fontWeight: '600' },
+  matchTeams: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  teamCol: { flex: 1, alignItems: 'center', gap: 6 },
+  teamIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.gray[100], alignItems: 'center', justifyContent: 'center' },
+  teamName: { fontSize: 12, fontWeight: '600', color: colors.text, textAlign: 'center' },
+  scoreCol: { alignItems: 'center', minWidth: 60 },
+  scoreBox: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  scoreText: { fontSize: 22, fontWeight: '800', color: colors.text },
+  scoreDivider: { fontSize: 18, fontWeight: '600', color: colors.textTertiary },
+  matchTime: { fontSize: 15, fontWeight: '700', color: colors.primary },
+  matchFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: 10 },
+  matchVenue: { fontSize: 11, color: colors.textTertiary },
+})

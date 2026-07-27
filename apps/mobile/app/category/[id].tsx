@@ -1,176 +1,143 @@
-import {
-  View, Text, ScrollView, FlatList, ActivityIndicator,
-  StyleSheet, TouchableOpacity,
-} from 'react-native';
-import { useState } from 'react';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
-import { api } from '@/services/api';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { MATCH_STATUS_LABELS, BRACKET_STAGE_LABELS } from '../../lib/constants';
+import { View, Text, ScrollView, FlatList, ActivityIndicator, StyleSheet, TouchableOpacity } from 'react-native'
+import { useState } from 'react'
+import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useQuery } from '@tanstack/react-query'
+import { Ionicons } from '@expo/vector-icons'
+import { api } from '@/services/api'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import Card from '../../components/ui/Card'
+import Badge from '../../components/ui/Badge'
+import { colors } from '../../theme/colors'
+import { MATCH_STATUS_LABELS, BRACKET_STAGE_LABELS } from '../../lib/constants'
 
-type Tab = 'matches' | 'standings' | 'bracket';
+type Tab = 'matches' | 'standings' | 'bracket'
 
-const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  SCHEDULED: { bg: '#f3f4f6', text: '#6b7280' },
-  LIVE: { bg: '#dcfce7', text: '#15803d' },
-  FINISHED: { bg: '#dbeafe', text: '#1d4ed8' },
-  POSTPONED: { bg: '#fef9c3', text: '#a16207' },
-};
+const STATUS_VARIANT: Record<string, 'info' | 'success' | 'default' | 'warning'> = {
+  SCHEDULED: 'info',
+  LIVE: 'success',
+  FINISHED: 'default',
+  POSTPONED: 'warning',
+}
 
 function formatDate(d: string) {
-  return new Intl.DateTimeFormat('es-AR', {
-    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
-  }).format(new Date(d));
+  return new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(d))
 }
 
 function StandingsTable({ group }: { group: any }) {
-  const rows = group.standings ?? group.teams ?? [];
+  const rows = group.standings ?? group.teams ?? []
   return (
-    <View style={s.tableCard}>
-      <Text style={s.groupName}>{group.name}</Text>
-      <View style={s.tableHeader}>
-        <Text style={[s.hCell, s.teamCol]}>Equipo</Text>
-        <Text style={s.hCell}>PJ</Text>
-        <Text style={s.hCell}>G</Text>
-        <Text style={s.hCell}>E</Text>
-        <Text style={s.hCell}>P</Text>
-        <Text style={s.hCell}>GF</Text>
-        <Text style={s.hCell}>GC</Text>
-        <Text style={[s.hCell, s.pts]}>PTS</Text>
+    <Card padding={0} style={{ marginBottom: 12, overflow: 'hidden' }}>
+      <Text style={styles.groupName}>{group.name}</Text>
+      <View style={styles.tableHeader}>
+        <Text style={[styles.hCell, styles.teamCol]}>Equipo</Text>
+        <Text style={styles.hCell}>PJ</Text><Text style={styles.hCell}>G</Text><Text style={styles.hCell}>E</Text>
+        <Text style={styles.hCell}>P</Text><Text style={styles.hCell}>GF</Text><Text style={styles.hCell}>GC</Text>
+        <Text style={[styles.hCell, styles.ptsHeader]}>PTS</Text>
       </View>
       {rows.map((gt: any, idx: number) => (
-        <View key={gt.teamId ?? gt.id} style={[s.row, idx % 2 === 0 && s.rowAlt]}>
-          <View style={[s.cell, s.teamCol]}>
-            <Text style={s.pos}>{idx + 1}</Text>
-            <Text style={s.teamName} numberOfLines={1}>{gt.team?.name}</Text>
+        <View key={gt.teamId ?? gt.id} style={[styles.row, idx % 2 === 0 && styles.rowAlt]}>
+          <View style={[styles.cell, styles.teamCol]}>
+            <Text style={styles.pos}>{idx + 1}</Text>
+            <Text style={styles.teamName} numberOfLines={1}>{gt.team?.name}</Text>
           </View>
-          <Text style={s.cell}>{gt.played}</Text>
-          <Text style={s.cell}>{gt.won}</Text>
-          <Text style={s.cell}>{gt.drawn}</Text>
-          <Text style={s.cell}>{gt.lost}</Text>
-          <Text style={s.cell}>{gt.goalsFor}</Text>
-          <Text style={s.cell}>{gt.goalsAgainst}</Text>
-          <Text style={[s.cell, s.pts, s.ptsText]}>{gt.points}</Text>
+          <Text style={styles.cell}>{gt.played}</Text>
+          <Text style={styles.cell}>{gt.won}</Text>
+          <Text style={styles.cell}>{gt.drawn}</Text>
+          <Text style={styles.cell}>{gt.lost}</Text>
+          <Text style={styles.cell}>{gt.goalsFor}</Text>
+          <Text style={styles.cell}>{gt.goalsAgainst}</Text>
+          <Text style={[styles.cell, styles.ptsCell]}>{gt.points}</Text>
         </View>
       ))}
-    </View>
-  );
-}
-
-function MatchCard({ match, onPress }: { match: any; onPress: () => void }) {
-  const sc = STATUS_COLORS[match.status] ?? STATUS_COLORS.SCHEDULED;
-  return (
-    <TouchableOpacity style={s.matchCard} onPress={onPress}>
-      <View style={s.matchTop}>
-        <Text style={s.matchMeta}>{formatDate(match.scheduledAt)}</Text>
-        <View style={[s.badge, { backgroundColor: sc.bg }]}>
-          <Text style={[s.badgeText, { color: sc.text }]}>
-            {MATCH_STATUS_LABELS[match.status] ?? match.status}
-          </Text>
-        </View>
-      </View>
-      <View style={s.matchRow}>
-        <Text style={s.team} numberOfLines={1}>{match.homeTeam?.name}</Text>
-        {match.status === 'FINISHED' ? (
-          <Text style={s.score}>{match.homeScore} - {match.awayScore}</Text>
-        ) : (
-          <Text style={s.vs}>vs</Text>
-        )}
-        <Text style={[s.team, { textAlign: 'right' }]} numberOfLines={1}>{match.awayTeam?.name}</Text>
-      </View>
-      {match.venue ? <Text style={s.venue}>{match.venue}</Text> : null}
-    </TouchableOpacity>
-  );
+    </Card>
+  )
 }
 
 export default function CategoryScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const router = useRouter();
-  const [tab, setTab] = useState<Tab>('matches');
-  const [matchFilter, setMatchFilter] = useState<'upcoming' | 'finished'>('upcoming');
+  const { id } = useLocalSearchParams<{ id: string }>()
+  const router = useRouter()
+  const [tab, setTab] = useState<Tab>('matches')
+  const [matchFilter, setMatchFilter] = useState<'upcoming' | 'finished'>('upcoming')
 
   const { data: catData, isLoading: catLoading } = useQuery({
-    queryKey: ['category', id],
-    queryFn: () => api.categories.get(id),
-    enabled: !!id,
-  });
-
+    queryKey: ['category', id], queryFn: () => api.categories.get(id), enabled: !!id,
+  })
   const { data: matchesData, isLoading: matchesLoading } = useQuery({
     queryKey: ['matches', id, matchFilter],
-    queryFn: () => api.matches.list({
-      categoryId: id,
-      status: matchFilter === 'upcoming' ? 'SCHEDULED' : 'FINISHED',
-      limit: '30',
-    }),
+    queryFn: () => api.matches.list({ categoryId: id, status: matchFilter === 'upcoming' ? 'SCHEDULED' : 'FINISHED', limit: '30' }),
     enabled: tab === 'matches',
-  });
-
+  })
   const { data: standingsData, isLoading: standingsLoading } = useQuery({
-    queryKey: ['standings', id],
-    queryFn: () => api.standings.byCategory(id),
-    enabled: tab === 'standings',
-  });
-
+    queryKey: ['standings', id], queryFn: () => api.standings.byCategory(id), enabled: tab === 'standings',
+  })
   const { data: bracketsData, isLoading: bracketsLoading } = useQuery({
-    queryKey: ['brackets', id],
-    queryFn: () => api.brackets.byCategory(id),
-    enabled: tab === 'bracket',
-  });
+    queryKey: ['brackets', id], queryFn: () => api.brackets.byCategory(id), enabled: tab === 'bracket',
+  })
 
-  const category = catData?.data;
-  const matches: any[] = matchesData?.data ?? [];
-  const groups: any[] = standingsData?.data ?? [];
-  const brackets: any[] = (bracketsData as any)?.data ?? [];
+  const category = catData?.data
+  const matches = matchesData?.data ?? []
+  const groups = standingsData?.data ?? []
+  const brackets = (bracketsData as any)?.data ?? []
 
   if (catLoading) {
-    return <View style={s.centered}><ActivityIndicator color="#16a34a" size="large" /></View>;
+    return <View style={styles.centered}><ActivityIndicator color={colors.primary} size="large" /></View>
   }
 
   return (
-    <SafeAreaView style={s.container} edges={['bottom']}>
-      <View style={s.header}>
-        <Text style={s.title}>{category?.name ?? 'Categoría'}</Text>
-        {category?.tournament && (
-          <Text style={s.subtitle}>{category.tournament.name}</Text>
-        )}
+    <SafeAreaView style={styles.container} edges={['bottom']}>
+      <View style={styles.header}>
+        <View style={styles.headerIcon}>
+          <Ionicons name="layers" size={24} color="#FFFFFF" />
+        </View>
+        <Text style={styles.title}>{category?.name ?? 'Categoría'}</Text>
+        {category?.tournament && <Text style={styles.subtitle}>{category.tournament.name}</Text>}
       </View>
 
-      <View style={s.tabBar}>
-        {([['matches', 'Partidos'], ['standings', 'Posiciones'], ['bracket', 'Llaves']] as [Tab, string][]).map(([key, label]) => (
-          <TouchableOpacity
-            key={key}
-            style={[s.tabBtn, tab === key && s.tabBtnActive]}
-            onPress={() => setTab(key)}
-          >
-            <Text style={[s.tabText, tab === key && s.tabTextActive]}>{label}</Text>
+      <View style={styles.tabBar}>
+        {([['matches', 'Partidos', 'football'], ['standings', 'Posiciones', 'list'], ['bracket', 'Llaves', 'git-branch-outline']] as [Tab, string, keyof typeof Ionicons.glyphMap][]).map(([key, label, icon]) => (
+          <TouchableOpacity key={key} style={[styles.tabBtn, tab === key && styles.tabActive]} onPress={() => setTab(key)}>
+            <Ionicons name={icon} size={16} color={tab === key ? colors.primary : colors.tabInactive} />
+            <Text style={[styles.tabText, tab === key && styles.tabTextActive]}>{label}</Text>
           </TouchableOpacity>
         ))}
       </View>
 
       {tab === 'matches' && (
         <>
-          <View style={s.filterRow}>
-            {([['upcoming', 'Próximos'], ['finished', 'Jugados']] as const).map(([key, label]) => (
-              <TouchableOpacity
-                key={key}
-                style={[s.filterBtn, matchFilter === key && s.filterBtnActive]}
-                onPress={() => setMatchFilter(key)}
-              >
-                <Text style={[s.filterText, matchFilter === key && s.filterTextActive]}>{label}</Text>
+          <View style={styles.filterRow}>
+            {(['upcoming', 'finished'] as const).map((key) => (
+              <TouchableOpacity key={key} style={[styles.filterBtn, matchFilter === key && styles.filterActive]} onPress={() => setMatchFilter(key)}>
+                <Text style={[styles.filterText, matchFilter === key && styles.filterTextActive]}>{key === 'upcoming' ? 'Próximos' : 'Jugados'}</Text>
               </TouchableOpacity>
             ))}
           </View>
           {matchesLoading ? (
-            <View style={s.centered}><ActivityIndicator color="#16a34a" /></View>
+            <View style={styles.centered}><ActivityIndicator color={colors.primary} /></View>
           ) : (
             <FlatList
               data={matches}
               keyExtractor={(m) => m.id}
-              contentContainerStyle={s.listContent}
-              ListEmptyComponent={<Text style={s.empty}>No hay partidos</Text>}
+              contentContainerStyle={{ padding: 16, paddingTop: 4, gap: 10 }}
+              ListEmptyComponent={<Text style={styles.empty}>No hay partidos</Text>}
               renderItem={({ item }) => (
-                <MatchCard match={item} onPress={() => router.push(`/match/${item.id}`)} />
+                <TouchableOpacity onPress={() => router.push(`/match/${item.id}`)} activeOpacity={0.7}>
+                  <Card style={{ padding: 14 }}>
+                    <View style={styles.matchTop}>
+                      <Text style={styles.matchMeta}>{formatDate(item.scheduledAt)}</Text>
+                      <Badge label={MATCH_STATUS_LABELS[item.status] ?? item.status} variant={STATUS_VARIANT[item.status] ?? 'default'} />
+                    </View>
+                    <View style={styles.matchRow}>
+                      <Text style={styles.team} numberOfLines={1}>{item.homeTeam?.name}</Text>
+                      {item.status === 'FINISHED' ? (
+                        <Text style={styles.score}>{item.homeScore} - {item.awayScore}</Text>
+                      ) : (
+                        <Text style={styles.vs}>vs</Text>
+                      )}
+                      <Text style={[styles.team, { textAlign: 'right' }]} numberOfLines={1}>{item.awayTeam?.name}</Text>
+                    </View>
+                    {item.venue ? <Text style={styles.venue}>{item.venue}</Text> : null}
+                  </Card>
+                </TouchableOpacity>
               )}
             />
           )}
@@ -178,11 +145,11 @@ export default function CategoryScreen() {
       )}
 
       {tab === 'standings' && (
-        <ScrollView contentContainerStyle={s.listContent}>
+        <ScrollView contentContainerStyle={{ padding: 16 }}>
           {standingsLoading ? (
-            <ActivityIndicator color="#16a34a" style={{ marginTop: 40 }} />
+            <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
           ) : groups.length === 0 ? (
-            <Text style={s.empty}>No hay posiciones aún</Text>
+            <Text style={styles.empty}>No hay posiciones aún</Text>
           ) : (
             groups.map((g: any) => <StandingsTable key={g.id} group={g} />)
           )}
@@ -191,42 +158,34 @@ export default function CategoryScreen() {
 
       {tab === 'bracket' && (
         bracketsLoading ? (
-          <View style={s.centered}><ActivityIndicator color="#16a34a" /></View>
+          <View style={styles.centered}><ActivityIndicator color={colors.primary} /></View>
         ) : brackets.length === 0 ? (
-          <View style={s.centered}>
-            <Text style={s.empty}>No hay llaves para esta categoría</Text>
-          </View>
+          <View style={styles.centered}><Text style={styles.empty}>No hay llaves para esta categoría</Text></View>
         ) : (
           <ScrollView horizontal>
             <ScrollView>
-              <View style={s.bracketRow}>
+              <View style={styles.bracketRow}>
                 {brackets.map((bracket: any) => (
-                  <View key={bracket.id} style={s.stageCol}>
-                    <Text style={s.stageTitle}>
-                      {BRACKET_STAGE_LABELS[bracket.stage] ?? bracket.stage}
-                    </Text>
-                    <View style={s.bracketMatches}>
+                  <View key={bracket.id} style={styles.stageCol}>
+                    <Text style={styles.stageTitle}>{BRACKET_STAGE_LABELS[bracket.stage] ?? bracket.stage}</Text>
+                    <View style={{ gap: 16 }}>
                       {(bracket.matches ?? []).map((match: any) => {
-                        const isFinished = match.status === 'FINISHED';
-                        const homeWon = isFinished && match.homeScore > match.awayScore;
-                        const awayWon = isFinished && match.awayScore > match.homeScore;
+                        const isFinished = match.status === 'FINISHED'
+                        const homeWon = isFinished && match.homeScore > match.awayScore
+                        const awayWon = isFinished && match.awayScore > match.homeScore
                         return (
-                          <View key={match.id} style={s.slot}>
-                            <View style={[s.slotRow, homeWon && s.winner]}>
-                              <Text style={[s.slotTeam, homeWon && s.winnerText]} numberOfLines={1}>
-                                {match.homeTeam?.name ?? 'Por definir'}
-                              </Text>
-                              {isFinished && <Text style={[s.slotScore, homeWon && s.winnerText]}>{match.homeScore}</Text>}
+                          <View key={match.id} style={styles.slot}>
+                            <View style={[styles.slotRow, homeWon && styles.winner]}>
+                              <Text style={[styles.slotTeam, homeWon && styles.winnerText]} numberOfLines={1}>{match.homeTeam?.name ?? 'Por definir'}</Text>
+                              {isFinished && <Text style={[styles.slotScore, homeWon && styles.winnerText]}>{match.homeScore}</Text>}
                             </View>
-                            <View style={s.slotDivider} />
-                            <View style={[s.slotRow, awayWon && s.winner]}>
-                              <Text style={[s.slotTeam, awayWon && s.winnerText]} numberOfLines={1}>
-                                {match.awayTeam?.name ?? 'Por definir'}
-                              </Text>
-                              {isFinished && <Text style={[s.slotScore, awayWon && s.winnerText]}>{match.awayScore}</Text>}
+                            <View style={styles.slotDivider} />
+                            <View style={[styles.slotRow, awayWon && styles.winner]}>
+                              <Text style={[styles.slotTeam, awayWon && styles.winnerText]} numberOfLines={1}>{match.awayTeam?.name ?? 'Por definir'}</Text>
+                              {isFinished && <Text style={[styles.slotScore, awayWon && styles.winnerText]}>{match.awayScore}</Text>}
                             </View>
                           </View>
-                        );
+                        )
                       })}
                     </View>
                   </View>
@@ -237,61 +196,53 @@ export default function CategoryScreen() {
         )
       )}
     </SafeAreaView>
-  );
+  )
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f9fafb' },
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: { backgroundColor: '#16a34a', paddingHorizontal: 20, paddingVertical: 16 },
-  title: { fontSize: 20, fontWeight: '700', color: '#fff' },
-  subtitle: { fontSize: 13, color: '#bbf7d0', marginTop: 2 },
-  tabBar: { flexDirection: 'row', backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e5e7eb' },
-  tabBtn: { flex: 1, paddingVertical: 12, alignItems: 'center' },
-  tabBtnActive: { borderBottomWidth: 2, borderBottomColor: '#16a34a' },
-  tabText: { fontSize: 13, color: '#9ca3af', fontWeight: '500' },
-  tabTextActive: { color: '#16a34a', fontWeight: '700' },
-  filterRow: { flexDirection: 'row', margin: 12, gap: 8 },
-  filterBtn: { flex: 1, paddingVertical: 7, borderRadius: 8, backgroundColor: '#e5e7eb', alignItems: 'center' },
-  filterBtnActive: { backgroundColor: '#16a34a' },
-  filterText: { fontSize: 13, fontWeight: '500', color: '#6b7280' },
-  filterTextActive: { color: '#fff' },
-  listContent: { padding: 12, gap: 10 },
-  empty: { textAlign: 'center', color: '#9ca3af', padding: 40 },
-  matchCard: {
-    backgroundColor: '#fff', borderRadius: 12, padding: 14, elevation: 1,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 2,
-  },
+  header: { backgroundColor: colors.primary, paddingHorizontal: 20, paddingVertical: 16, borderBottomLeftRadius: 24, borderBottomRightRadius: 24, marginBottom: 0 },
+  headerIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  title: { fontSize: 20, fontWeight: '700', color: '#FFFFFF', marginBottom: 2 },
+  subtitle: { fontSize: 13, color: 'rgba(255,255,255,0.8)' },
+  tabBar: { flexDirection: 'row', backgroundColor: colors.surface, paddingVertical: 8, gap: 4, paddingHorizontal: 8 },
+  tabBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 12 },
+  tabActive: { backgroundColor: colors.blue[50] },
+  tabText: { fontSize: 13, color: colors.textTertiary, fontWeight: '500' },
+  tabTextActive: { color: colors.primary, fontWeight: '700' },
+  filterRow: { flexDirection: 'row', margin: 16, marginBottom: 8, gap: 8 },
+  filterBtn: { flex: 1, paddingVertical: 9, borderRadius: 10, backgroundColor: colors.gray[100], alignItems: 'center' },
+  filterActive: { backgroundColor: colors.primary },
+  filterText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
+  filterTextActive: { color: '#FFFFFF' },
+  empty: { textAlign: 'center', color: colors.textTertiary, padding: 60 },
   matchTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-  matchMeta: { fontSize: 12, color: '#9ca3af' },
-  badge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 20 },
-  badgeText: { fontSize: 10, fontWeight: '600' },
+  matchMeta: { fontSize: 12, color: colors.textTertiary },
   matchRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  team: { flex: 1, fontSize: 14, fontWeight: '600', color: '#111827' },
-  score: { fontSize: 18, fontWeight: '700', color: '#16a34a', minWidth: 60, textAlign: 'center' },
-  vs: { fontSize: 13, color: '#9ca3af', minWidth: 30, textAlign: 'center' },
-  venue: { fontSize: 11, color: '#9ca3af', marginTop: 6 },
-  tableCard: { backgroundColor: '#fff', borderRadius: 12, overflow: 'hidden', elevation: 1, marginBottom: 12 },
-  groupName: { fontSize: 14, fontWeight: '700', color: '#16a34a', padding: 12, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' },
-  tableHeader: { flexDirection: 'row', backgroundColor: '#f9fafb', paddingHorizontal: 10, paddingVertical: 6 },
-  hCell: { width: 28, textAlign: 'center', fontSize: 11, fontWeight: '600', color: '#9ca3af' },
+  team: { flex: 1, fontSize: 14, fontWeight: '600', color: colors.text },
+  score: { fontSize: 18, fontWeight: '700', color: colors.primary, minWidth: 60, textAlign: 'center' },
+  vs: { fontSize: 13, color: colors.textTertiary, minWidth: 30, textAlign: 'center' },
+  venue: { fontSize: 11, color: colors.textTertiary, marginTop: 6 },
+  groupName: { fontSize: 14, fontWeight: '700', color: colors.primary, padding: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
+  tableHeader: { flexDirection: 'row', backgroundColor: colors.gray[50], paddingHorizontal: 10, paddingVertical: 8 },
+  hCell: { width: 28, textAlign: 'center', fontSize: 11, fontWeight: '600', color: colors.textTertiary },
   row: { flexDirection: 'row', paddingHorizontal: 10, paddingVertical: 8, alignItems: 'center' },
-  rowAlt: { backgroundColor: '#fafafa' },
-  cell: { width: 28, textAlign: 'center', fontSize: 12, color: '#374151' },
+  rowAlt: { backgroundColor: colors.gray[50] },
+  cell: { width: 28, textAlign: 'center', fontSize: 12, color: colors.text },
   teamCol: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
-  pos: { fontSize: 11, color: '#9ca3af', width: 14 },
-  teamName: { fontSize: 13, fontWeight: '500', color: '#111827', flex: 1 },
-  pts: { width: 32 },
-  ptsText: { fontWeight: '700', color: '#16a34a' },
+  pos: { fontSize: 11, color: colors.textTertiary, width: 14 },
+  teamName: { fontSize: 13, fontWeight: '500', color: colors.text, flex: 1 },
+  ptsHeader: { width: 32 },
+  ptsCell: { width: 32, fontWeight: '700', color: colors.primary },
   bracketRow: { flexDirection: 'row', padding: 16, gap: 16 },
   stageCol: { width: 160 },
-  stageTitle: { fontSize: 12, fontWeight: '700', color: '#16a34a', textAlign: 'center', marginBottom: 12 },
-  bracketMatches: { gap: 16 },
-  slot: { backgroundColor: '#fff', borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: '#e5e7eb', elevation: 1 },
+  stageTitle: { fontSize: 12, fontWeight: '700', color: colors.primary, textAlign: 'center', marginBottom: 12 },
+  slot: { backgroundColor: colors.surface, borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: colors.border },
   slotRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 8, paddingHorizontal: 10 },
-  winner: { backgroundColor: '#f0fdf4' },
-  slotTeam: { fontSize: 12, color: '#374151', flex: 1 },
-  winnerText: { fontWeight: '700', color: '#16a34a' },
-  slotScore: { fontSize: 14, fontWeight: '600', color: '#374151', marginLeft: 6 },
-  slotDivider: { height: 1, backgroundColor: '#e5e7eb' },
-});
+  winner: { backgroundColor: colors.green[50] },
+  slotTeam: { fontSize: 12, color: colors.text, flex: 1 },
+  winnerText: { fontWeight: '700', color: colors.green[700] },
+  slotScore: { fontSize: 14, fontWeight: '600', color: colors.text, marginLeft: 6 },
+  slotDivider: { height: 1, backgroundColor: colors.border },
+})

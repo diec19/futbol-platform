@@ -1,114 +1,102 @@
-import {
-  View, Text, ScrollView, FlatList, ActivityIndicator,
-  StyleSheet, TouchableOpacity,
-} from 'react-native';
-import { useState } from 'react';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
-import { api } from '@/services/api';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { POSITION_LABELS, MATCH_STATUS_LABELS } from '../../lib/constants';
-import PlayerAvatar from '../../components/PlayerAvatar';
+import { View, Text, ScrollView, FlatList, ActivityIndicator, StyleSheet, TouchableOpacity } from 'react-native'
+import { useState } from 'react'
+import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useQuery } from '@tanstack/react-query'
+import { Ionicons } from '@expo/vector-icons'
+import { api } from '@/services/api'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import Card from '../../components/ui/Card'
+import Badge from '../../components/ui/Badge'
+import PlayerAvatar from '../../components/PlayerAvatar'
+import { colors } from '../../theme/colors'
+import { POSITION_LABELS, MATCH_STATUS_LABELS } from '../../lib/constants'
 
-type Tab = 'roster' | 'matches';
+type Tab = 'roster' | 'matches'
 
-const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  SCHEDULED: { bg: '#f3f4f6', text: '#6b7280' },
-  LIVE: { bg: '#dcfce7', text: '#15803d' },
-  FINISHED: { bg: '#dbeafe', text: '#1d4ed8' },
-  POSTPONED: { bg: '#fef9c3', text: '#a16207' },
-};
+const STATUS_VARIANT: Record<string, 'info' | 'success' | 'default' | 'warning'> = {
+  SCHEDULED: 'info', LIVE: 'success', FINISHED: 'default', POSTPONED: 'warning',
+}
 
 function formatDate(d: string) {
-  return new Intl.DateTimeFormat('es-AR', {
-    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
-  }).format(new Date(d));
+  return new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(d))
 }
 
 export default function TeamScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const router = useRouter();
-  const [tab, setTab] = useState<Tab>('roster');
+  const { id } = useLocalSearchParams<{ id: string }>()
+  const router = useRouter()
+  const [tab, setTab] = useState<Tab>('roster')
 
   const { data: teamData, isLoading } = useQuery({
-    queryKey: ['team', id],
-    queryFn: () => api.teams.get(id),
-    enabled: !!id,
-  });
-
+    queryKey: ['team', id], queryFn: () => api.teams.get(id), enabled: !!id,
+  })
   const { data: matchesData, isLoading: matchesLoading } = useQuery({
-    queryKey: ['team-matches', id],
-    queryFn: () => api.matches.list({ teamId: id, limit: '20' }),
-    enabled: tab === 'matches',
-  });
+    queryKey: ['team-matches', id], queryFn: () => api.matches.list({ teamId: id, limit: '20' }), enabled: tab === 'matches',
+  })
 
-  const team = teamData?.data;
-  const players: any[] = team?.players ?? [];
-  const matches: any[] = matchesData?.data ?? [];
+  const team = teamData?.data
+  const players = team?.players ?? []
+  const matches = matchesData?.data ?? []
 
   if (isLoading) {
-    return <View style={s.centered}><ActivityIndicator color="#16a34a" size="large" /></View>;
+    return <View style={styles.centered}><ActivityIndicator color={colors.primary} size="large" /></View>
   }
 
   if (!team) {
-    return <View style={s.centered}><Text style={s.empty}>Equipo no encontrado</Text></View>;
+    return <View style={styles.centered}><Text style={{ color: colors.textSecondary }}>Equipo no encontrado</Text></View>
   }
 
   return (
-    <SafeAreaView style={s.container} edges={['bottom']}>
-      <View style={s.header}>
-        <View style={s.shield}>
-          <Text style={s.shieldText}>{team.name[0]?.toUpperCase()}</Text>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
+      <View style={styles.header}>
+        <View style={styles.shield}>
+          <Text style={styles.shieldText}>{team.name[0]?.toUpperCase()}</Text>
         </View>
-        <Text style={s.title}>{team.name}</Text>
+        <Text style={styles.title}>{team.name}</Text>
         {team.category && (
-          <Text style={s.subtitle}>
-            {team.category.name}
-            {team.category.tournament ? ` · ${team.category.tournament.name}` : ''}
+          <Text style={styles.subtitle}>
+            {team.category.name}{team.category.tournament ? ` · ${team.category.tournament.name}` : ''}
           </Text>
         )}
         {team.delegateName && (
-          <Text style={s.delegate}>Delegado: {team.delegateName}</Text>
+          <View style={styles.delegateRow}>
+            <Ionicons name="person-outline" size={12} color="rgba(255,255,255,0.7)" />
+            <Text style={styles.delegate}>{team.delegateName}</Text>
+          </View>
         )}
       </View>
 
-      <View style={s.tabBar}>
-        {([['roster', `Plantel (${players.length})`], ['matches', 'Partidos']] as [Tab, string][]).map(([key, label]) => (
-          <TouchableOpacity
-            key={key}
-            style={[s.tabBtn, tab === key && s.tabBtnActive]}
-            onPress={() => setTab(key)}
-          >
-            <Text style={[s.tabText, tab === key && s.tabTextActive]}>{label}</Text>
+      <View style={styles.tabBar}>
+        {([['roster', 'people', `Plantel (${players.length})`], ['matches', 'football', 'Partidos']] as [Tab, keyof typeof Ionicons.glyphMap, string][]).map(([key, icon, label]) => (
+          <TouchableOpacity key={key} style={[styles.tabBtn, tab === key && styles.tabActive]} onPress={() => setTab(key)}>
+            <Ionicons name={icon} size={16} color={tab === key ? colors.primary : colors.tabInactive} />
+            <Text style={[styles.tabText, tab === key && styles.tabTextActive]}>{label}</Text>
           </TouchableOpacity>
         ))}
       </View>
 
       {tab === 'roster' && (
         players.length === 0 ? (
-          <View style={s.centered}>
-            <Text style={s.empty}>Sin jugadores registrados</Text>
+          <View style={styles.centered}>
+            <Ionicons name="people-outline" size={48} color={colors.gray[300]} />
+            <Text style={{ color: colors.textTertiary, marginTop: 8 }}>Sin jugadores registrados</Text>
           </View>
         ) : (
           <FlatList
             data={players}
             keyExtractor={(p) => p.id}
-            contentContainerStyle={s.list}
+            contentContainerStyle={{ padding: 16, gap: 8 }}
             renderItem={({ item }) => (
-              <TouchableOpacity
-                style={s.playerRow}
-                onPress={() => router.push(`/player/${item.id}`)}
-              >
-                <PlayerAvatar photoUrl={item.photoUrl} name={item.fullName} size={36} style={s.shirt} />
-                <View style={s.playerInfo}>
-                  <Text style={s.playerName}>{item.fullName}</Text>
-                  {item.position && (
-                    <Text style={s.playerPos}>
-                      {POSITION_LABELS[item.position] ?? item.position}
-                    </Text>
-                  )}
-                </View>
-                <Text style={s.arrow}>›</Text>
+              <TouchableOpacity onPress={() => router.push(`/player/${item.id}`)} activeOpacity={0.7}>
+                <Card style={{ padding: 12 }}>
+                  <View style={styles.playerRow}>
+                    <PlayerAvatar photoUrl={item.photoUrl} name={item.fullName} size={40} />
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                      <Text style={styles.playerName}>{item.fullName}</Text>
+                      {item.position && <Text style={styles.playerPos}>{POSITION_LABELS[item.position] ?? item.position}</Text>}
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={colors.gray[300]} />
+                  </View>
+                </Card>
               </TouchableOpacity>
             )}
           />
@@ -117,90 +105,66 @@ export default function TeamScreen() {
 
       {tab === 'matches' && (
         matchesLoading ? (
-          <View style={s.centered}><ActivityIndicator color="#16a34a" /></View>
+          <View style={styles.centered}><ActivityIndicator color={colors.primary} /></View>
         ) : matches.length === 0 ? (
-          <View style={s.centered}><Text style={s.empty}>Sin partidos</Text></View>
+          <View style={styles.centered}><Text style={{ color: colors.textTertiary }}>Sin partidos</Text></View>
         ) : (
           <FlatList
             data={matches}
             keyExtractor={(m) => m.id}
-            contentContainerStyle={s.list}
+            contentContainerStyle={{ padding: 16, gap: 10 }}
             renderItem={({ item }) => {
-              const sc = STATUS_COLORS[item.status] ?? STATUS_COLORS.SCHEDULED;
-              const isHome = item.homeTeamId === id;
+              const isHome = item.homeTeamId === id
               return (
-                <TouchableOpacity
-                  style={s.matchCard}
-                  onPress={() => router.push(`/match/${item.id}`)}
-                >
-                  <View style={s.matchTop}>
-                    <Text style={s.matchMeta}>{formatDate(item.scheduledAt)}</Text>
-                    <View style={[s.badge, { backgroundColor: sc.bg }]}>
-                      <Text style={[s.badgeText, { color: sc.text }]}>
-                        {MATCH_STATUS_LABELS[item.status] ?? item.status}
-                      </Text>
+                <TouchableOpacity onPress={() => router.push(`/match/${item.id}`)} activeOpacity={0.7}>
+                  <Card style={{ padding: 14 }}>
+                    <View style={styles.matchTop}>
+                      <Text style={styles.matchMeta}>{formatDate(item.scheduledAt)}</Text>
+                      <Badge label={MATCH_STATUS_LABELS[item.status] ?? item.status} variant={STATUS_VARIANT[item.status] ?? 'default'} />
                     </View>
-                  </View>
-                  <View style={s.matchRow}>
-                    <Text style={[s.teamText, isHome && s.myTeam]} numberOfLines={1}>
-                      {item.homeTeam?.name}
-                    </Text>
-                    {item.status === 'FINISHED' ? (
-                      <Text style={s.score}>{item.homeScore} - {item.awayScore}</Text>
-                    ) : (
-                      <Text style={s.vs}>vs</Text>
-                    )}
-                    <Text style={[s.teamText, { textAlign: 'right' }, !isHome && s.myTeam]} numberOfLines={1}>
-                      {item.awayTeam?.name}
-                    </Text>
-                  </View>
+                    <View style={styles.matchRow}>
+                      <Text style={[styles.teamText, isHome && styles.myTeam]} numberOfLines={1}>{item.homeTeam?.name}</Text>
+                      {item.status === 'FINISHED' ? (
+                        <Text style={styles.score}>{item.homeScore} - {item.awayScore}</Text>
+                      ) : (
+                        <Text style={styles.vs}>vs</Text>
+                      )}
+                      <Text style={[styles.teamText, { textAlign: 'right' }, !isHome && styles.myTeam]} numberOfLines={1}>{item.awayTeam?.name}</Text>
+                    </View>
+                  </Card>
                 </TouchableOpacity>
-              );
+              )
             }}
           />
         )
       )}
     </SafeAreaView>
-  );
+  )
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f9fafb' },
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: { backgroundColor: '#16a34a', paddingHorizontal: 20, paddingVertical: 20, alignItems: 'center' },
-  shield: { width: 56, height: 56, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  shieldText: { fontSize: 24, fontWeight: '700', color: '#fff' },
-  title: { fontSize: 20, fontWeight: '700', color: '#fff', textAlign: 'center' },
-  subtitle: { fontSize: 13, color: '#bbf7d0', marginTop: 2 },
-  delegate: { fontSize: 12, color: '#86efac', marginTop: 4 },
-  tabBar: { flexDirection: 'row', backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e5e7eb' },
-  tabBtn: { flex: 1, paddingVertical: 12, alignItems: 'center' },
-  tabBtnActive: { borderBottomWidth: 2, borderBottomColor: '#16a34a' },
-  tabText: { fontSize: 13, color: '#9ca3af', fontWeight: '500' },
-  tabTextActive: { color: '#16a34a', fontWeight: '700' },
-  list: { padding: 12, gap: 8 },
-  empty: { color: '#9ca3af', fontSize: 14 },
-  playerRow: {
-    backgroundColor: '#fff', borderRadius: 10, padding: 12,
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 2,
-  },
-  shirt: { width: 36, height: 36, borderRadius: 18 },
-  playerInfo: { flex: 1 },
-  playerName: { fontSize: 14, fontWeight: '600', color: '#111827' },
-  playerPos: { fontSize: 12, color: '#9ca3af', marginTop: 1 },
-  arrow: { fontSize: 20, color: '#d1d5db' },
-  matchCard: {
-    backgroundColor: '#fff', borderRadius: 12, padding: 14,
-    elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 2,
-  },
+  header: { backgroundColor: colors.primary, paddingHorizontal: 20, paddingVertical: 20, alignItems: 'center', borderBottomLeftRadius: 32, borderBottomRightRadius: 32, marginBottom: 0 },
+  shield: { width: 56, height: 56, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  shieldText: { fontSize: 24, fontWeight: '700', color: '#FFFFFF' },
+  title: { fontSize: 20, fontWeight: '700', color: '#FFFFFF', textAlign: 'center', marginBottom: 2 },
+  subtitle: { fontSize: 13, color: 'rgba(255,255,255,0.8)', textAlign: 'center' },
+  delegateRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
+  delegate: { fontSize: 12, color: 'rgba(255,255,255,0.7)' },
+  tabBar: { flexDirection: 'row', backgroundColor: colors.surface, paddingVertical: 8, gap: 4, paddingHorizontal: 8 },
+  tabBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 12 },
+  tabActive: { backgroundColor: colors.blue[50] },
+  tabText: { fontSize: 13, color: colors.textTertiary, fontWeight: '500' },
+  tabTextActive: { color: colors.primary, fontWeight: '700' },
+  playerRow: { flexDirection: 'row', alignItems: 'center' },
+  playerName: { fontSize: 14, fontWeight: '600', color: colors.text },
+  playerPos: { fontSize: 12, color: colors.textSecondary, marginTop: 1 },
   matchTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-  matchMeta: { fontSize: 12, color: '#9ca3af' },
-  badge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 20 },
-  badgeText: { fontSize: 10, fontWeight: '600' },
+  matchMeta: { fontSize: 12, color: colors.textTertiary },
   matchRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  teamText: { flex: 1, fontSize: 14, fontWeight: '500', color: '#374151' },
-  myTeam: { fontWeight: '700', color: '#111827' },
-  score: { fontSize: 18, fontWeight: '700', color: '#16a34a', minWidth: 60, textAlign: 'center' },
-  vs: { fontSize: 13, color: '#9ca3af', minWidth: 30, textAlign: 'center' },
-});
+  teamText: { flex: 1, fontSize: 14, fontWeight: '500', color: colors.text },
+  myTeam: { fontWeight: '700', color: colors.text },
+  score: { fontSize: 18, fontWeight: '700', color: colors.primary, minWidth: 60, textAlign: 'center' },
+  vs: { fontSize: 13, color: colors.textTertiary, minWidth: 30, textAlign: 'center' },
+})
