@@ -367,8 +367,10 @@ model Club {
   instagram      String?
   facebook       String?
   whatsapp       String?
-  mpAccessToken  String?
+  mpAccessToken   String?
   mpWebhookSecret String?
+  monthlyPlayerFee Float?
+  monthlyMemberFee Float?
   news           ClubNews[]
   gallery        ClubGallery[]
   staff          ClubStaff[]

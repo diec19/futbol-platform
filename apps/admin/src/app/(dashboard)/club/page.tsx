@@ -33,6 +33,8 @@ export default function ClubInfoPage() {
     const payload: Record<string, any> = {};
     Object.keys(form).forEach((k) => { payload[k] = form[k] || undefined; });
     if (form.foundedYear) payload.foundedYear = parseInt(form.foundedYear);
+    if (form.monthlyPlayerFee) payload.monthlyPlayerFee = parseFloat(form.monthlyPlayerFee);
+    if (form.monthlyMemberFee) payload.monthlyMemberFee = parseFloat(form.monthlyMemberFee);
     updateMutation.mutate(payload);
   };
 
@@ -160,6 +162,22 @@ export default function ClubInfoPage() {
                   {showMpSecret ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Cuotas mensuales */}
+        <div className="p-5 space-y-4">
+          <p className="text-sm font-semibold text-slate-700">Cuotas mensuales</p>
+          <p className="text-xs text-slate-400">Montos que se usan para generar cuotas automáticamente el día 1 de cada mes.</p>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs text-slate-500 mb-1 block">Cuota mensual jugadores ($)</label>
+              <input className="input-base" type="number" value={val('monthlyPlayerFee')} onChange={(e) => set('monthlyPlayerFee', e.target.value)} placeholder="15000" />
+            </div>
+            <div>
+              <label className="text-xs text-slate-500 mb-1 block">Cuota mensual socios ($)</label>
+              <input className="input-base" type="number" value={val('monthlyMemberFee')} onChange={(e) => set('monthlyMemberFee', e.target.value)} placeholder="10000" />
             </div>
           </div>
         </div>
