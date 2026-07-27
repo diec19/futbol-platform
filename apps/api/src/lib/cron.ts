@@ -11,7 +11,7 @@ function getDueDate(month: number, year: number): Date {
   return new Date(year, month - 1, DUE_DAY);
 }
 
-// ── Overdue Cron (existing) ──────────────────────────────────────────────────
+// ── Overdue Cron ─────────────────────────────────────────────────────────────
 export function startOverdueCron() {
   console.log('[CRON] Iniciando cron de vencimiento de cuotas (cada 1h)');
 
@@ -19,12 +19,50 @@ export function startOverdueCron() {
     try {
       const now = new Date();
 
+      // Find overdue player subs BEFORE updating (to create notifications)
+      const overduePlayerSubs = await db.playerSubscription.findMany({
+        where: {
+          status: { in: ['PENDING', 'LINK_SENT'] },
+          dueDate: { lt: now },
+        },
+        include: {
+          player: {
+            include: {
+              memberLinks: { include: { member: { select: { id: true, fullName: true } } } },
+            },
+          },
+        },
+      });
+
       const playerResult = await db.playerSubscription.updateMany({
         where: {
           status: { in: ['PENDING', 'LINK_SENT'] },
           dueDate: { lt: now },
         },
         data: { status: 'OVERDUE' },
+      });
+
+      // Create notifications for overdue player subs
+      for (const sub of overduePlayerSubs) {
+        const members = sub.player?.memberLinks?.map(l => l.member) ?? [];
+        for (const member of members) {
+          await db.notification.create({
+            data: {
+              memberId: member.id,
+              title: 'Cuota vencida',
+              message: `La cuota de ${MONTHS[sub.month - 1]} ${sub.year} de ${sub.player.fullName} está vencida. Abonala lo antes posible.`,
+              type: 'payment_overdue',
+            },
+          });
+        }
+      }
+
+      // Find overdue member subs BEFORE updating
+      const overdueMemberSubs = await db.subscription.findMany({
+        where: {
+          status: { in: ['PENDING', 'LINK_SENT'] },
+          dueDate: { lt: now },
+        },
       });
 
       const memberResult = await db.subscription.updateMany({
@@ -35,6 +73,27 @@ export function startOverdueCron() {
         data: { status: 'OVERDUE' },
       });
 
+      // Create notifications for overdue member subs
+      for (const sub of overdueMemberSubs) {
+        await db.notification.create({
+          data: {
+            memberId: sub.memberId,
+            title: 'Cuota vencida',
+            message: `Tu cuota de ${MONTHS[sub.month - 1]} ${sub.year} está vencida. Abonala lo antes posible.`,
+            type: 'payment_overdue',
+          },
+        });
+      }
+
+      // Find overdue sponsor payments BEFORE updating
+      const overdueSponsorPayments = await db.sponsorshipPayment.findMany({
+        where: {
+          status: { in: ['PENDING', 'LINK_SENT'] },
+          dueDate: { lt: now },
+        },
+        include: { sponsorship: { include: { sponsor: true, plan: true } } },
+      });
+
       const sponsorResult = await db.sponsorshipPayment.updateMany({
         where: {
           status: { in: ['PENDING', 'LINK_SENT'] },
@@ -42,6 +101,11 @@ export function startOverdueCron() {
         },
         data: { status: 'OVERDUE' },
       });
+
+      // Log overdue sponsor payments (no member to notify, sponsors are external)
+      for (const payment of overdueSponsorPayments) {
+        console.log(`[CRON] Auspiciante vencido: ${payment.sponsorship.sponsor.name} - ${payment.sponsorship.plan.name} - ${MONTHS[payment.month - 1]} ${payment.year}`);
+      }
 
       if (playerResult.count > 0 || memberResult.count > 0 || sponsorResult.count > 0) {
         console.log(`[CRON] Cuotas marcadas como vencidas: ${playerResult.count} jugadores, ${memberResult.count} socios, ${sponsorResult.count} auspiciantes`);
@@ -142,23 +206,39 @@ export function startMonthlyFeeCron() {
             console.error(`[CRON] Error MP para jugador ${player.fullName}:`, e.message);
           }
 
-          // Send WhatsApp
-          const memberLink = await db.memberPlayer.findFirst({
+          // Create notification for linked members
+          const memberLinks = await db.memberPlayer.findMany({
             where: { playerId: player.id },
-            include: { member: { select: { fullName: true, phone: true } } },
+            include: { member: { select: { id: true, phone: true, fullName: true } } },
           });
 
-          const phone = memberLink?.member?.phone;
-          if (phone && phone.trim()) {
-            const normalizedPhone = normalizePhone(phone);
-            const msg = paymentLink
-              ? `Hola! 👋 Te enviamos el link de pago de la cuota ${MONTHS[currentMonth - 1]} ${currentYear} de ${player.fullName}: ${paymentLink}`
-              : `Hola! 👋 La cuota de ${MONTHS[currentMonth - 1]} ${currentYear} de ${player.fullName} ya está generada. Ingresá a la app para pagarla: ${APP_URL}`;
-            const result = await sendWhatsAppMessage(normalizedPhone, msg);
-            if (result.success) whatsappSent++;
-            else {
-              whatsappFailed++;
-              console.error(`[CRON] WhatsApp falló para ${player.fullName}:`, result.error);
+          const notifMsg = paymentLink
+            ? `Se generó tu cuota de ${MONTHS[currentMonth - 1]} ${currentYear} de ${player.fullName}. Monto: $${sub.amount.toLocaleString('es-AR')}. Vence el ${DUE_DAY}/${currentMonth}. Pagala con este link: ${paymentLink}`
+            : `Se generó tu cuota de ${MONTHS[currentMonth - 1]} ${currentYear} de ${player.fullName}. Monto: $${sub.amount.toLocaleString('es-AR')}. Vence el ${DUE_DAY}/${currentMonth}. Ingresá a la app para pagarla.`;
+
+          for (const link of memberLinks) {
+            await db.notification.create({
+              data: {
+                memberId: link.member.id,
+                title: 'Nueva cuota disponible',
+                message: notifMsg,
+                type: 'payment_new',
+              },
+            });
+
+            // Send WhatsApp to each linked member
+            const phone = link.member.phone;
+            if (phone && phone.trim()) {
+              const normalizedPhone = normalizePhone(phone);
+              const waMsg = paymentLink
+                ? `Hola! 👋 Te enviamos el link de pago de la cuota ${MONTHS[currentMonth - 1]} ${currentYear} de ${player.fullName}: ${paymentLink}`
+                : `Hola! 👋 La cuota de ${MONTHS[currentMonth - 1]} ${currentYear} de ${player.fullName} ya está generada. Ingresá a la app para pagarla: ${APP_URL}`;
+              const result = await sendWhatsAppMessage(normalizedPhone, waMsg);
+              if (result.success) whatsappSent++;
+              else {
+                whatsappFailed++;
+                console.error(`[CRON] WhatsApp falló para ${player.fullName}:`, result.error);
+              }
             }
           }
 
@@ -234,6 +314,20 @@ export function startMonthlyFeeCron() {
           } catch (e: any) {
             console.error(`[CRON] Error MP para socio ${member.fullName}:`, e.message);
           }
+
+          // Create notification for member
+          const notifMsg = paymentLink
+            ? `Se generó tu cuota de ${MONTHS[currentMonth - 1]} ${currentYear}. Monto: $${memberFee.toLocaleString('es-AR')}. Vence el ${DUE_DAY}/${currentMonth}. Pagala con este link: ${paymentLink}`
+            : `Se generó tu cuota de ${MONTHS[currentMonth - 1]} ${currentYear}. Monto: $${memberFee.toLocaleString('es-AR')}. Vence el ${DUE_DAY}/${currentMonth}. Ingresá a la app para pagarla.`;
+
+          await db.notification.create({
+            data: {
+              memberId: member.id,
+              title: 'Nueva cuota disponible',
+              message: notifMsg,
+              type: 'payment_new',
+            },
+          });
 
           // Send WhatsApp
           if (member.phone && member.phone.trim()) {
