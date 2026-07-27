@@ -20,7 +20,9 @@ function SponsorModal({ sponsor, onClose, onSaved }: { sponsor?: any; onClose: (
       email: sponsor.email ?? '',
       logoUrl: sponsor.logoUrl ?? '',
       website: sponsor.website ?? '',
-    } : { name: '', contactName: '', phone: '', email: '', logoUrl: '', website: '' }
+      slideUrl: sponsor.slideUrl ?? '',
+      slideOrder: sponsor.slideOrder != null ? String(sponsor.slideOrder) : '',
+    } : { name: '', contactName: '', phone: '', email: '', logoUrl: '', website: '', slideUrl: '', slideOrder: '' }
   );
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -38,6 +40,8 @@ function SponsorModal({ sponsor, onClose, onSaved }: { sponsor?: any; onClose: (
       if (form.email) payload.email = form.email;
       if (form.logoUrl) payload.logoUrl = form.logoUrl;
       if (form.website) payload.website = form.website;
+      if (form.slideUrl) payload.slideUrl = form.slideUrl;
+      if (form.slideOrder) payload.slideOrder = parseInt(form.slideOrder);
       if (sponsor) {
         await api.sponsors.update(sponsor.id, payload);
       } else {
@@ -87,6 +91,24 @@ function SponsorModal({ sponsor, onClose, onSaved }: { sponsor?: any; onClose: (
             <label className="block text-xs font-medium text-slate-500 mb-1">Sitio web</label>
             <input value={form.website} onChange={set('website')} placeholder="https://..."
               className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+          </div>
+          <div className="border-t border-slate-100 pt-3 mt-1">
+            <p className="text-xs font-semibold text-slate-500 mb-2">Carrusel del Home (app mobile)</p>
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Imagen del slide (URL JPG/PNG)</label>
+              <input value={form.slideUrl} onChange={set('slideUrl')} placeholder="https://...imagen-slide.jpg"
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+              {form.slideUrl && (
+                <div className="mt-2 rounded-lg overflow-hidden border border-slate-200">
+                  <img src={form.slideUrl} alt="Preview slide" className="w-full h-24 object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                </div>
+              )}
+            </div>
+            <div className="mt-2">
+              <label className="block text-xs font-medium text-slate-500 mb-1">Orden del carrusel (opcional)</label>
+              <input type="number" value={form.slideOrder} onChange={set('slideOrder')} placeholder="1 = primero"
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+            </div>
           </div>
         </div>
 

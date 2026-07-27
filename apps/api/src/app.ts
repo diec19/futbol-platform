@@ -23,6 +23,7 @@ import { notificationsRouter } from './modules/notifications/notifications.route
 import { whatsappRouter } from './modules/whatsapp/whatsapp.router';
 import { sponsorsRouter } from './modules/sponsors/sponsors.router';
 import { sponsorshipsRouter } from './modules/sponsorships/sponsorships.router';
+import { benefitsRouter } from './modules/benefits/benefits.router';
 
 const app = express();
 
@@ -62,6 +63,7 @@ app.use(`${v1}/notifications`, notificationsRouter);
 app.use(`${v1}/whatsapp`, whatsappRouter);
 app.use(`${v1}/sponsors`, sponsorsRouter);
 app.use(`${v1}/sponsorships`, sponsorshipsRouter);
+app.use(`${v1}/benefits`, benefitsRouter);
 
 app.use(errorMiddleware);
 

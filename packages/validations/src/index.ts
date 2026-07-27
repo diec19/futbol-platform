@@ -148,6 +148,8 @@ export const createSponsorSchema = z.object({
   email: z.string().email().optional(),
   logoUrl: z.string().url().optional(),
   website: z.string().url().optional(),
+  slideUrl: z.string().url().optional(),
+  slideOrder: z.number().int().min(0).optional(),
 });
 
 export const updateSponsorSchema = createSponsorSchema.partial();
@@ -167,3 +169,15 @@ export const createSponsorshipSchema = z.object({
   startDate: z.string().datetime(),
   endDate: z.string().datetime(),
 });
+
+// ── Benefits ─────────────────────────────────────────────────────────────────
+
+export const createBenefitSchema = z.object({
+  title: z.string().min(2).max(120),
+  description: z.string().max(500).optional(),
+  imageUrl: z.string().url().optional(),
+  type: z.enum(['EXTERNAL', 'INTERNAL']).default('EXTERNAL'),
+  sponsorId: z.string().cuid().optional(),
+});
+
+export const updateBenefitSchema = createBenefitSchema.partial();

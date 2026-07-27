@@ -1,10 +1,6 @@
-import Constants from 'expo-constants';
-import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = Platform.OS === 'web'
-  ? 'http://localhost:3001/api/v1'
-  : ((Constants.expoConfig?.extra?.apiUrl as string) ?? 'http://10.0.2.2:3001/api/v1');
+const API_URL = 'https://futbol-platform-production.up.railway.app/api/v1';
 
 async function request<T>(endpoint: string, options: RequestInit = {}, withAuth = false): Promise<T> {
   const headers: Record<string, string> = {
@@ -88,5 +84,11 @@ export const api = {
   },
   news: {
     list: () => getAuth<{ data: any[] }>('/club/news'),
+  },
+  benefits: {
+    list: () => get<{ data: any[] }>('/benefits'),
+  },
+  sponsors: {
+    slides: () => get<{ data: any[] }>('/sponsors/slides'),
   },
 };

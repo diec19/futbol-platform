@@ -304,6 +304,14 @@ export const api = {
       remove: (paymentId: string) => del<void>(`/sponsorships/payments/${paymentId}`),
     },
   },
+  benefits: {
+    listAll: () => get<{ data: any[] }>('/benefits/admin'),
+    get: (id: string) => get<{ data: any }>(`/benefits/admin/${id}`),
+    create: (data: unknown) => post<{ data: any }>('/benefits/admin', data),
+    update: (id: string, data: unknown) => put<{ data: any }>(`/benefits/admin/${id}`, data),
+    remove: (id: string) => del<void>(`/benefits/admin/${id}`),
+    toggle: (id: string) => patch<{ data: any }>(`/benefits/admin/${id}/toggle`, {}),
+  },
   club: {
     get: () => get<{ data: any }>('/club'),
     update: (data: unknown) => put<{ data: any }>('/club', data),

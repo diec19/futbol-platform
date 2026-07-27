@@ -547,9 +547,12 @@ model Sponsor {
   email          String?
   logoUrl        String?
   website        String?
+  slideUrl       String?
+  slideOrder     Int?
   active         Boolean           @default(true)
   plans          SponsorPlan[]
   sponsorships   Sponsorship[]
+  benefits       Benefit[]
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
 
@@ -610,4 +613,21 @@ model SponsorshipPayment {
 
   @@unique([sponsorshipId, month, year])
   @@map("sponsorship_payments")
+}
+
+// ── Beneficios ───────────────────────────────────────────────────────────────
+
+model Benefit {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  imageUrl    String?
+  type        String   @default("EXTERNAL")
+  sponsorId   String?
+  sponsor     Sponsor? @relation(fields: [sponsorId], references: [id], onDelete: SetNull)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("benefits")
 }

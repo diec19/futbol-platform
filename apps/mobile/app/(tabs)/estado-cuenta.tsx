@@ -1,175 +1,173 @@
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Linking, ActivityIndicator } from 'react-native';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
-import { api } from '../../services/api';
-import { useAuth } from '../../services/auth';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Linking, ActivityIndicator, RefreshControl } from 'react-native'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useRouter } from 'expo-router'
+import { Ionicons } from '@expo/vector-icons'
+import { api } from '../../services/api'
+import { useAuth } from '../../services/auth'
+import Card from '../../components/ui/Card'
+import Badge from '../../components/ui/Badge'
+import { colors } from '../../theme/colors'
 
-const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const MONTH_NAMES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
 
 function formatDate(d: string) {
-  return new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(d));
+  return new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(d))
 }
 
-const SUB_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-  PENDING:   { bg: '#F1F5F9', text: '#64748B', label: 'Pendiente' },
-  LINK_SENT: { bg: '#DBEAFE', text: '#1D4ED8', label: 'Link enviado' },
-  PAID:      { bg: '#DCFCE7', text: '#16A34A', label: '✓ Pagada' },
-  OVERDUE:   { bg: '#FEE2E2', text: '#DC2626', label: 'Vencida' },
-};
+const SUB_VARIANT: Record<string, 'success' | 'warning' | 'error' | 'info'> = {
+  PAID: 'success',
+  PENDING: 'default',
+  LINK_SENT: 'info',
+  OVERDUE: 'error',
+}
+
+const SUB_LABELS: Record<string, string> = {
+  PENDING: 'Pendiente',
+  LINK_SENT: 'Link enviado',
+  PAID: 'Pagada',
+  OVERDUE: 'Vencida',
+}
 
 export default function EstadoCuentaScreen() {
-  const { logout } = useAuth();
-  const router = useRouter();
-  const qc = useQueryClient();
+  const { logout } = useAuth()
+  const router = useRouter()
+  const qc = useQueryClient()
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['member-me'],
     queryFn: () => api.members.me(),
     retry: false,
-  });
+  })
 
   const handleLogout = async () => {
-    await logout();
-    qc.removeQueries({ queryKey: ['member-me'] });
-    router.replace('/auth/login');
-  };
+    await logout()
+    qc.removeQueries({ queryKey: ['member-me'] })
+    router.replace('/auth/login')
+  }
 
   if (isLoading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator color="#DC2626" size="large" />
+        <ActivityIndicator color={colors.primary} size="large" />
       </View>
-    );
+    )
   }
 
   if (error) {
-    handleLogout();
-    return null;
+    handleLogout()
+    return null
   }
 
-  const member = data?.data;
-  const subscriptions: any[] = member?.subscriptions ?? [];
-  const pendingSub = subscriptions.find((s: any) => s.status !== 'PAID');
-  const paidSubs = subscriptions.filter((s: any) => s.status === 'PAID');
+  const member = data?.data
+  const subscriptions: any[] = member?.subscriptions ?? []
+
+  const pendingSubs = subscriptions.filter((s: any) => s.status !== 'PAID')
+  const paidSubs = subscriptions.filter((s: any) => s.status === 'PAID')
+
+  const openLink = (url: string) => {
+    if (url) Linking.openURL(url)
+  }
+
+  const calcTotal = () => {
+    return subscriptions.reduce((sum: number, s: any) => sum + (s.totalAmount ?? s.amount ?? 0), 0)
+  }
+
+  const calcPaid = () => {
+    return paidSubs.reduce((sum: number, s: any) => sum + (s.totalAmount ?? s.amount ?? 0), 0)
+  }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
-      <View style={styles.header}>
-        <View style={styles.headerAvatar}>
-          <Text style={styles.headerAvatarText}>{member?.fullName?.[0]}</Text>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }} refreshControl={<RefreshControl refreshing={false} onRefresh={refetch} tintColor={colors.primary} />}>
+      <View style={styles.balanceCard}>
+        <View style={styles.balanceHeader}>
+          <Ionicons name="wallet-outline" size={24} color="#FFFFFF" />
+          <Text style={styles.balanceTitle}>Estado de Cuenta</Text>
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.headerGreeting}>Hola, {member?.fullName?.split(' ')[0]} 👋</Text>
-          <Text style={styles.headerSub}>@{member?.username}</Text>
-        </View>
-        <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
-          <Text style={styles.logoutText}>Salir</Text>
-        </TouchableOpacity>
+        <Text style={styles.balanceLabel}>Total pagado</Text>
+        <Text style={styles.balanceAmount}>${calcPaid().toLocaleString('es-AR')}</Text>
+        {pendingSubs.length > 0 && (
+          <Text style={styles.balancePending}>${(calcTotal() - calcPaid()).toLocaleString('es-AR')} pendientes</Text>
+        )}
       </View>
 
-      <Text style={styles.pageTitle}>Estado de Cuenta</Text>
+      {subscriptions.length === 0 && (
+        <Card padding={24} style={{ marginHorizontal: 16, marginTop: 16, alignItems: 'center' }}>
+          <Ionicons name="card-outline" size={48} color={colors.gray[300]} />
+          <Text style={{ color: colors.textSecondary, fontSize: 14, textAlign: 'center', marginTop: 12 }}>No tenés cuotas registradas</Text>
+        </Card>
+      )}
 
-      {pendingSub && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📅 Cuota pendiente</Text>
-          <View style={[styles.subHighlight, { borderLeftColor: pendingSub.status === 'OVERDUE' ? '#DC2626' : '#1D4ED8' }]}>
-            <View style={styles.subHighlightTop}>
-              <Text style={styles.subMonth}>
-                {MONTH_NAMES[pendingSub.month - 1]} {pendingSub.year}
-              </Text>
-              <Text style={styles.subAmount}>${pendingSub.amount.toLocaleString('es-AR')}</Text>
-            </View>
-            <View style={styles.subStatusRow}>
-              <View style={[styles.subBadge, { backgroundColor: SUB_COLORS[pendingSub.status as keyof typeof SUB_COLORS]?.bg }]}>
-                <Text style={[styles.subBadgeText, { color: SUB_COLORS[pendingSub.status as keyof typeof SUB_COLORS]?.text }]}>
-                  {SUB_COLORS[pendingSub.status as keyof typeof SUB_COLORS]?.label}
-                </Text>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Historial de Cuotas</Text>
+        <Text style={styles.sectionCount}>{subscriptions.length} cuotas</Text>
+      </View>
+
+      {subscriptions.map((sub: any) => {
+        const monthName = MONTH_NAMES[(sub.month ?? 1) - 1] ?? '---'
+        const isPending = sub.status !== 'PAID'
+
+        return (
+          <Card key={sub.id} style={styles.subCard}>
+            <View style={styles.subRow}>
+              <View style={styles.subLeft}>
+                <View style={[styles.subDot, { backgroundColor: isPending ? colors.warning : colors.success }]} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.subTitle}>{monthName} {sub.year}</Text>
+                  <Text style={styles.subDate}>Vence: {formatDate(sub.dueDate)}</Text>
+                </View>
               </View>
-              <Text style={styles.subDue}>Vence: {formatDate(pendingSub.dueDate)}</Text>
+              <View style={styles.subRight}>
+                {sub.lateFee > 0 && isPending && (
+                  <Text style={styles.lateFee}>+${sub.lateFee.toLocaleString('es-AR')} recargo</Text>
+                )}
+                <Text style={[styles.subAmount, isPending && { color: colors.warning }]}>
+                  ${(sub.totalAmount ?? sub.amount ?? 0).toLocaleString('es-AR')}
+                </Text>
+                <Badge label={SUB_LABELS[sub.status] ?? sub.status} variant={SUB_VARIANT[sub.status] ?? 'default'} />
+              </View>
             </View>
-            {pendingSub.mpPaymentLink && (
-              <TouchableOpacity style={styles.payBtn} onPress={() => Linking.openURL(pendingSub.mpPaymentLink)}>
-                <Text style={styles.payBtnText}>💳 Pagar ahora</Text>
+            {sub.mpPaymentLink && isPending && (
+              <TouchableOpacity style={styles.payBtn} onPress={() => openLink(sub.mpPaymentLink)} activeOpacity={0.85}>
+                <Ionicons name="card" size={16} color="#FFFFFF" />
+                <Text style={styles.payBtnText}>Pagar ahora</Text>
               </TouchableOpacity>
             )}
-          </View>
-        </View>
-      )}
-
-      {subscriptions.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📋 Historial de cuotas</Text>
-          <View style={styles.historyCard}>
-            {subscriptions.map((sub: any) => {
-              const cfg = SUB_COLORS[sub.status as keyof typeof SUB_COLORS];
-              return (
-                <View key={sub.id} style={styles.historyRow}>
-                  <View style={[styles.historyDot, { backgroundColor: cfg?.text ?? '#94A3B8' }]} />
-                  <View style={styles.historyInfo}>
-                    <Text style={styles.historyMonth}>
-                      {MONTH_NAMES[sub.month - 1]} {sub.year}
-                    </Text>
-                    {sub.paidAt && (
-                      <Text style={styles.historyPaid}>Pagado el {formatDate(sub.paidAt)}</Text>
-                    )}
-                  </View>
-                  <Text style={[styles.historyStatus, { color: cfg?.text }]}>{cfg?.label}</Text>
-                  <Text style={styles.historyAmount}>${sub.amount.toLocaleString('es-AR')}</Text>
-                </View>
-              );
-            })}
-          </View>
-        </View>
-      )}
-
-      {subscriptions.length === 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📅 Cuotas</Text>
-          <View style={styles.subCard}>
-            <Text style={{ color: '#94A3B8', fontSize: 14, textAlign: 'center' }}>
-              No hay cuotas generadas. El club generará tu primera cuota pronto.
-            </Text>
-          </View>
-        </View>
-      )}
+          </Card>
+        )
+      })}
     </ScrollView>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
-  header: { backgroundColor: '#0F172A', flexDirection: 'row', alignItems: 'center', gap: 12, padding: 20, paddingTop: 56 },
-  headerAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#DC2626', alignItems: 'center', justifyContent: 'center' },
-  headerAvatarText: { color: '#fff', fontWeight: '700', fontSize: 18 },
-  headerGreeting: { color: '#FFFFFF', fontWeight: '700', fontSize: 16 },
-  headerSub: { color: '#94A3B8', fontSize: 12, marginTop: 2 },
-  logoutBtn: { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#1E293B', borderRadius: 8 },
-  logoutText: { color: '#94A3B8', fontSize: 13 },
-  pageTitle: { fontSize: 20, fontWeight: '800', color: '#0F172A', paddingHorizontal: 16, paddingTop: 20 },
-  section: { paddingHorizontal: 16, paddingTop: 20 },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: '#1E293B', marginBottom: 10 },
-  subCard: { backgroundColor: '#FFFFFF', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#E2E8F0' },
-  subHighlight: {
-    backgroundColor: '#FFFFFF', borderRadius: 14, padding: 16,
-    borderWidth: 1, borderColor: '#E2E8F0', borderLeftWidth: 4,
+  container: { flex: 1, backgroundColor: colors.background },
+  balanceCard: {
+    backgroundColor: colors.primary,
+    padding: 24,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    marginBottom: 16,
   },
-  subHighlightTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  subMonth: { fontSize: 16, fontWeight: '700', color: '#1E293B' },
-  subAmount: { fontSize: 18, fontWeight: '800', color: '#1E293B' },
-  subStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 6 },
-  subBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
-  subBadgeText: { fontSize: 11, fontWeight: '600' },
-  subDue: { fontSize: 12, color: '#94A3B8' },
-  payBtn: { marginTop: 12, backgroundColor: '#1D4ED8', borderRadius: 10, padding: 12, alignItems: 'center' },
-  payBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 15 },
-  historyCard: { backgroundColor: '#FFFFFF', borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: '#E2E8F0' },
-  historyRow: {
-    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+  balanceHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 20 },
+  balanceTitle: { fontSize: 18, fontWeight: '700', color: '#FFFFFF' },
+  balanceLabel: { fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: '600' },
+  balanceAmount: { fontSize: 36, fontWeight: '800', color: '#FFFFFF', marginBottom: 4 },
+  balancePending: { fontSize: 14, color: 'rgba(255,255,255,0.85)', fontWeight: '600' },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 12 },
+  sectionTitle: { fontSize: 17, fontWeight: '700', color: colors.text },
+  sectionCount: { fontSize: 13, color: colors.textTertiary },
+  subCard: { marginHorizontal: 16, marginBottom: 10 },
+  subRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  subLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 },
+  subDot: { width: 10, height: 10, borderRadius: 5 },
+  subTitle: { fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: 2 },
+  subDate: { fontSize: 12, color: colors.textSecondary },
+  subRight: { alignItems: 'flex-end', gap: 6 },
+  subAmount: { fontSize: 16, fontWeight: '700', color: colors.text },
+  lateFee: { fontSize: 11, color: colors.error, fontWeight: '600' },
+  payBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: colors.accent, borderRadius: 12,
+    paddingVertical: 12, marginTop: 12,
   },
-  historyDot: { width: 8, height: 8, borderRadius: 4, marginRight: 10 },
-  historyInfo: { flex: 1 },
-  historyMonth: { fontSize: 13, fontWeight: '600', color: '#1E293B' },
-  historyPaid: { fontSize: 11, color: '#94A3B8', marginTop: 1 },
-  historyStatus: { fontSize: 12, fontWeight: '600', marginRight: 10 },
-  historyAmount: { fontSize: 14, fontWeight: '700', color: '#1E293B' },
-});
+  payBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 14 },
+})

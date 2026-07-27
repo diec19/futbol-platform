@@ -10,6 +10,17 @@ const router = Router();
 const wrap = (fn: (req: Request, res: Response, next: NextFunction) => Promise<any>) =>
   (req: Request, res: Response, next: NextFunction) => fn(req, res, next).catch(next);
 
+// ── Slides (public - mobile) ─────────────────────────────────────────────────
+router.get('/slides', wrap(async (_req, res) => {
+  const { db } = await import('../../config/database');
+  const slides = await db.sponsor.findMany({
+    where: { active: true, slideUrl: { not: null } },
+    select: { id: true, name: true, logoUrl: true, slideUrl: true, slideOrder: true, website: true },
+    orderBy: { slideOrder: 'asc' },
+  });
+  res.json({ data: slides });
+}));
+
 // ── Sponsor CRUD ────────────────────────────────────────────────────────────
 router.get('/', authenticate, wrap(async (_req, res) => {
   const data = await svc.list();
