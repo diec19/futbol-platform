@@ -14,10 +14,12 @@ import { Label } from '@/components/ui/label';
 
 export function PlanModal({
   plan,
+  sponsor,
   onClose,
   onSaved,
 }: {
   plan?: any;
+  sponsor?: any;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -53,6 +55,15 @@ export function PlanModal({
       if (form.description) payload.description = form.description;
       if (plan) {
         await api.sponsors.plans.update(plan.id, payload);
+      } else {
+        if (!sponsor?.id) {
+          throw new Error('Falta el auspiciante para crear el plan');
+        }
+        await api.sponsors.plans.create(sponsor.id, {
+          sponsorId: sponsor.id,
+          ...payload,
+          active: true,
+        });
       }
       onSaved();
     } catch (e: any) {

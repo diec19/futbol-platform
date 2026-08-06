@@ -118,6 +118,7 @@ export default function PlayersPage() {
                       size="icon"
                       onClick={() => setCredentialPlayer(p)}
                       title="Credencial / QR"
+                      aria-label="Ver credencial"
                     >
                       <QrCode className="h-4 w-4" />
                     </Button>

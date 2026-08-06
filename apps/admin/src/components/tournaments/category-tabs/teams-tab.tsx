@@ -134,7 +134,7 @@ export function TeamsTab({ categoryId }: { categoryId: string }) {
                       destructive
                       onConfirm={() => remove.mutate(t.id)}
                       trigger={
-                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive">
+                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" aria-label="Eliminar equipo">
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       }

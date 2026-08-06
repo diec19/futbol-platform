@@ -121,6 +121,7 @@ export default function TournamentsPage() {
                         size="icon"
                         onClick={() => toggleStatus.mutate({ id: t.id, current: t.status })}
                         title={t.status === 'ACTIVE' ? 'Desactivar' : 'Activar'}
+                        aria-label={t.status === 'ACTIVE' ? 'Desactivar torneo' : 'Activar torneo'}
                       >
                         {t.status === 'ACTIVE' ? (
                           <ToggleRight className="h-4 w-4 text-emerald-600" />
@@ -129,7 +130,7 @@ export default function TournamentsPage() {
                         )}
                       </Button>
                       <Button variant="ghost" size="icon" asChild>
-                        <Link href={`/tournaments/${t.id}`}>
+                        <Link href={`/tournaments/${t.id}`} aria-label="Editar torneo">
                           <Pencil className="h-4 w-4" />
                         </Link>
                       </Button>
@@ -140,7 +141,7 @@ export default function TournamentsPage() {
                         destructive
                         onConfirm={() => remove.mutate(t.id)}
                         trigger={
-                          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive">
+                          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" aria-label="Eliminar torneo">
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         }

@@ -135,6 +135,7 @@ function MemberForm({ initial, onSave, onCancel }: { initial?: any; onSave: (d: 
                   size="icon"
                   className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground"
                   onClick={() => setShowPass((v) => !v)}
+                  aria-label={showPass ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                 >
                   {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
                 </Button>
@@ -397,7 +398,7 @@ function MemberPanel({ memberId, onClose }: { memberId: string; onClose: () => v
                           destructive
                           onConfirm={() => deleteSubMutation.mutate(sub.id)}
                           trigger={
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive">
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" aria-label="Eliminar cuota">
                               <Trash2 size={13} />
                             </Button>
                           }
@@ -530,7 +531,7 @@ function MemberPanel({ memberId, onClose }: { memberId: string; onClose: () => v
                     {mp.player.shirtNumber ? ` · #${mp.player.shirtNumber}` : ''}
                   </p>
                 </div>
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => unlinkMutation.mutate(mp.player.id)}>
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => unlinkMutation.mutate(mp.player.id)} aria-label="Desvincular jugador">
                   <Unlink size={14} />
                 </Button>
               </div>
@@ -782,6 +783,7 @@ export default function MembersPage() {
                   setShowBulk(false);
                   qc.invalidateQueries({ queryKey: ['members'] });
                 }}
+                aria-label="Cerrar resultado de generación"
               >
                 <X size={18} />
               </Button>
@@ -904,10 +906,10 @@ export default function MembersPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-brand-blue" onClick={() => setEditingMember(m)} title="Editar socio">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-brand-blue" onClick={() => setEditingMember(m)} title="Editar socio" aria-label="Editar socio">
                         <Edit2 size={14} />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-brand-blue" onClick={() => setSelectedId(m.id)}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-brand-blue" onClick={() => setSelectedId(m.id)} aria-label="Ver detalle del socio">
                         <ChevronRight size={16} />
                       </Button>
                       <ConfirmDialog
@@ -917,7 +919,7 @@ export default function MembersPage() {
                         destructive
                         onConfirm={() => deleteMutation.mutate(m.id)}
                         trigger={
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" aria-label="Eliminar socio">
                             <Trash2 size={15} />
                           </Button>
                         }

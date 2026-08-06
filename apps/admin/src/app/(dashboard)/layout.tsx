@@ -20,7 +20,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [router]);
 
   return (
-    <div className="flex min-h-screen bg-gray-50 dark:bg-background">
+    <div className="flex min-h-screen bg-background">
       {/* Sidebar fija en desktop (md+); en mobile vive dentro del Sheet */}
       <Sidebar className="hidden md:flex" />
 

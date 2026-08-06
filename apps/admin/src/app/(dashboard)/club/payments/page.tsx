@@ -326,7 +326,7 @@ export default function ClubPaymentsPage() {
                           destructive
                           onConfirm={() => deleteMutation.mutate(item.id)}
                           trigger={
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" aria-label="Eliminar registro">
                               <Trash2 size={14} />
                             </Button>
                           }

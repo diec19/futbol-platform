@@ -43,7 +43,7 @@ export function CuotaRowActions({
         destructive
         onConfirm={onRemove}
         trigger={
-          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive">
+          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" aria-label="Eliminar cuota">
             <Trash2 size={14} />
           </Button>
         }
@@ -61,11 +61,12 @@ export function CuotaRowActions({
             onChange={(e) => onMpAmountChange(+e.target.value)}
             className="w-20 px-1.5 py-1 text-center text-xs"
             autoFocus
+            aria-label="Monto del link de pago"
           />
-          <Button size="sm" className="bg-blue-600 px-2 text-xs hover:bg-blue-700" onClick={onConfirmLink} disabled={sendLinkPending}>
+          <Button size="sm" className="bg-blue-600 px-2 text-xs hover:bg-blue-700" onClick={onConfirmLink} disabled={sendLinkPending} aria-label="Confirmar link de pago">
             OK
           </Button>
-          <Button variant="ghost" size="sm" className="px-2 text-xs text-muted-foreground" onClick={onCancelLink}>
+          <Button variant="ghost" size="sm" className="px-2 text-xs text-muted-foreground" onClick={onCancelLink} aria-label="Cancelar link de pago">
             X
           </Button>
         </div>
@@ -75,6 +76,7 @@ export function CuotaRowActions({
           className="whitespace-nowrap bg-blue-600 px-2.5 text-xs hover:bg-blue-700"
           onClick={onOpenMpAmount}
           title="Generar link MP"
+          aria-label="Generar link de pago"
         >
           <Send size={11} className="mr-1" />
           {sub.mpPaymentLink ? 'Reenviar' : 'Link MP'}
@@ -88,6 +90,7 @@ export function CuotaRowActions({
           className="h-7 w-7 text-muted-foreground hover:text-foreground"
           onClick={onCopy}
           title="Copiar link"
+          aria-label="Copiar link de pago"
         >
           <Copy size={13} />
         </Button>
@@ -100,6 +103,7 @@ export function CuotaRowActions({
           className="h-7 px-1.5 text-xs font-bold text-green-600 hover:text-green-700"
           onClick={onWhatsapp}
           title="Enviar por WhatsApp"
+          aria-label="Enviar por WhatsApp"
         >
           WA
         </Button>
@@ -112,6 +116,7 @@ export function CuotaRowActions({
         onClick={onMarkPaid}
         disabled={markPaidPending}
         title="Marcar pagada"
+        aria-label="Marcar cuota como pagada"
       >
         <CheckCircle size={14} />
       </Button>
@@ -123,7 +128,7 @@ export function CuotaRowActions({
         destructive
         onConfirm={onRemove}
         trigger={
-          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive">
+          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" aria-label="Eliminar cuota">
             <Trash2 size={14} />
           </Button>
         }

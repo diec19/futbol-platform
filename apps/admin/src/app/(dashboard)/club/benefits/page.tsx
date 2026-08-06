@@ -2,8 +2,11 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
+import { benefitFormSchema, type BenefitFormValues } from '@/lib/validations';
 import { Plus, Pencil, Trash2, Gift, Building2, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,8 +48,15 @@ function BenefitModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [form, setForm] = useState(
-    benefit
+  const {
+    register,
+    handleSubmit,
+    control,
+    watch,
+    formState: { errors, isSubmitting },
+  } = useForm<BenefitFormValues>({
+    resolver: zodResolver(benefitFormSchema),
+    defaultValues: benefit
       ? {
           title: benefit.title,
           description: benefit.description ?? '',
@@ -54,27 +64,18 @@ function BenefitModal({
           type: benefit.type ?? 'EXTERNAL',
           sponsorId: benefit.sponsorId ?? 'none',
         }
-      : { title: '', description: '', imageUrl: '', type: 'EXTERNAL', sponsorId: 'none' }
-  );
+      : { title: '', description: '', imageUrl: '', type: 'EXTERNAL', sponsorId: 'none' },
+  });
+  const imageUrl = watch('imageUrl');
   const [error, setError] = useState('');
-  const [saving, setSaving] = useState(false);
 
-  const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-    setForm((f) => ({ ...f, [key]: e.target.value }));
-
-  const handleSave = async () => {
-    if (!form.title.trim()) {
-      setError('El título es requerido');
-      return;
-    }
-    setSaving(true);
+  const onSubmit = async (values: BenefitFormValues) => {
     setError('');
     try {
-      const payload: any = { title: form.title.trim() };
-      if (form.description) payload.description = form.description;
-      if (form.imageUrl) payload.imageUrl = form.imageUrl;
-      if (form.type) payload.type = form.type;
-      if (form.sponsorId !== 'none') payload.sponsorId = form.sponsorId;
+      const payload: any = { title: values.title.trim(), type: values.type };
+      if (values.description) payload.description = values.description;
+      if (values.imageUrl) payload.imageUrl = values.imageUrl;
+      if (values.sponsorId && values.sponsorId !== 'none') payload.sponsorId = values.sponsorId;
 
       if (benefit) {
         await api.benefits.update(benefit.id, payload);
@@ -84,8 +85,6 @@ function BenefitModal({
       onSaved();
     } catch (e: any) {
       setError(e.message ?? 'Error al guardar');
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -96,27 +95,37 @@ function BenefitModal({
           <DialogTitle>{benefit ? 'Editar beneficio' : 'Nuevo beneficio'}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-3">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-3" noValidate>
           <div className="space-y-1.5">
-            <Label>Título *</Label>
-            <Input value={form.title} onChange={set('title')} placeholder="Ej: 10% en Deportes Total" />
+            <Label htmlFor="benefit-title">Título *</Label>
+            <Input
+              id="benefit-title"
+              placeholder="Ej: 10% en Deportes Total"
+              {...register('title')}
+              aria-invalid={!!errors.title}
+            />
+            {errors.title && <p className="text-sm text-destructive">{errors.title.message}</p>}
           </div>
           <div className="space-y-1.5">
-            <Label>Descripción</Label>
+            <Label htmlFor="benefit-description">Descripción</Label>
             <Textarea
-              value={form.description}
-              onChange={set('description')}
+              id="benefit-description"
               rows={2}
               placeholder="Descripción del beneficio"
+              {...register('description')}
             />
           </div>
           <div className="space-y-1.5">
-            <Label>Imagen (URL JPG/PNG)</Label>
-            <Input value={form.imageUrl} onChange={set('imageUrl')} placeholder="https://...imagen.jpg" />
-            {form.imageUrl && (
+            <Label htmlFor="benefit-image">Imagen (URL JPG/PNG)</Label>
+            <Input
+              id="benefit-image"
+              placeholder="https://...imagen.jpg"
+              {...register('imageUrl')}
+            />
+            {imageUrl && (
               <div className="overflow-hidden rounded-lg border">
                 <img
-                  src={form.imageUrl}
+                  src={imageUrl}
                   alt="Preview"
                   className="h-32 w-full object-cover"
                   onError={(e) => {
@@ -128,46 +137,58 @@ function BenefitModal({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Tipo</Label>
-              <Select value={form.type} onValueChange={(v) => setForm((f) => ({ ...f, type: v }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="EXTERNAL">Descuento externo</SelectItem>
-                  <SelectItem value="INTERNAL">Beneficio del club</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label htmlFor="benefit-type">Tipo</Label>
+              <Controller
+                control={control}
+                name="type"
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger id="benefit-type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="EXTERNAL">Descuento externo</SelectItem>
+                      <SelectItem value="INTERNAL">Beneficio del club</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </div>
             <div className="space-y-1.5">
-              <Label>Auspiciante (opcional)</Label>
-              <Select value={form.sponsorId} onValueChange={(v) => setForm((f) => ({ ...f, sponsorId: v }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sin auspiciante" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sin auspiciante</SelectItem>
-                  {sponsors.map((s: any) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="benefit-sponsor">Auspiciante (opcional)</Label>
+              <Controller
+                control={control}
+                name="sponsorId"
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger id="benefit-sponsor">
+                      <SelectValue placeholder="Sin auspiciante" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Sin auspiciante</SelectItem>
+                      {sponsors.map((s: any) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </div>
           </div>
-        </div>
 
-        {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && <p className="text-sm text-destructive">{error}</p>}
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? 'Guardando...' : 'Guardar'}
-          </Button>
-        </DialogFooter>
+          <DialogFooter>
+            <Button variant="outline" type="button" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Guardando...' : 'Guardar'}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );
@@ -293,6 +314,7 @@ export default function BenefitsPage() {
                         className="h-7 w-7 text-muted-foreground hover:text-amber-600"
                         onClick={() => toggleMutation.mutate(benefit.id)}
                         title={benefit.active ? 'Desactivar' : 'Activar'}
+                        aria-label={benefit.active ? 'Desactivar beneficio' : 'Activar beneficio'}
                       >
                         {benefit.active ? <EyeOff size={13} /> : <Eye size={13} />}
                       </Button>
@@ -302,6 +324,7 @@ export default function BenefitsPage() {
                         className="h-7 w-7 text-muted-foreground hover:text-foreground"
                         onClick={() => setEditBenefit(benefit)}
                         title="Editar"
+                        aria-label="Editar beneficio"
                       >
                         <Pencil size={13} />
                       </Button>
@@ -312,7 +335,7 @@ export default function BenefitsPage() {
                         destructive
                         onConfirm={() => removeMutation.mutate(benefit.id)}
                         trigger={
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive">
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" aria-label="Eliminar beneficio">
                             <Trash2 size={13} />
                           </Button>
                         }

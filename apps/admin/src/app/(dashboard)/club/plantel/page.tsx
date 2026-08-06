@@ -194,6 +194,7 @@ function PlayerModal({ player, onClose, onSaved }: { player?: any; onClose: () =
                 size="icon"
                 className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full"
                 onClick={() => fileRef.current?.click()}
+                aria-label="Cambiar foto del jugador"
               >
                 <Camera size={13} />
               </Button>
@@ -496,6 +497,7 @@ export default function PlantelPage() {
                     className="h-6 w-6 rounded-full text-muted-foreground shadow hover:text-brand-blue"
                     onClick={() => setEditingPlayer(p)}
                     title="Editar"
+                    aria-label="Editar jugador"
                   >
                     <Pencil size={11} />
                   </Button>
@@ -505,6 +507,7 @@ export default function PlantelPage() {
                     className="h-6 w-6 rounded-full text-muted-foreground shadow hover:text-brand-blue"
                     onClick={() => setCredentialPlayer(p)}
                     title="QR"
+                    aria-label="Ver credencial del jugador"
                   >
                     <QrCode size={11} />
                   </Button>
@@ -520,6 +523,7 @@ export default function PlantelPage() {
                         size="icon"
                         className="h-6 w-6 rounded-full text-muted-foreground shadow hover:text-destructive"
                         title="Eliminar"
+                        aria-label="Eliminar jugador"
                       >
                         <Trash2 size={11} />
                       </Button>
@@ -586,7 +590,7 @@ export default function PlantelPage() {
                 {Math.min(meta.page * meta.limit, meta.total)} de {meta.total}
               </span>
               <div className="flex gap-2">
-                <Button variant="outline" size="icon" disabled={meta.page <= 1} onClick={() => setPage((p) => p - 1)}>
+                <Button variant="outline" size="icon" disabled={meta.page <= 1} onClick={() => setPage((p) => p - 1)} aria-label="Página anterior">
                   <ChevronLeft size={15} />
                 </Button>
                 <Button
@@ -594,6 +598,7 @@ export default function PlantelPage() {
                   size="icon"
                   disabled={meta.page >= meta.totalPages}
                   onClick={() => setPage((p) => p + 1)}
+                  aria-label="Página siguiente"
                 >
                   <ChevronRight size={15} />
                 </Button>

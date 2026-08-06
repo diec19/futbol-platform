@@ -62,7 +62,7 @@ export function SponsorItem({
         <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
           <SponsorStatusBadge status={sponsor.active ? 'ACTIVE' : 'PAUSED'} />
           <div className="flex items-center gap-1.5">
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit} title="Editar">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit} title="Editar" aria-label="Editar auspiciante">
               <Pencil size={14} />
             </Button>
             <Button
@@ -71,6 +71,7 @@ export function SponsorItem({
               className="h-8 w-8 text-muted-foreground hover:text-amber-600"
               onClick={onToggleActive}
               title={sponsor.active ? 'Pausar' : 'Activar'}
+              aria-label={sponsor.active ? 'Pausar auspiciante' : 'Activar auspiciante'}
             >
               <Pause size={14} />
             </Button>
@@ -81,7 +82,7 @@ export function SponsorItem({
               destructive
               onConfirm={onRemove}
               trigger={
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" aria-label="Eliminar auspiciante">
                   <Trash2 size={14} />
                 </Button>
               }
@@ -110,7 +111,7 @@ export function SponsorItem({
                     <div className="flex items-center justify-between">
                       <h5 className="font-bold">{plan.name}</h5>
                       <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={() => onEditPlan(plan)}>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={() => onEditPlan(plan)} aria-label="Editar plan">
                           <Pencil size={12} />
                         </Button>
                         <ConfirmDialog
@@ -120,7 +121,7 @@ export function SponsorItem({
                           destructive
                           onConfirm={() => onRemovePlan(plan)}
                           trigger={
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive">
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" aria-label="Eliminar plan">
                               <Trash2 size={12} />
                             </Button>
                           }

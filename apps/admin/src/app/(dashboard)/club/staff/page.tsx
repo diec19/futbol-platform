@@ -197,7 +197,7 @@ export default function ClubStaffPage() {
                       <p className="text-xs font-medium text-brand-red">{member.role}</p>
                       {member.bio && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{member.bio}</p>}
                       <div className="mt-2 flex gap-1">
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-brand-blue" onClick={() => setEditing(member)}>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-brand-blue" onClick={() => setEditing(member)} aria-label="Editar integrante">
                           <Edit2 size={13} />
                         </Button>
                         <ConfirmDialog
@@ -207,7 +207,7 @@ export default function ClubStaffPage() {
                           destructive
                           onConfirm={() => deleteMutation.mutate(member.id)}
                           trigger={
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive">
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" aria-label="Eliminar integrante">
                               <Trash2 size={13} />
                             </Button>
                           }

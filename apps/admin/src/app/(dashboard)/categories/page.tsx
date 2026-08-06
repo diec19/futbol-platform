@@ -167,6 +167,7 @@ export default function CategoriesPage() {
                         size="icon"
                         onClick={() => toggle.mutate(cat.id)}
                         title={cat.active ? 'Desactivar' : 'Activar'}
+                        aria-label={cat.active ? 'Desactivar categoría' : 'Activar categoría'}
                       >
                         {cat.active ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
                       </Button>
@@ -177,7 +178,7 @@ export default function CategoriesPage() {
                         destructive
                         onConfirm={() => remove.mutate(cat.id)}
                         trigger={
-                          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive">
+                          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" aria-label="Eliminar categoría">
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         }

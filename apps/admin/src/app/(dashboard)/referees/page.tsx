@@ -115,7 +115,7 @@ export default function RefereesPage() {
           <CardContent className="p-5 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold">Nuevo árbitro</h3>
-              <Button variant="ghost" size="icon" onClick={() => setShowForm(false)}>
+              <Button variant="ghost" size="icon" onClick={() => setShowForm(false)} aria-label="Cerrar formulario">
                 <X className="h-4 w-4" />
               </Button>
             </div>
@@ -215,10 +215,11 @@ export default function RefereesPage() {
                           onClick={() => update.mutate(ref.id)}
                           disabled={update.isPending}
                           className="text-emerald-600 hover:bg-emerald-50"
+                          aria-label="Confirmar edición"
                         >
                           <Check className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => setEditId(null)}>
+                        <Button variant="ghost" size="icon" onClick={() => setEditId(null)} aria-label="Cancelar edición">
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
@@ -249,7 +250,7 @@ export default function RefereesPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center gap-1 justify-end">
-                        <Button variant="ghost" size="icon" onClick={() => startEdit(ref)}>
+                        <Button variant="ghost" size="icon" onClick={() => startEdit(ref)} aria-label="Editar árbitro">
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <ConfirmDialog
@@ -259,7 +260,7 @@ export default function RefereesPage() {
                           destructive
                           onConfirm={() => remove.mutate(ref.id)}
                           trigger={
-                            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive">
+                            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" aria-label="Eliminar árbitro">
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           }

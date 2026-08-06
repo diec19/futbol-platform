@@ -225,6 +225,7 @@ export default function ClubCategoriasPage() {
                       className="h-7 w-7 text-muted-foreground hover:text-brand-blue"
                       onClick={() => setEditing(cat)}
                       title="Editar"
+                      aria-label="Editar categoría"
                     >
                       <Pencil size={14} />
                     </Button>
@@ -240,6 +241,7 @@ export default function ClubCategoriasPage() {
                           size="icon"
                           className="h-7 w-7 text-muted-foreground hover:text-destructive"
                           title="Eliminar"
+                          aria-label="Eliminar categoría"
                         >
                           <Trash2 size={14} />
                         </Button>

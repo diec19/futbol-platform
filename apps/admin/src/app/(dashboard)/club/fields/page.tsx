@@ -207,7 +207,7 @@ export default function ClubFieldsPage() {
                       )}
                     </div>
                     <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-brand-blue" onClick={() => setEditing(field)}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-brand-blue" onClick={() => setEditing(field)} aria-label="Editar cancha">
                         <Edit2 size={15} />
                       </Button>
                       <ConfirmDialog
@@ -217,7 +217,7 @@ export default function ClubFieldsPage() {
                         destructive
                         onConfirm={() => deleteMutation.mutate(field.id)}
                         trigger={
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" aria-label="Eliminar cancha">
                             <Trash2 size={15} />
                           </Button>
                         }

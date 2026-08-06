@@ -85,6 +85,7 @@ export default function SponsorsPage() {
       )}
       {showPlanFor && (
         <PlanModal
+          sponsor={showPlanFor}
           onClose={() => setShowPlanFor(null)}
           onSaved={() => {
             setShowPlanFor(null);

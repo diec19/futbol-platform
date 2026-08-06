@@ -93,6 +93,7 @@ export default function ClubGalleryPage() {
                     setPreview(null);
                     setUrl('');
                   }}
+                  aria-label="Quitar imagen"
                 >
                   <X size={12} />
                 </Button>
@@ -161,6 +162,7 @@ export default function ClubGalleryPage() {
                   <Button
                     size="icon"
                     className="absolute right-2 top-2 h-7 w-7 rounded-full transition-opacity sm:opacity-0 sm:group-hover:opacity-100"
+                    aria-label="Eliminar foto"
                   >
                     <Trash2 size={13} />
                   </Button>

@@ -244,6 +244,7 @@ export default function ClubInfoPage() {
                   size="icon"
                   className="shrink-0 text-muted-foreground"
                   onClick={() => setShowMpToken(!showMpToken)}
+                  aria-label={showMpToken ? 'Ocultar token de Mercado Pago' : 'Mostrar token de Mercado Pago'}
                 >
                   {showMpToken ? <EyeOff size={15} /> : <Eye size={15} />}
                 </Button>
@@ -264,6 +265,7 @@ export default function ClubInfoPage() {
                   size="icon"
                   className="shrink-0 text-muted-foreground"
                   onClick={() => setShowMpSecret(!showMpSecret)}
+                  aria-label={showMpSecret ? 'Ocultar webhook secret' : 'Mostrar webhook secret'}
                 >
                   {showMpSecret ? <EyeOff size={15} /> : <Eye size={15} />}
                 </Button>

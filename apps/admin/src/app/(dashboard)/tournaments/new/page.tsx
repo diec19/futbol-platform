@@ -1,10 +1,15 @@
 'use client';
 
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
+import {
+  tournamentFormSchema,
+  type TournamentFormValues,
+} from '@/lib/validations';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -23,25 +28,33 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 export default function NewTournamentPage() {
   const router = useRouter();
   const qc = useQueryClient();
-  const [form, setForm] = useState({
-    name: '',
-    description: '',
-    startDate: '',
-    endDate: '',
-    sponsor: '',
-    rules: '',
-    status: 'DRAFT',
+  const {
+    register,
+    handleSubmit,
+    control,
+    formState: { errors, isSubmitting },
+  } = useForm<TournamentFormValues>({
+    resolver: zodResolver(tournamentFormSchema),
+    defaultValues: {
+      name: '',
+      description: '',
+      startDate: '',
+      endDate: '',
+      sponsor: '',
+      rules: '',
+      status: 'DRAFT',
+    },
   });
 
   const create = useMutation({
-    mutationFn: () =>
+    mutationFn: (values: TournamentFormValues) =>
       api.tournaments.create({
-        ...form,
-        startDate: new Date(form.startDate).toISOString(),
-        endDate: new Date(form.endDate).toISOString(),
-        description: form.description || undefined,
-        sponsor: form.sponsor || undefined,
-        rules: form.rules || undefined,
+        ...values,
+        startDate: new Date(values.startDate).toISOString(),
+        endDate: new Date(values.endDate).toISOString(),
+        description: values.description || undefined,
+        sponsor: values.sponsor || undefined,
+        rules: values.rules || undefined,
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['tournaments'] });
@@ -51,13 +64,18 @@ export default function NewTournamentPage() {
     onError: (err: any) => toast.error(err.message),
   });
 
-  const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-    setForm((f) => ({ ...f, [field]: e.target.value }));
+  const onSubmit = async (values: TournamentFormValues) => {
+    try {
+      await create.mutateAsync(values);
+    } catch {
+      // El toast de error lo maneja onError del mutation
+    }
+  };
 
   return (
     <div className="max-w-2xl space-y-6">
       <div className="flex items-center gap-3">
-        <Link href="/tournaments" className="p-2 hover:bg-muted rounded-lg transition-colors">
+        <Link href="/tournaments" className="p-2 hover:bg-muted rounded-lg transition-colors" aria-label="Volver a torneos">
           <ArrowLeft className="h-[18px] w-[18px]" />
         </Link>
         <div>
@@ -71,83 +89,105 @@ export default function NewTournamentPage() {
           <CardTitle>Datos del torneo</CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
-          <div className="space-y-1.5">
-            <Label>Nombre *</Label>
-            <Input
-              value={form.name}
-              onChange={set('name')}
-              required
-              placeholder="Torneo Apertura 2026"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Descripción</Label>
-            <Textarea
-              value={form.description}
-              onChange={set('description')}
-              rows={3}
-              placeholder="Descripción del torneo..."
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
             <div className="space-y-1.5">
-              <Label>Fecha inicio *</Label>
-              <Input type="date" value={form.startDate} onChange={set('startDate')} required />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Fecha fin *</Label>
-              <Input type="date" value={form.endDate} onChange={set('endDate')} required />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label>Estado</Label>
-              <Select value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="DRAFT">Borrador</SelectItem>
-                  <SelectItem value="ACTIVE">Activo</SelectItem>
-                  <SelectItem value="SUSPENDED">Suspendido</SelectItem>
-                  <SelectItem value="FINISHED">Finalizado</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Sponsor</Label>
+              <Label htmlFor="tournament-name">Nombre *</Label>
               <Input
-                value={form.sponsor}
-                onChange={set('sponsor')}
-                placeholder="Nombre del sponsor"
+                id="tournament-name"
+                placeholder="Torneo Apertura 2026"
+                {...register('name')}
+                aria-invalid={!!errors.name}
+              />
+              {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="tournament-description">Descripción</Label>
+              <Textarea
+                id="tournament-description"
+                rows={3}
+                placeholder="Descripción del torneo..."
+                {...register('description')}
               />
             </div>
-          </div>
 
-          <div className="space-y-1.5">
-            <Label>Reglamento</Label>
-            <Textarea
-              value={form.rules}
-              onChange={set('rules')}
-              rows={5}
-              placeholder="Reglamento del torneo..."
-            />
-          </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="tournament-start">Fecha inicio *</Label>
+                <Input
+                  id="tournament-start"
+                  type="date"
+                  {...register('startDate')}
+                  aria-invalid={!!errors.startDate}
+                />
+                {errors.startDate && (
+                  <p className="text-sm text-destructive">{errors.startDate.message}</p>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="tournament-end">Fecha fin *</Label>
+                <Input
+                  id="tournament-end"
+                  type="date"
+                  {...register('endDate')}
+                  aria-invalid={!!errors.endDate}
+                />
+                {errors.endDate && (
+                  <p className="text-sm text-destructive">{errors.endDate.message}</p>
+                )}
+              </div>
+            </div>
 
-          <div className="flex gap-3 pt-2">
-            <Button variant="outline" asChild>
-              <Link href="/tournaments">Cancelar</Link>
-            </Button>
-            <Button
-              onClick={() => create.mutate()}
-              disabled={create.isPending || !form.name || !form.startDate || !form.endDate}
-            >
-              {create.isPending ? 'Guardando...' : 'Crear torneo'}
-            </Button>
-          </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="tournament-status">Estado</Label>
+                <Controller
+                  control={control}
+                  name="status"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger id="tournament-status">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="DRAFT">Borrador</SelectItem>
+                        <SelectItem value="ACTIVE">Activo</SelectItem>
+                        <SelectItem value="SUSPENDED">Suspendido</SelectItem>
+                        <SelectItem value="FINISHED">Finalizado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="tournament-sponsor">Sponsor</Label>
+                <Input
+                  id="tournament-sponsor"
+                  placeholder="Nombre del sponsor"
+                  {...register('sponsor')}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="tournament-rules">Reglamento</Label>
+              <Textarea
+                id="tournament-rules"
+                rows={5}
+                placeholder="Reglamento del torneo..."
+                {...register('rules')}
+              />
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" asChild type="button">
+                <Link href="/tournaments">Cancelar</Link>
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Guardando...' : 'Crear torneo'}
+              </Button>
+            </div>
+          </form>
         </CardContent>
       </Card>
     </div>

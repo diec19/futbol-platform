@@ -156,7 +156,7 @@ export default function NotificationsPage() {
                   destructive
                   onConfirm={() => deleteMutation.mutate(n.id)}
                   trigger={
-                    <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0 text-muted-foreground hover:text-destructive">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0 text-muted-foreground hover:text-destructive" aria-label="Eliminar notificación">
                       <Trash2 size={14} />
                     </Button>
                   }

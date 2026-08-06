@@ -2,8 +2,11 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
+import { teamFormSchema, type TeamFormValues } from '@/lib/validations';
 import { Shield, Plus, X, Pencil, Check, Trash2, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,8 +46,18 @@ export default function TeamsPage() {
   const [page, setPage] = useState(1);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState<TeamForm>(EMPTY_FORM);
   const [editForm, setEditForm] = useState<TeamForm>(EMPTY_FORM);
+
+  const {
+    register,
+    handleSubmit,
+    control,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<TeamFormValues>({
+    resolver: zodResolver(teamFormSchema),
+    defaultValues: { name: '', delegateName: '', delegateContact: '', categoryId: '' },
+  });
 
   const { data: teamsData, isLoading } = useQuery({
     queryKey: ['teams', page, debouncedSearch],
@@ -65,15 +78,23 @@ export default function TeamsPage() {
   const categories = categoriesData?.data ?? [];
 
   const create = useMutation({
-    mutationFn: () => api.teams.create(form),
+    mutationFn: (values: TeamFormValues) => api.teams.create(values),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['teams'] });
       setShowForm(false);
-      setForm(EMPTY_FORM);
+      reset();
       toast.success('Equipo creado correctamente');
     },
     onError: (err: any) => toast.error(err.message),
   });
+
+  const onSubmit = async (values: TeamFormValues) => {
+    try {
+      await create.mutateAsync(values);
+    } catch {
+      // El toast de error lo maneja onError del mutation
+    }
+  };
 
   const update = useMutation({
     mutationFn: (id: string) => api.teams.update(id, editForm),
@@ -125,62 +146,66 @@ export default function TeamsPage() {
           <CardContent className="p-5 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold">Nuevo equipo</h3>
-              <Button variant="ghost" size="icon" onClick={() => setShowForm(false)}>
+              <Button variant="ghost" size="icon" onClick={() => setShowForm(false)} aria-label="Cerrar formulario">
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-4" noValidate>
               <div className="space-y-1.5">
-                <Label>Nombre *</Label>
+                <Label htmlFor="team-name">Nombre *</Label>
                 <Input
-                  value={form.name}
-                  onChange={set('name', setForm)}
+                  id="team-name"
                   placeholder="Nombre del equipo"
+                  {...register('name')}
+                  aria-invalid={!!errors.name}
                 />
+                {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
               </div>
               <div className="space-y-1.5">
-                <Label>Categoría</Label>
-                <Select
-                  value={form.categoryId}
-                  onValueChange={(v) => setForm(f => ({ ...f, categoryId: v }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sin categoría" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">Sin categoría</SelectItem>
-                    {categories.map((c: any) => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="team-category">Categoría *</Label>
+                <Controller
+                  control={control}
+                  name="categoryId"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger id="team-category">
+                        <SelectValue placeholder="Seleccionar categoría" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((c: any) => (
+                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {errors.categoryId && (
+                  <p className="text-sm text-destructive">{errors.categoryId.message}</p>
+                )}
               </div>
               <div className="space-y-1.5">
-                <Label>Delegado</Label>
+                <Label htmlFor="team-delegate">Delegado</Label>
                 <Input
-                  value={form.delegateName}
-                  onChange={set('delegateName', setForm)}
+                  id="team-delegate"
                   placeholder="Nombre del delegado"
+                  {...register('delegateName')}
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Contacto</Label>
+                <Label htmlFor="team-contact">Contacto</Label>
                 <Input
-                  value={form.delegateContact}
-                  onChange={set('delegateContact', setForm)}
+                  id="team-contact"
                   placeholder="Teléfono / email"
+                  {...register('delegateContact')}
                 />
               </div>
-            </div>
-            <div className="flex gap-3">
-              <Button variant="outline" onClick={() => setShowForm(false)}>Cancelar</Button>
-              <Button
-                onClick={() => create.mutate()}
-                disabled={create.isPending || !form.name}
-              >
-                {create.isPending ? 'Creando...' : 'Crear equipo'}
-              </Button>
-            </div>
+              <div className="flex gap-3 md:col-span-2">
+                <Button variant="outline" type="button" onClick={() => setShowForm(false)}>Cancelar</Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? 'Creando...' : 'Crear equipo'}
+                </Button>
+              </div>
+            </form>
           </CardContent>
         </Card>
       )}
@@ -261,10 +286,11 @@ export default function TeamsPage() {
                           onClick={() => update.mutate(team.id)}
                           disabled={update.isPending}
                           className="text-emerald-600 hover:bg-emerald-50"
+                          aria-label="Confirmar edición"
                         >
                           <Check className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => setEditId(null)}>
+                        <Button variant="ghost" size="icon" onClick={() => setEditId(null)} aria-label="Cancelar edición">
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
@@ -286,7 +312,7 @@ export default function TeamsPage() {
                     <TableCell className="text-muted-foreground">{team._count?.players ?? team.players?.length ?? '—'}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center gap-1 justify-end">
-                        <Button variant="ghost" size="icon" onClick={() => startEdit(team)}>
+                        <Button variant="ghost" size="icon" onClick={() => startEdit(team)} aria-label="Editar equipo">
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <ConfirmDialog
@@ -296,7 +322,7 @@ export default function TeamsPage() {
                           destructive
                           onConfirm={() => remove.mutate(team.id)}
                           trigger={
-                            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive">
+                            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" aria-label="Eliminar equipo">
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           }

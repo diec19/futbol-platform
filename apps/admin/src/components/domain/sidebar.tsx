@@ -116,7 +116,9 @@ function NavSection({
   return (
     <div className={cn(bordered && 'border-t border-white/10 pt-3')}>
       <button
+        type="button"
         onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
         className="w-full flex items-center justify-between px-3 py-1.5 group"
       >
         <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider group-hover:text-slate-300 transition-colors">

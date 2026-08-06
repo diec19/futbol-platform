@@ -221,6 +221,7 @@ export function MatchResultModal({ match, onClose }: Props) {
                     size="icon"
                     onClick={() => removeEvent(i)}
                     className="text-muted-foreground hover:text-destructive mt-0.5"
+                    aria-label="Eliminar evento"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

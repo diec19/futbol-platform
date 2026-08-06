@@ -177,10 +177,11 @@ export default function ClubNewsPage() {
                         className="h-8 w-8 text-muted-foreground hover:text-brand-blue"
                         onClick={() => toggleMutation.mutate({ id: item.id, published: item.published })}
                         title={item.published ? 'Despublicar' : 'Publicar'}
+                        aria-label={item.published ? 'Despublicar noticia' : 'Publicar noticia'}
                       >
                         {item.published ? <EyeOff size={15} /> : <Eye size={15} />}
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-brand-blue" onClick={() => setEditing(item)}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-brand-blue" onClick={() => setEditing(item)} aria-label="Editar noticia">
                         <Edit2 size={15} />
                       </Button>
                       <ConfirmDialog
@@ -190,7 +191,7 @@ export default function ClubNewsPage() {
                         destructive
                         onConfirm={() => deleteMutation.mutate(item.id)}
                         trigger={
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" aria-label="Eliminar noticia">
                             <Trash2 size={15} />
                           </Button>
                         }
