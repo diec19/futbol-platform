@@ -537,6 +537,43 @@ model Notification {
   @@map("notifications")
 }
 
+// ── Outbox Multicanal ────────────────────────────────────────────────────────
+
+enum OutboxChannel {
+  INAPP
+  WHATSAPP
+  EMAIL
+}
+
+enum OutboxStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+model NotificationOutbox {
+  id            String         @id @default(cuid())
+  channel       OutboxChannel
+  refType       String         // 'subscription' | 'playerSubscription' | 'sponsorshipPayment'
+  entityId      String         // id de la cuota (Subscription/PlayerSubscription/SponsorshipPayment)
+  recipientKey  String         // discriminador de destinatario (ej: wa:+549..., em:mail@..., members:id1,id2)
+  title         String
+  message       String
+  payload       Json?          // { memberIds?, email?, phone?, subId, month, year, name, paymentLink? }
+  status        OutboxStatus   @default(PENDING)
+  attempts      Int            @default(0)
+  lastError     String?
+  sentAt        DateTime?
+  nextAttemptAt DateTime?      @default(now())
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@unique([channel, refType, entityId, recipientKey])
+  @@index([status, channel, nextAttemptAt])
+  @@map("notification_outbox")
+}
+
 // ── Auspiciantes ────────────────────────────────────────────────────────────
 
 model Sponsor {

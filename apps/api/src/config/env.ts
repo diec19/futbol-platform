@@ -17,6 +17,10 @@ const envSchema = z.object({
   WHATSAPP_API_URL: z.string().optional(),
   WHATSAPP_API_KEY: z.string().optional(),
   WHATSAPP_INSTANCE: z.string().optional(),
+  EMAIL_API_KEY: z.string().optional(),
+  EMAIL_FROM: z.string().optional(),
+  // 'false' desactiva crons + dispatcher outbox; por defecto arrancan (compat con deploys actuales)
+  CRON_ENABLED: z.string().default('true'),
 });
 
 const parsed = envSchema.safeParse(process.env);

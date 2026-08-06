@@ -203,12 +203,17 @@ export async function createMemberMpPreference(
 }
 
 // ── WhatsApp Helper ──────────────────────────────────────────────────────────
-export const normalizePhone = (phone: string) => {
-  const d = phone.replace(/\D/g, '');
-  if (d.startsWith('549')) return d;
-  if (d.startsWith('54')) return `9${d}`;
-  return `549${d}`;
-};
+export function normalizePhone(phone: string): string {
+  let d = phone.replace(/\D/g, '');
+  if (d.startsWith('0')) d = d.slice(1);
+  if (d.startsWith('54')) {
+    // Formato internacional WhatsApp Argentina: 54 + 9 + número (sin 0 de área, sin 15)
+    if (!d.startsWith('549')) {
+      d = `549${d.slice(2)}`;
+    }
+  }
+  return d;
+}
 
 export function buildWhatsAppUrl(phone: string, message: string): string {
   const encoded = encodeURIComponent(message);

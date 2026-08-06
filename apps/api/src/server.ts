@@ -3,13 +3,18 @@ import { app } from './app';
 import { env } from './config/env';
 import { db } from './config/database';
 import { startOverdueCron, startMonthlyFeeCron } from './lib/cron';
+import { startOutboxDispatcher } from './lib/outbox';
 
 async function main() {
   await db.$connect();
   console.log('Database connected');
 
-  startOverdueCron();
-  startMonthlyFeeCron();
+  // Gate unificado: CRON_ENABLED !== 'false' arranca todo (compat con deploys actuales que no definen la var)
+  if (env.CRON_ENABLED !== 'false') {
+    startOverdueCron();
+    startMonthlyFeeCron();
+    startOutboxDispatcher();
+  }
 
   app.listen(env.PORT, () => {
     console.log(`API running on http://localhost:${env.PORT}`);
