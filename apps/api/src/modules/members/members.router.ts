@@ -27,8 +27,8 @@ membersRouter.post('/auth/register', async (req, res, next) => {
   try {
     const data = await svc.create(req.body);
     res.status(201).json({ data });
-  } catch (e: any) {
-    res.status(500).json({ error: e?.message || 'Error interno del servidor', stack: e?.stack });
+  } catch (e) {
+    next(e);
   }
 });
 membersRouter.get('/auth/me', memberAuth, ctrl.me);
