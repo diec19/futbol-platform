@@ -9,35 +9,34 @@ webhooksRouter.post('/mp', async (req, res) => {
     const body = req.body;
     const query = req.query as Record<string, string>;
 
-    console.log('[WEBHOOK] Received:', JSON.stringify({ body, query }));
+    const paymentId = body.data?.id ?? body.id ?? query.id;
+    console.log('[WEBHOOK] Received payment:', paymentId);
 
-    // ── Signature Validation ───────────────────────────────────────────────
+    // ── Signature Validation (fail-closed) ─────────────────────────────────
+    let mpConfig: { accessToken: string; webhookSecret: string | null };
     try {
-      const { webhookSecret } = await getClubMpToken();
-      if (webhookSecret) {
-        const rawBody = JSON.stringify(body);
-        const isValid = validateWebhookSignature(rawBody, req.headers as Record<string, string>, webhookSecret);
-        if (!isValid) {
-          console.error('[WEBHOOK] Invalid signature — rejecting');
-          return res.status(401).json({ error: 'Invalid signature' });
-        }
-      }
+      mpConfig = await getClubMpToken();
     } catch {
-      // If no secret configured, skip validation (backwards compat)
+      console.error('[WEBHOOK] MercadoPago no configurado — rechazando webhook');
+      return res.status(503).json({ error: 'MercadoPago no configurado' });
+    }
+
+    if (!mpConfig.webhookSecret) {
+      console.error('[WEBHOOK] Webhook secret no configurado — rechazando por seguridad');
+      return res.status(503).json({ error: 'Webhook secret no configurado' });
+    }
+
+    const rawBody = JSON.stringify(body);
+    const isValid = validateWebhookSignature(rawBody, req.headers as Record<string, string>, mpConfig.webhookSecret);
+    if (!isValid) {
+      console.error('[WEBHOOK] Invalid signature — rejecting');
+      return res.status(401).json({ error: 'Invalid signature' });
     }
 
     // ── Extract Payment ID ─────────────────────────────────────────────────
-    const paymentId = body.data?.id ?? body.id ?? query.id;
     if (!paymentId) { console.log('[WEBHOOK] No payment ID'); return res.json({ ignored: true }); }
 
-    let accessToken: string;
-    try {
-      const mpToken = await getClubMpToken();
-      accessToken = mpToken.accessToken;
-    } catch {
-      console.error('[WEBHOOK] No MP_ACCESS_TOKEN configurado');
-      return res.json({ ignored: true });
-    }
+    const accessToken = mpConfig.accessToken;
 
     // ── Fetch Payment Details from MP ──────────────────────────────────────
     let payment;
@@ -45,7 +44,7 @@ webhooksRouter.post('/mp', async (req, res) => {
       payment = await fetchMpPayment(String(paymentId), accessToken);
     } catch (e: any) {
       console.error('[WEBHOOK] Error fetching payment:', e.message);
-      return res.json({ ignored: true });
+      return res.status(500).json({ error: 'Error obteniendo pago' });
     }
 
     console.log('[WEBHOOK] Payment status:', payment.status, 'external_reference:', payment.external_reference);
@@ -135,8 +134,9 @@ webhooksRouter.post('/mp', async (req, res) => {
       res.json({ ignored: true, status: payment.status });
     }
   } catch (e) {
-    console.error('[WEBHOOK] Error:', e);
-    res.status(200).json({ ignored: true });
+    console.error('[WEBHOOK] Error procesando webhook:', e);
+    // 500 → MercadoPago reintenta el webhook. Devolver 200 aquí pierde pagos en silencio.
+    res.status(500).json({ error: 'Error interno procesando webhook' });
   }
 });
 
