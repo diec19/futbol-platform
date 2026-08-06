@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = 'https://futbol-platform-production.up.railway.app/api/v1';
+const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://futbol-platform-production.up.railway.app/api/v1';
 
 async function request<T>(endpoint: string, options: RequestInit = {}, withAuth = false): Promise<T> {
   const headers: Record<string, string> = {
