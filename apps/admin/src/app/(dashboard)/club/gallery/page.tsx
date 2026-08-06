@@ -2,12 +2,22 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { Image, Plus, Trash2, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ConfirmDialog } from '@/components/domain/confirm-dialog';
 
 export default function ClubGalleryPage() {
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery({ queryKey: ['club-gallery'], queryFn: () => api.club.gallery.list() });
+  const { data, isLoading } = useQuery({
+    queryKey: ['club-gallery'],
+    queryFn: () => api.club.gallery.list(),
+  });
   const photos = data?.data ?? [];
 
   const [showForm, setShowForm] = useState(false);
@@ -17,88 +27,145 @@ export default function ClubGalleryPage() {
 
   const addMutation = useMutation({
     mutationFn: (d: unknown) => api.club.gallery.add(d),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['club-gallery'] }); setShowForm(false); setUrl(''); setCaption(''); setPreview(null); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['club-gallery'] });
+      setShowForm(false);
+      setUrl('');
+      setCaption('');
+      setPreview(null);
+      toast.success('Foto agregada');
+    },
+    onError: (err: any) => toast.error(err.message),
   });
   const removeMutation = useMutation({
     mutationFn: (id: string) => api.club.gallery.remove(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['club-gallery'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['club-gallery'] });
+      toast.success('Foto eliminada');
+    },
+    onError: (err: any) => toast.error(err.message),
   });
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-5">
+    <div className="max-w-5xl space-y-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Image className="text-brand-red" size={24} />
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Galería</h1>
-            <p className="text-sm text-slate-500">{photos.length} fotos</p>
+            <h1 className="text-2xl font-bold tracking-tight">Galería</h1>
+            <p className="text-sm text-muted-foreground">{photos.length} fotos</p>
           </div>
         </div>
         {!showForm && (
-          <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-4 py-2 bg-brand-red text-white rounded-lg text-sm font-medium hover:bg-brand-red-dark">
+          <Button className="gap-2" onClick={() => setShowForm(true)}>
             <Plus size={15} /> Agregar foto
-          </button>
+          </Button>
         )}
       </div>
 
       {showForm && (
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-3">
-          <p className="font-semibold text-sm text-slate-700">Agregar foto</p>
-          <input
-            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-red"
-            placeholder="URL de la imagen *"
-            value={url}
-            onChange={(e) => { setUrl(e.target.value); setPreview(e.target.value || null); }}
-          />
-          {preview && (
-            <div className="relative inline-block">
-              <img src={preview} alt="preview" className="h-40 w-auto rounded-lg object-cover border border-slate-200" onError={() => setPreview(null)} />
-              <button onClick={() => { setPreview(null); setUrl(''); }} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5">
-                <X size={12} />
-              </button>
+        <Card className="bg-muted/40">
+          <CardContent className="space-y-3 pt-6">
+            <p className="text-sm font-semibold">Agregar foto</p>
+            <div className="space-y-1.5">
+              <Label>URL de la imagen *</Label>
+              <Input
+                placeholder="URL de la imagen"
+                value={url}
+                onChange={(e) => {
+                  setUrl(e.target.value);
+                  setPreview(e.target.value || null);
+                }}
+              />
             </div>
-          )}
-          <input
-            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-red"
-            placeholder="Descripción (opcional)"
-            value={caption}
-            onChange={(e) => setCaption(e.target.value)}
-          />
-          <div className="flex gap-2 justify-end">
-            <button onClick={() => { setShowForm(false); setUrl(''); setCaption(''); setPreview(null); }} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-200 rounded-lg">Cancelar</button>
-            <button
-              onClick={() => { if (!url) return; addMutation.mutate({ url, caption: caption || undefined }); }}
-              className="px-4 py-2 text-sm bg-brand-red text-white rounded-lg hover:bg-brand-red-dark"
-            >
-              Agregar
-            </button>
-          </div>
-        </div>
+            {preview && (
+              <div className="relative inline-block">
+                <img
+                  src={preview}
+                  alt="preview"
+                  className="h-40 w-auto rounded-lg border object-cover"
+                  onError={() => setPreview(null)}
+                />
+                <Button
+                  size="icon"
+                  className="absolute -right-2 -top-2 h-6 w-6 rounded-full"
+                  onClick={() => {
+                    setPreview(null);
+                    setUrl('');
+                  }}
+                >
+                  <X size={12} />
+                </Button>
+              </div>
+            )}
+            <div className="space-y-1.5">
+              <Label>Descripción (opcional)</Label>
+              <Input value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="Descripción" />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowForm(false);
+                  setUrl('');
+                  setCaption('');
+                  setPreview(null);
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={() => {
+                  if (!url) return;
+                  addMutation.mutate({ url, caption: caption || undefined });
+                }}
+              >
+                Agregar
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {isLoading ? (
-        <p className="text-slate-400 text-sm">Cargando...</p>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Skeleton key={i} className="aspect-square w-full" />
+          ))}
+        </div>
       ) : photos.length === 0 ? (
-        <div className="text-center py-16 text-slate-400">
+        <div className="py-16 text-center text-muted-foreground">
           <Image size={40} className="mx-auto mb-3 opacity-30" />
           <p>La galería está vacía</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {photos.map((photo: any) => (
-            <div key={photo.id} className="group relative aspect-square rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
-              <img src={photo.url} alt={photo.caption ?? ''} className="w-full h-full object-cover" />
+            <div
+              key={photo.id}
+              className="group relative aspect-square overflow-hidden rounded-xl border bg-muted"
+            >
+              <img src={photo.url} alt={photo.caption ?? ''} className="h-full w-full object-cover" />
               {photo.caption && (
-                <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs px-2 py-1 truncate">
+                <div className="absolute bottom-0 left-0 right-0 truncate bg-black/60 px-2 py-1 text-xs text-white">
                   {photo.caption}
                 </div>
               )}
-              <button
-                onClick={() => removeMutation.mutate(photo.id)}
-                className="absolute top-2 right-2 bg-red-500/90 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <Trash2 size={13} />
-              </button>
+              <ConfirmDialog
+                title="Eliminar foto"
+                description="¿Eliminar esta foto de la galería? Esta acción no se puede deshacer."
+                confirmLabel="Eliminar"
+                destructive
+                onConfirm={() => removeMutation.mutate(photo.id)}
+                trigger={
+                  <Button
+                    size="icon"
+                    className="absolute right-2 top-2 h-7 w-7 rounded-full transition-opacity sm:opacity-0 sm:group-hover:opacity-100"
+                  >
+                    <Trash2 size={13} />
+                  </Button>
+                }
+              />
             </div>
           ))}
         </div>

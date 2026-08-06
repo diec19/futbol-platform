@@ -2,20 +2,43 @@
 
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { api } from '@/lib/api';
-import { CreditCard, Plus, Trash2, CheckCircle, AlertCircle, Clock, Users, User } from 'lucide-react';
+import { CreditCard, Plus, Trash2, Users, User } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge, type BadgeProps } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { ConfirmDialog } from '@/components/domain/confirm-dialog';
 
-const TYPE_CONFIG: Record<string, { label: string; bg: string; text: string }> = {
-  team_payment:         { label: 'Equipo',     bg: 'bg-slate-100', text: 'text-slate-700' },
-  member_subscription: { label: 'Socio',      bg: 'bg-blue-50',   text: 'text-blue-700' },
-  player_subscription: { label: 'Jugador',    bg: 'bg-amber-50',  text: 'text-amber-700' },
+const TYPE_CONFIG: Record<string, { label: string; variant: NonNullable<BadgeProps['variant']> }> = {
+  team_payment: { label: 'Equipo', variant: 'secondary' },
+  member_subscription: { label: 'Socio', variant: 'info' },
+  player_subscription: { label: 'Jugador', variant: 'warning' },
 };
 
-const STATUS_CONFIG: Record<string, { label: string; icon: any; color: string }> = {
-  PENDING:   { label: 'Pendiente', icon: Clock,       color: 'text-amber-600 bg-amber-50' },
-  LINK_SENT: { label: 'Link enviado', icon: Clock,    color: 'text-blue-600 bg-blue-50' },
-  PAID:      { label: 'Pagado',     icon: CheckCircle, color: 'text-green-600 bg-green-50' },
-  OVERDUE:   { label: 'Vencido',    icon: AlertCircle, color: 'text-red-600 bg-red-50' },
+const STATUS_CONFIG: Record<string, { label: string; variant: NonNullable<BadgeProps['variant']> }> = {
+  PENDING: { label: 'Pendiente', variant: 'neutral' },
+  LINK_SENT: { label: 'Link enviado', variant: 'info' },
+  PAID: { label: 'Pagado', variant: 'success' },
+  OVERDUE: { label: 'Vencido', variant: 'destructive' },
 };
 
 function PaymentForm({ teams, onSave, onCancel }: { teams: any[]; onSave: (d: any) => void; onCancel: () => void }) {
@@ -26,31 +49,73 @@ function PaymentForm({ teams, onSave, onCancel }: { teams: any[]; onSave: (d: an
   const [dueDate, setDueDate] = useState('');
 
   return (
-    <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-3">
-      <p className="font-semibold text-sm text-slate-700">Registrar pago / deuda de equipo</p>
-      <div className="grid grid-cols-2 gap-3">
-        <select className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-red bg-white" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
-          <option value="">Seleccionar equipo *</option>
-          {teams.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
-        </select>
-        <select className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-red bg-white" value={type} onChange={(e) => setType(e.target.value)}>
-          <option value="MONTHLY_FEE">Cuota mensual</option>
-          <option value="REGISTRATION">Inscripción</option>
-          <option value="FINE">Multa</option>
-          <option value="OTHER">Otro</option>
-        </select>
-        <input className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-red" type="number" placeholder="Monto ($) *" value={amount} onChange={(e) => setAmount(e.target.value)} />
-        <input className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-red" type="date" placeholder="Fecha vencimiento" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
-        <input className="col-span-2 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-red" placeholder="Descripción (opcional)" value={description} onChange={(e) => setDescription(e.target.value)} />
-      </div>
-      <div className="flex gap-2 justify-end">
-        <button onClick={onCancel} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-200 rounded-lg">Cancelar</button>
-        <button
-          onClick={() => { if (!teamId || !amount) return; onSave({ teamId, type, amount: parseFloat(amount), description: description || undefined, dueDate: dueDate || undefined }); }}
-          className="px-4 py-2 text-sm bg-brand-red text-white rounded-lg hover:bg-brand-red-dark"
-        >Registrar</button>
-      </div>
-    </div>
+    <Card>
+      <CardContent className="space-y-3 pt-6">
+        <p className="text-sm font-semibold">Registrar pago / deuda de equipo</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label>Equipo *</Label>
+            <Select value={teamId} onValueChange={setTeamId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar equipo" />
+              </SelectTrigger>
+              <SelectContent>
+                {teams.map((t: any) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Tipo</Label>
+            <Select value={type} onValueChange={setType}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="MONTHLY_FEE">Cuota mensual</SelectItem>
+                <SelectItem value="REGISTRATION">Inscripción</SelectItem>
+                <SelectItem value="FINE">Multa</SelectItem>
+                <SelectItem value="OTHER">Otro</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Monto ($) *</Label>
+            <Input type="number" placeholder="Monto" value={amount} onChange={(e) => setAmount(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Fecha vencimiento</Label>
+            <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+          </div>
+          <div className="col-span-2 space-y-1.5">
+            <Label>Descripción (opcional)</Label>
+            <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Descripción" />
+          </div>
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={onCancel}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={() => {
+              if (!teamId || !amount) return;
+              onSave({
+                teamId,
+                type,
+                amount: parseFloat(amount),
+                description: description || undefined,
+                dueDate: dueDate || undefined,
+              });
+            }}
+          >
+            Registrar
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -58,9 +123,10 @@ function TypeBadge({ type }: { type: string }) {
   const cfg = TYPE_CONFIG[type] ?? TYPE_CONFIG.team_payment;
   const Icon = type === 'member_subscription' ? Users : type === 'player_subscription' ? User : CreditCard;
   return (
-    <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${cfg.bg} ${cfg.text}`}>
-      <Icon size={10} />{cfg.label}
-    </span>
+    <Badge variant={cfg.variant} className="gap-1 rounded-full">
+      <Icon size={10} />
+      {cfg.label}
+    </Badge>
   );
 }
 
@@ -81,139 +147,197 @@ export default function ClubPaymentsPage() {
     queryKey: ['club-finance', params],
     queryFn: () => api.club.finance.all(Object.keys(params).length ? params : undefined),
   });
-  const { data: teamsData } = useQuery({ queryKey: ['teams-all'], queryFn: () => api.teams.list() });
+  const { data: teamsData } = useQuery({
+    queryKey: ['teams-all'],
+    queryFn: () => api.teams.list(),
+  });
 
   const items = data?.data ?? [];
   const teams = teamsData?.data ?? [];
 
   const createMutation = useMutation({
     mutationFn: (d: unknown) => api.club.payments.create(d),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['club-finance'] }); setShowForm(false); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['club-finance'] });
+      setShowForm(false);
+      toast.success('Pago registrado');
+    },
+    onError: (err: any) => toast.error(err.message),
   });
   const markPaidMutation = useMutation({
     mutationFn: (id: string) => api.club.payments.markPaid(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['club-finance'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['club-finance'] });
+      toast.success('Pago marcado como pagado');
+    },
+    onError: (err: any) => toast.error(err.message),
   });
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.club.payments.remove(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['club-finance'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['club-finance'] });
+      toast.success('Registro eliminado');
+    },
+    onError: (err: any) => toast.error(err.message),
   });
 
   const totalAmount = items.reduce((s: number, i: any) => s + i.amount, 0);
-  const pendingAmount = items.filter((i: any) => i.status === 'PENDING' || i.status === 'OVERDUE' || i.status === 'LINK_SENT').reduce((s: number, i: any) => s + i.amount, 0);
+  const pendingAmount = items
+    .filter((i: any) => i.status === 'PENDING' || i.status === 'OVERDUE' || i.status === 'LINK_SENT')
+    .reduce((s: number, i: any) => s + i.amount, 0);
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-5">
+    <div className="max-w-5xl space-y-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <CreditCard className="text-brand-red" size={24} />
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Pagos y Cuotas</h1>
-            <p className="text-sm text-slate-500">{items.length} registros — incluye equipos, socios y jugadores</p>
+            <h1 className="text-2xl font-bold tracking-tight">Pagos y Cuotas</h1>
+            <p className="text-sm text-muted-foreground">
+              {items.length} registros — incluye equipos, socios y jugadores
+            </p>
           </div>
         </div>
         {!showForm && (
-          <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-4 py-2 bg-brand-red text-white rounded-lg text-sm font-medium hover:bg-brand-red-dark">
+          <Button className="gap-2" onClick={() => setShowForm(true)}>
             <Plus size={15} /> Registrar pago de equipo
-          </button>
+          </Button>
         )}
       </div>
 
       {/* Summary */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-          <p className="text-xs text-amber-600 font-medium">Pendiente + Vencido</p>
-          <p className="text-2xl font-bold text-amber-700">${pendingAmount.toLocaleString('es-AR')}</p>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
-          <p className="text-xs text-slate-500 font-medium">Total mostrado</p>
-          <p className="text-2xl font-bold text-slate-800">${totalAmount.toLocaleString('es-AR')}</p>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
-          <p className="text-xs text-slate-500 font-medium">Registros</p>
-          <p className="text-2xl font-bold text-slate-800">{items.length}</p>
-        </div>
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="pt-4">
+            <p className="text-xs font-medium text-amber-600">Pendiente + Vencido</p>
+            <p className="text-2xl font-bold text-amber-700">
+              ${pendingAmount.toLocaleString('es-AR')}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <p className="text-xs font-medium text-muted-foreground">Total mostrado</p>
+            <p className="text-2xl font-bold">${totalAmount.toLocaleString('es-AR')}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <p className="text-xs font-medium text-muted-foreground">Registros</p>
+            <p className="text-2xl font-bold">{items.length}</p>
+          </CardContent>
+        </Card>
       </div>
 
       {showForm && <PaymentForm teams={teams} onSave={(d) => createMutation.mutate(d)} onCancel={() => setShowForm(false)} />}
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">
-        {/* Status filter */}
         {['ALL', 'PENDING', 'LINK_SENT', 'PAID', 'OVERDUE'].map((s) => (
-          <button key={s} onClick={() => setStatusFilter(s)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${statusFilter === s ? 'bg-brand-red text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+          <Button
+            key={s}
+            type="button"
+            size="sm"
+            variant={statusFilter === s ? 'default' : 'outline'}
+            className={statusFilter === s ? '' : 'text-muted-foreground'}
+            onClick={() => setStatusFilter(s)}
+          >
             {s === 'ALL' ? 'Todos' : STATUS_CONFIG[s]?.label ?? s}
-          </button>
+          </Button>
         ))}
-        {/* Type filter */}
-        <span className="text-slate-300 mx-1">|</span>
+        <span className="mx-1 text-muted-foreground/40">|</span>
         {['ALL', 'team_payment', 'member_subscription', 'player_subscription'].map((t) => (
-          <button key={t} onClick={() => setTypeFilter(t)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${typeFilter === t ? 'bg-brand-navy text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+          <Button
+            key={t}
+            type="button"
+            size="sm"
+            variant={typeFilter === t ? 'default' : 'outline'}
+            className={typeFilter === t ? '' : 'text-muted-foreground'}
+            onClick={() => setTypeFilter(t)}
+          >
             {t === 'ALL' ? 'Todos' : TYPE_CONFIG[t]?.label ?? t}
-          </button>
+          </Button>
         ))}
       </div>
 
       {isLoading ? (
-        <p className="text-slate-400 text-sm">Cargando...</p>
+        <div className="space-y-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-12 w-full" />
+          ))}
+        </div>
       ) : items.length === 0 ? (
-        <div className="text-center py-16 text-slate-400">
+        <div className="py-16 text-center text-muted-foreground">
           <CreditCard size={40} className="mx-auto mb-3 opacity-30" />
           <p>No hay registros financieros</p>
         </div>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 border-b border-slate-200">
-              <tr>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Entidad</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Tipo</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Monto</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Estado</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Vencimiento</th>
-                <th className="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {items.map((item: any) => {
-                const cfg = STATUS_CONFIG[item.status] ?? STATUS_CONFIG.PENDING;
-                const Icon = cfg.icon;
-                return (
-                  <tr key={`${item._type}-${item.id}`} className="hover:bg-slate-50">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <TypeBadge type={item._type} />
-                        <span className="font-medium text-slate-800">{item.entityName}</span>
+        <div className="overflow-hidden rounded-xl border bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Entidad</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Monto</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead>Vencimiento</TableHead>
+                <TableHead className="text-right" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {items.map((item: any) => (
+                <TableRow key={`${item._type}-${item.id}`}>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <TypeBadge type={item._type} />
+                      <span className="font-medium">{item.entityName}</span>
+                    </div>
+                    {item.entityDetail && (
+                      <p className="mt-0.5 text-xs text-muted-foreground">{item.entityDetail}</p>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{item.description}</TableCell>
+                  <TableCell className="font-semibold">${item.amount.toLocaleString('es-AR')}</TableCell>
+                  <TableCell>
+                    <Badge variant={STATUS_CONFIG[item.status]?.variant ?? 'neutral'} className="gap-1 rounded-full">
+                      {STATUS_CONFIG[item.status]?.label ?? item.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {item.dueDate ? new Date(item.dueDate).toLocaleDateString('es-AR') : '—'}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {item._type === 'team_payment' && (
+                      <div className="flex justify-end gap-1">
+                        {(item.status === 'PENDING' || item.status === 'OVERDUE') && (
+                          <Button
+                            size="sm"
+                            className="bg-green-100 text-xs text-green-700 hover:bg-green-200"
+                            onClick={() => markPaidMutation.mutate(item.id)}
+                            title="Marcar pagado"
+                          >
+                            Pagado ✓
+                          </Button>
+                        )}
+                        <ConfirmDialog
+                          title="Eliminar registro"
+                          description="¿Eliminar este registro financiero? Esta acción no se puede deshacer."
+                          confirmLabel="Eliminar"
+                          destructive
+                          onConfirm={() => deleteMutation.mutate(item.id)}
+                          trigger={
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                              <Trash2 size={14} />
+                            </Button>
+                          }
+                        />
                       </div>
-                      {item.entityDetail && <p className="text-xs text-slate-400 mt-0.5">{item.entityDetail}</p>}
-                    </td>
-                    <td className="px-4 py-3 text-slate-600 text-xs">{item.description}</td>
-                    <td className="px-4 py-3 font-semibold text-slate-800">${item.amount.toLocaleString('es-AR')}</td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium ${cfg.color}`}>
-                        <Icon size={11} />{cfg.label}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-slate-500 text-xs">{item.dueDate ? new Date(item.dueDate).toLocaleDateString('es-AR') : '—'}</td>
-                    <td className="px-4 py-3">
-                      {item._type === 'team_payment' && (
-                        <div className="flex gap-1 justify-end">
-                          {(item.status === 'PENDING' || item.status === 'OVERDUE') && (
-                            <button onClick={() => markPaidMutation.mutate(item.id)} title="Marcar pagado" className="px-2.5 py-1 text-xs bg-green-100 text-green-700 hover:bg-green-200 rounded-lg font-medium">
-                              Pagado ✓
-                            </button>
-                          )}
-                          <button onClick={() => deleteMutation.mutate(item.id)} className="p-1.5 text-slate-400 hover:text-red-500 rounded">
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       )}
     </div>

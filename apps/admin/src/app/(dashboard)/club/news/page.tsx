@@ -2,8 +2,17 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { api } from '@/lib/api';
-import { Newspaper, Plus, Trash2, Eye, EyeOff, X, Edit2 } from 'lucide-react';
+import { Newspaper, Plus, Trash2, Eye, EyeOff, Edit2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ConfirmDialog } from '@/components/domain/confirm-dialog';
 
 function NewsForm({ initial, onSave, onCancel }: { initial?: any; onSave: (d: any) => void; onCancel: () => void }) {
   const [title, setTitle] = useState(initial?.title ?? '');
@@ -12,31 +21,58 @@ function NewsForm({ initial, onSave, onCancel }: { initial?: any; onSave: (d: an
   const [published, setPublished] = useState(initial?.published ?? false);
 
   return (
-    <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-3">
-      <p className="font-semibold text-sm text-slate-700">{initial ? 'Editar noticia' : 'Nueva noticia'}</p>
-      <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-red" placeholder="Título *" value={title} onChange={(e) => setTitle(e.target.value)} />
-      <textarea className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-red min-h-[120px] resize-none" placeholder="Contenido *" value={body} onChange={(e) => setBody(e.target.value)} />
-      <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-red" placeholder="URL de imagen (opcional)" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
-      <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
-        <input type="checkbox" checked={published} onChange={(e) => setPublished(e.target.checked)} className="accent-brand-red" />
-        Publicar ahora
-      </label>
-      <div className="flex gap-2 justify-end pt-1">
-        <button onClick={onCancel} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-200 rounded-lg">Cancelar</button>
-        <button
-          onClick={() => { if (!title || !body) return; onSave({ title, body, imageUrl: imageUrl || undefined, published }); }}
-          className="px-4 py-2 text-sm bg-brand-red text-white rounded-lg hover:bg-brand-red-dark"
-        >
-          Guardar
-        </button>
-      </div>
-    </div>
+    <Card className="bg-muted/40">
+      <CardContent className="space-y-3 pt-6">
+        <p className="text-sm font-semibold">{initial ? 'Editar noticia' : 'Nueva noticia'}</p>
+        <div className="space-y-1.5">
+          <Label>Título *</Label>
+          <Input placeholder="Título" value={title} onChange={(e) => setTitle(e.target.value)} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Contenido *</Label>
+          <Textarea placeholder="Contenido" value={body} onChange={(e) => setBody(e.target.value)} rows={4} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>URL de imagen (opcional)</Label>
+          <Input
+            placeholder="URL de imagen"
+            value={imageUrl}
+            onChange={(e) => setImageUrl(e.target.value)}
+          />
+        </div>
+        <label className="flex cursor-pointer items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={published}
+            onChange={(e) => setPublished(e.target.checked)}
+            className="accent-brand-red"
+          />
+          Publicar ahora
+        </label>
+        <div className="flex justify-end gap-2 pt-1">
+          <Button variant="outline" onClick={onCancel}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={() => {
+              if (!title || !body) return;
+              onSave({ title, body, imageUrl: imageUrl || undefined, published });
+            }}
+          >
+            Guardar
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
 export default function ClubNewsPage() {
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery({ queryKey: ['club-news'], queryFn: () => api.club.news.list() });
+  const { data, isLoading } = useQuery({
+    queryKey: ['club-news'],
+    queryFn: () => api.club.news.list(),
+  });
   const news = data?.data ?? [];
 
   const [showForm, setShowForm] = useState(false);
@@ -44,44 +80,65 @@ export default function ClubNewsPage() {
 
   const createMutation = useMutation({
     mutationFn: (d: unknown) => api.club.news.create(d),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['club-news'] }); setShowForm(false); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['club-news'] });
+      setShowForm(false);
+      toast.success('Noticia creada');
+    },
+    onError: (err: any) => toast.error(err.message),
   });
   const updateMutation = useMutation({
     mutationFn: ({ id, ...d }: any) => api.club.news.update(id, d),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['club-news'] }); setEditing(null); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['club-news'] });
+      setEditing(null);
+      toast.success('Noticia actualizada');
+    },
+    onError: (err: any) => toast.error(err.message),
   });
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.club.news.remove(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['club-news'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['club-news'] });
+      toast.success('Noticia eliminada');
+    },
+    onError: (err: any) => toast.error(err.message),
   });
   const toggleMutation = useMutation({
     mutationFn: ({ id, published }: any) => api.club.news.update(id, { published: !published }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['club-news'] }),
+    onError: (err: any) => toast.error(err.message),
   });
 
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-5">
+    <div className="max-w-3xl space-y-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Newspaper className="text-brand-red" size={24} />
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Noticias del Club</h1>
-            <p className="text-sm text-slate-500">{news.length} noticias — {news.filter((n: any) => n.published).length} publicadas</p>
+            <h1 className="text-2xl font-bold tracking-tight">Noticias del Club</h1>
+            <p className="text-sm text-muted-foreground">
+              {news.length} noticias — {news.filter((n: any) => n.published).length} publicadas
+            </p>
           </div>
         </div>
         {!showForm && (
-          <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-4 py-2 bg-brand-red text-white rounded-lg text-sm font-medium hover:bg-brand-red-dark">
+          <Button className="gap-2" onClick={() => setShowForm(true)}>
             <Plus size={15} /> Nueva noticia
-          </button>
+          </Button>
         )}
       </div>
 
       {showForm && <NewsForm onSave={(d) => createMutation.mutate(d)} onCancel={() => setShowForm(false)} />}
 
       {isLoading ? (
-        <p className="text-slate-400 text-sm">Cargando...</p>
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full" />
+          ))}
+        </div>
       ) : news.length === 0 ? (
-        <div className="text-center py-16 text-slate-400">
+        <div className="py-16 text-center text-muted-foreground">
           <Newspaper size={40} className="mx-auto mb-3 opacity-30" />
           <p>No hay noticias todavía</p>
         </div>
@@ -96,34 +153,51 @@ export default function ClubNewsPage() {
                   onCancel={() => setEditing(null)}
                 />
               ) : (
-                <div className="bg-white border border-slate-200 rounded-xl p-4">
-                  <div className="flex items-start gap-3">
+                <Card>
+                  <CardContent className="flex items-start gap-3 pt-6">
                     {item.imageUrl && (
-                      <img src={item.imageUrl} alt="" className="w-16 h-16 rounded-lg object-cover flex-shrink-0" />
+                      <img src={item.imageUrl} alt="" className="h-16 w-16 flex-shrink-0 rounded-lg object-cover" />
                     )}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${item.published ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-1 flex items-center gap-2">
+                        <Badge variant={item.published ? 'success' : 'neutral'} className="rounded-full">
                           {item.published ? 'Publicada' : 'Borrador'}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(item.createdAt).toLocaleDateString('es-AR')}
                         </span>
-                        <span className="text-xs text-slate-400">{new Date(item.createdAt).toLocaleDateString('es-AR')}</span>
                       </div>
-                      <p className="font-semibold text-slate-800 text-sm">{item.title}</p>
-                      <p className="text-sm text-slate-500 mt-0.5 line-clamp-2">{item.body}</p>
+                      <p className="text-sm font-semibold">{item.title}</p>
+                      <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">{item.body}</p>
                     </div>
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <button onClick={() => toggleMutation.mutate({ id: item.id, published: item.published })} title={item.published ? 'Despublicar' : 'Publicar'} className="p-1.5 text-slate-400 hover:text-brand-blue rounded">
+                    <div className="flex flex-shrink-0 items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-brand-blue"
+                        onClick={() => toggleMutation.mutate({ id: item.id, published: item.published })}
+                        title={item.published ? 'Despublicar' : 'Publicar'}
+                      >
                         {item.published ? <EyeOff size={15} /> : <Eye size={15} />}
-                      </button>
-                      <button onClick={() => setEditing(item)} className="p-1.5 text-slate-400 hover:text-brand-blue rounded">
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-brand-blue" onClick={() => setEditing(item)}>
                         <Edit2 size={15} />
-                      </button>
-                      <button onClick={() => deleteMutation.mutate(item.id)} className="p-1.5 text-slate-400 hover:text-red-500 rounded">
-                        <Trash2 size={15} />
-                      </button>
+                      </Button>
+                      <ConfirmDialog
+                        title="Eliminar noticia"
+                        description={`¿Eliminar "${item.title}"? Esta acción no se puede deshacer.`}
+                        confirmLabel="Eliminar"
+                        destructive
+                        onConfirm={() => deleteMutation.mutate(item.id)}
+                        trigger={
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                            <Trash2 size={15} />
+                          </Button>
+                        }
+                      />
                     </div>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
               )}
             </div>
           ))}

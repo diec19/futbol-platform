@@ -2,12 +2,27 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { api } from '@/lib/api';
-import { Building2, Save, Globe, Phone, Mail, Instagram, Facebook, MessageCircle, CreditCard, Eye, EyeOff } from 'lucide-react';
-import { cn } from '@/lib/utils';
-
-const inputBase =
-  'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none transition-colors focus:border-brand-red focus:ring-2 focus:ring-brand-red/10';
+import {
+  Building2,
+  Save,
+  Globe,
+  Phone,
+  Mail,
+  Instagram,
+  Facebook,
+  MessageCircle,
+  CreditCard,
+  Eye,
+  EyeOff,
+} from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function ClubInfoPage() {
   const qc = useQueryClient();
@@ -15,7 +30,6 @@ export default function ClubInfoPage() {
   const club = data?.data;
 
   const [form, setForm] = useState<Record<string, string>>({});
-  const [saved, setSaved] = useState(false);
   const [showMpToken, setShowMpToken] = useState(false);
   const [showMpSecret, setShowMpSecret] = useState(false);
 
@@ -23,201 +37,310 @@ export default function ClubInfoPage() {
     mutationFn: (d: unknown) => api.club.update(d),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['club'] });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      toast.success('Cambios guardados');
     },
+    onError: (err: any) => toast.error(err.message),
   });
 
-  if (isLoading) return <div className="p-8 text-slate-500">Cargando...</div>;
+  if (isLoading) {
+    return (
+      <div className="max-w-3xl space-y-4">
+        <Skeleton className="h-9 w-48" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
 
   const val = (field: string) => (field in form ? form[field] : club?.[field] ?? '');
   const set = (field: string, value: string) => setForm((f) => ({ ...f, [field]: value }));
 
   const handleSave = () => {
     const payload: Record<string, any> = {};
-    Object.keys(form).forEach((k) => { payload[k] = form[k] || undefined; });
+    Object.keys(form).forEach((k) => {
+      payload[k] = form[k] || undefined;
+    });
     if (form.foundedYear) payload.foundedYear = parseInt(form.foundedYear);
     if (form.monthlyPlayerFee) payload.monthlyPlayerFee = parseFloat(form.monthlyPlayerFee);
     if (form.monthlyMemberFee) payload.monthlyMemberFee = parseFloat(form.monthlyMemberFee);
     updateMutation.mutate(payload);
   };
 
+  const sectionTitle = (icon: React.ReactNode, title: string) => (
+    <p className="flex items-center gap-2 text-sm font-semibold">
+      {icon}
+      {title}
+    </p>
+  );
+
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-6">
+    <div className="max-w-3xl space-y-6">
       <div className="flex items-center gap-3">
         <Building2 className="text-brand-red" size={24} />
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Info del Club</h1>
-          <p className="text-sm text-slate-500">Datos generales, redes sociales y presentación pública</p>
+          <h1 className="text-2xl font-bold tracking-tight">Info del Club</h1>
+          <p className="text-sm text-muted-foreground">
+            Datos generales, redes sociales y presentación pública
+          </p>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100">
+      <Card className="divide-y">
         {/* Datos generales */}
-        <div className="p-5 space-y-4">
-          <p className="text-sm font-semibold text-slate-700">Datos generales</p>
+        <CardContent className="space-y-4 pt-6">
+          {sectionTitle(null, 'Datos generales')}
           <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
-              <label className="text-xs text-slate-500 mb-1 block">Nombre del club *</label>
-              <input               className={inputBase} value={val('name')} onChange={(e) => set('name', e.target.value)} placeholder="Club Atlético..." />
+            <div className="col-span-2 space-y-1.5">
+              <Label>Nombre del club *</Label>
+              <Input
+                value={val('name')}
+                onChange={(e) => set('name', e.target.value)}
+                placeholder="Club Atlético..."
+              />
             </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Nombre corto</label>
-              <input               className={inputBase} value={val('shortName')} onChange={(e) => set('shortName', e.target.value)} placeholder="CA..." />
+            <div className="space-y-1.5">
+              <Label>Nombre corto</Label>
+              <Input
+                value={val('shortName')}
+                onChange={(e) => set('shortName', e.target.value)}
+                placeholder="CA..."
+              />
             </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Año de fundación</label>
-              <input               className={inputBase} type="number" value={val('foundedYear')} onChange={(e) => set('foundedYear', e.target.value)} placeholder="1985" />
+            <div className="space-y-1.5">
+              <Label>Año de fundación</Label>
+              <Input
+                type="number"
+                value={val('foundedYear')}
+                onChange={(e) => set('foundedYear', e.target.value)}
+                placeholder="1985"
+              />
             </div>
-            <div className="col-span-2">
-              <label className="text-xs text-slate-500 mb-1 block">Descripción / Historia</label>
-              <textarea className={cn(inputBase, 'min-h-[100px] resize-none')} value={val('description')} onChange={(e) => set('description', e.target.value)} placeholder="Historia del club..." />
+            <div className="col-span-2 space-y-1.5">
+              <Label>Descripción / Historia</Label>
+              <Textarea
+                value={val('description')}
+                onChange={(e) => set('description', e.target.value)}
+                rows={4}
+                placeholder="Historia del club..."
+              />
             </div>
-            <div className="col-span-2">
-              <label className="text-xs text-slate-500 mb-1 block">Dirección</label>
-              <input               className={inputBase} value={val('address')} onChange={(e) => set('address', e.target.value)} placeholder="Calle Falsa 123, Ciudad" />
+            <div className="col-span-2 space-y-1.5">
+              <Label>Dirección</Label>
+              <Input
+                value={val('address')}
+                onChange={(e) => set('address', e.target.value)}
+                placeholder="Calle Falsa 123, Ciudad"
+              />
             </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Logo (URL)</label>
-              <input               className={inputBase} value={val('logo')} onChange={(e) => set('logo', e.target.value)} placeholder="https://..." />
+            <div className="col-span-2 space-y-1.5">
+              <Label>Logo (URL)</Label>
+              <Input
+                value={val('logo')}
+                onChange={(e) => set('logo', e.target.value)}
+                placeholder="https://..."
+              />
             </div>
           </div>
-        </div>
+        </CardContent>
 
         {/* Contacto */}
-        <div className="p-5 space-y-4">
-          <p className="text-sm font-semibold text-slate-700">Contacto</p>
+        <CardContent className="space-y-4 pt-6">
+          {sectionTitle(null, 'Contacto')}
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs text-slate-500 mb-1 flex items-center gap-1"><Phone size={11} />Teléfono</label>
-              <input               className={inputBase} value={val('phone')} onChange={(e) => set('phone', e.target.value)} placeholder="+54 11 ..." />
+            <div className="space-y-1.5">
+              <Label className="flex items-center gap-1">
+                <Phone size={11} />
+                Teléfono
+              </Label>
+              <Input
+                value={val('phone')}
+                onChange={(e) => set('phone', e.target.value)}
+                placeholder="+54 11 ..."
+              />
             </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 flex items-center gap-1"><Mail size={11} />Email</label>
-              <input               className={inputBase} value={val('email')} onChange={(e) => set('email', e.target.value)} placeholder="club@..." />
+            <div className="space-y-1.5">
+              <Label className="flex items-center gap-1">
+                <Mail size={11} />
+                Email
+              </Label>
+              <Input
+                value={val('email')}
+                onChange={(e) => set('email', e.target.value)}
+                placeholder="club@..."
+              />
             </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 flex items-center gap-1"><Globe size={11} />Sitio web</label>
-              <input               className={inputBase} value={val('website')} onChange={(e) => set('website', e.target.value)} placeholder="https://..." />
+            <div className="space-y-1.5">
+              <Label className="flex items-center gap-1">
+                <Globe size={11} />
+                Sitio web
+              </Label>
+              <Input
+                value={val('website')}
+                onChange={(e) => set('website', e.target.value)}
+                placeholder="https://..."
+              />
             </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 flex items-center gap-1"><MessageCircle size={11} />WhatsApp</label>
-              <input               className={inputBase} value={val('whatsapp')} onChange={(e) => set('whatsapp', e.target.value)} placeholder="+54 9 11 ..." />
+            <div className="space-y-1.5">
+              <Label className="flex items-center gap-1">
+                <MessageCircle size={11} />
+                WhatsApp
+              </Label>
+              <Input
+                value={val('whatsapp')}
+                onChange={(e) => set('whatsapp', e.target.value)}
+                placeholder="+54 9 11 ..."
+              />
             </div>
           </div>
-        </div>
+        </CardContent>
 
         {/* Redes sociales */}
-        <div className="p-5 space-y-4">
-          <p className="text-sm font-semibold text-slate-700">Redes sociales</p>
+        <CardContent className="space-y-4 pt-6">
+          {sectionTitle(null, 'Redes sociales')}
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs text-slate-500 mb-1 flex items-center gap-1"><Instagram size={11} />Instagram</label>
-              <input               className={inputBase} value={val('instagram')} onChange={(e) => set('instagram', e.target.value)} placeholder="@clubname" />
+            <div className="space-y-1.5">
+              <Label className="flex items-center gap-1">
+                <Instagram size={11} />
+                Instagram
+              </Label>
+              <Input
+                value={val('instagram')}
+                onChange={(e) => set('instagram', e.target.value)}
+                placeholder="@clubname"
+              />
             </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 flex items-center gap-1"><Facebook size={11} />Facebook</label>
-              <input               className={inputBase} value={val('facebook')} onChange={(e) => set('facebook', e.target.value)} placeholder="facebook.com/club" />
+            <div className="space-y-1.5">
+              <Label className="flex items-center gap-1">
+                <Facebook size={11} />
+                Facebook
+              </Label>
+              <Input
+                value={val('facebook')}
+                onChange={(e) => set('facebook', e.target.value)}
+                placeholder="facebook.com/club"
+              />
             </div>
           </div>
-        </div>
+        </CardContent>
 
         {/* Mercado Pago */}
-        <div className="p-5 space-y-4">
-          <p className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-            <CreditCard size={14} /> Mercado Pago
+        <CardContent className="space-y-4 pt-6">
+          {sectionTitle(<CreditCard size={14} />, 'Mercado Pago')}
+          <p className="text-xs text-muted-foreground">
+            Configuración de cobros con Mercado Pago. Cada cliente usa su propio Access Token.
           </p>
-          <p className="text-xs text-slate-400">Configuración de cobros con Mercado Pago. Cada cliente usa su propio Access Token.</p>
           <div className="space-y-3">
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Access Token</label>
+            <div className="space-y-1.5">
+              <Label>Access Token</Label>
               <div className="flex gap-2">
-                <input
-                  className={cn(inputBase, 'flex-1')}
+                <Input
                   type={showMpToken ? 'text' : 'password'}
                   value={val('mpAccessToken')}
                   onChange={(e) => set('mpAccessToken', e.target.value)}
                   placeholder="APP_USR-..."
                 />
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="icon"
+                  className="shrink-0 text-muted-foreground"
                   onClick={() => setShowMpToken(!showMpToken)}
-                  className="px-3 border border-slate-200 rounded-lg text-slate-400 hover:text-slate-600"
                 >
                   {showMpToken ? <EyeOff size={15} /> : <Eye size={15} />}
-                </button>
+                </Button>
               </div>
             </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Webhook Secret (opcional)</label>
+            <div className="space-y-1.5">
+              <Label>Webhook Secret (opcional)</Label>
               <div className="flex gap-2">
-                <input
-                  className={cn(inputBase, 'flex-1')}
+                <Input
                   type={showMpSecret ? 'text' : 'password'}
                   value={val('mpWebhookSecret')}
                   onChange={(e) => set('mpWebhookSecret', e.target.value)}
                   placeholder="Tu Webhook Secret"
                 />
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="icon"
+                  className="shrink-0 text-muted-foreground"
                   onClick={() => setShowMpSecret(!showMpSecret)}
-                  className="px-3 border border-slate-200 rounded-lg text-slate-400 hover:text-slate-600"
                 >
                   {showMpSecret ? <EyeOff size={15} /> : <Eye size={15} />}
-                </button>
+                </Button>
               </div>
             </div>
           </div>
-        </div>
+        </CardContent>
 
         {/* WhatsApp / Evolution API */}
-        <div className="p-5 space-y-4">
-          <p className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-            <MessageCircle size={14} /> WhatsApp (Evolution API)
+        <CardContent className="space-y-4 pt-6">
+          {sectionTitle(<MessageCircle size={14} />, 'WhatsApp (Evolution API)')}
+          <p className="text-xs text-muted-foreground">
+            Conexión con Evolution API para envío automático de links de pago por WhatsApp.
           </p>
-          <p className="text-xs text-slate-400">Conexión con Evolution API para envío automático de links de pago por WhatsApp.</p>
           <div className="space-y-3">
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">API URL</label>
-              <input               className={inputBase} value={val('whatsappApiUrl')} onChange={(e) => set('whatsappApiUrl', e.target.value)} placeholder="https://evolution-api-tuclub.up.railway.app" />
+            <div className="space-y-1.5">
+              <Label>API URL</Label>
+              <Input
+                value={val('whatsappApiUrl')}
+                onChange={(e) => set('whatsappApiUrl', e.target.value)}
+                placeholder="https://evolution-api-tuclub.up.railway.app"
+              />
             </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">API Key</label>
-              <input               className={inputBase} type="password" value={val('whatsappApiKey')} onChange={(e) => set('whatsappApiKey', e.target.value)} placeholder="Tu API Key de Evolution" />
+            <div className="space-y-1.5">
+              <Label>API Key</Label>
+              <Input
+                type="password"
+                value={val('whatsappApiKey')}
+                onChange={(e) => set('whatsappApiKey', e.target.value)}
+                placeholder="Tu API Key de Evolution"
+              />
             </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Nombre de instancia</label>
-              <input               className={inputBase} value={val('whatsappInstance')} onChange={(e) => set('whatsappInstance', e.target.value)} placeholder="club-futbol" />
+            <div className="space-y-1.5">
+              <Label>Nombre de instancia</Label>
+              <Input
+                value={val('whatsappInstance')}
+                onChange={(e) => set('whatsappInstance', e.target.value)}
+                placeholder="club-futbol"
+              />
             </div>
           </div>
-        </div>
+        </CardContent>
 
         {/* Cuotas mensuales */}
-        <div className="p-5 space-y-4">
-          <p className="text-sm font-semibold text-slate-700">Cuotas mensuales</p>
-          <p className="text-xs text-slate-400">Montos que se usan para generar cuotas automáticamente el día 1 de cada mes.</p>
+        <CardContent className="space-y-4 pt-6">
+          {sectionTitle(null, 'Cuotas mensuales')}
+          <p className="text-xs text-muted-foreground">
+            Montos que se usan para generar cuotas automáticamente el día 1 de cada mes.
+          </p>
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Cuota mensual jugadores ($)</label>
-              <input               className={inputBase} type="number" value={val('monthlyPlayerFee')} onChange={(e) => set('monthlyPlayerFee', e.target.value)} placeholder="15000" />
+            <div className="space-y-1.5">
+              <Label>Cuota mensual jugadores ($)</Label>
+              <Input
+                type="number"
+                value={val('monthlyPlayerFee')}
+                onChange={(e) => set('monthlyPlayerFee', e.target.value)}
+                placeholder="15000"
+              />
             </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Cuota mensual socios ($)</label>
-              <input               className={inputBase} type="number" value={val('monthlyMemberFee')} onChange={(e) => set('monthlyMemberFee', e.target.value)} placeholder="10000" />
+            <div className="space-y-1.5">
+              <Label>Cuota mensual socios ($)</Label>
+              <Input
+                type="number"
+                value={val('monthlyMemberFee')}
+                onChange={(e) => set('monthlyMemberFee', e.target.value)}
+                placeholder="10000"
+              />
             </div>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       <div className="flex justify-end">
-        <button
-          onClick={handleSave}
-          disabled={updateMutation.isPending}
-          className="flex items-center gap-2 px-5 py-2.5 bg-brand-red text-white rounded-lg text-sm font-medium hover:bg-brand-red-dark disabled:opacity-50"
-        >
+        <Button onClick={handleSave} disabled={updateMutation.isPending} className="gap-2">
           <Save size={15} />
-          {saved ? '¡Guardado!' : updateMutation.isPending ? 'Guardando...' : 'Guardar cambios'}
-        </button>
+          {updateMutation.isPending ? 'Guardando...' : 'Guardar cambios'}
+        </Button>
       </div>
     </div>
   );
