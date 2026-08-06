@@ -9,10 +9,20 @@ const getOrCreateClub = async () => {
   return club;
 };
 
+const SECRET_FIELDS = ['whatsappApiUrl', 'whatsappApiKey', 'whatsappInstance', 'mpAccessToken', 'mpWebhookSecret'] as const;
+
+function toPublicClub<T extends Record<string, unknown>>(club: T) {
+  const publicClub = { ...club } as Record<string, unknown>;
+  for (const field of SECRET_FIELDS) {
+    delete publicClub[field];
+  }
+  return publicClub;
+}
+
 export const clubService = {
   // ── Info ────────────────────────────────────────────────────────────────
   async get() {
-    return getOrCreateClub();
+    return toPublicClub(await getOrCreateClub());
   },
 
   async update(data: {
@@ -22,7 +32,8 @@ export const clubService = {
     mpAccessToken?: string; mpWebhookSecret?: string;
   }) {
     const club = await getOrCreateClub();
-    return db.club.update({ where: { id: club.id }, data });
+    const updated = await db.club.update({ where: { id: club.id }, data });
+    return toPublicClub(updated);
   },
 
   // ── News ────────────────────────────────────────────────────────────────
