@@ -59,11 +59,7 @@ export class StandingsService {
     if (!group) throw new AppError('Grupo no encontrado', 404);
 
     await db.groupTeam.createMany({
-      data: teamIds.map((teamId) => ({
-        groupId,
-        teamId,
-        categoryId: group.categoryId,
-      } as any)),
+      data: teamIds.map((teamId) => ({ groupId, teamId })),
       skipDuplicates: true,
     });
 
