@@ -38,6 +38,9 @@ export function mpRequest(accessToken: string, body: any): Promise<{ id: string;
         }
       });
     });
+    req.setTimeout(15000, () => {
+      req.destroy(new Error('MP request timeout'));
+    });
     req.on('error', reject);
     req.write(data);
     req.end();
@@ -64,7 +67,7 @@ export async function fetchMpPayment(paymentId: string, accessToken: string) {
 
 // ── Webhook Signature Validation ─────────────────────────────────────────────
 export function validateWebhookSignature(
-  body: string,
+  dataId: string | undefined,
   headers: Record<string, string | undefined>,
   secret: string,
 ): boolean {
@@ -72,19 +75,19 @@ export function validateWebhookSignature(
   const xRequestId = headers['x-request-id'];
   if (!xSignature) return false;
 
-  // MercadoPago sends: ts=<timestamp>;v1=<hash>
-  const parts = xSignature.split(';');
-  const tsPart = parts.find(p => p.startsWith('ts='));
-  const v1Part = parts.find(p => p.startsWith('v1='));
+  // MercadoPago envía: ts=<timestamp>,v1=<hash> (separado por COMA)
+  const parts = xSignature.split(',');
+  const tsPart = parts.find(p => p.trim().startsWith('ts='));
+  const v1Part = parts.find(p => p.trim().startsWith('v1='));
   if (!tsPart || !v1Part) return false;
 
-  const ts = tsPart.split('=')[1];
-  const v1 = v1Part.split('=')[1];
+  const ts = tsPart.split('=')[1]?.trim();
+  const v1 = v1Part.split('=')[1]?.trim();
+  if (!ts || !v1) return false;
 
-  // Build the string to sign: id.<request_id>.ts.<timestamp>.body.<body>
-  const manifest = `id.${xRequestId ?? ''}.ts.${ts}.body.${body}`;
+  // Manifest oficial: id:<data.id>;request-id:<x-request-id>;ts:<ts>;
+  const manifest = `id:${(dataId ?? '').toLowerCase()};request-id:${xRequestId ?? ''};ts:${ts};`;
 
-  // HMAC-SHA256
   const crypto = require('crypto');
   const hmac = crypto.createHmac('sha256', secret);
   hmac.update(manifest);
@@ -148,6 +151,7 @@ export async function createPlayerMpPreference(
       ? { email: memberLink.member.email, name: memberLink.member.fullName }
       : { email: `jugador-${player.id}@club.com` },
     external_reference: sub.id,
+    ...(env.APP_URL ? { notification_url: `${env.APP_URL}/api/v1/webhooks/mp` } : {}),
     statement_descriptor: 'Club Futbol',
     expires: true,
     expiration_date_to: dueDate.toISOString(),
@@ -188,6 +192,7 @@ export async function createMemberMpPreference(
     items,
     payer: { email: member.email, name: member.fullName },
     external_reference: sub.id,
+    ...(env.APP_URL ? { notification_url: `${env.APP_URL}/api/v1/webhooks/mp` } : {}),
     statement_descriptor: 'Club Futbol',
     expires: true,
     expiration_date_to: new Date(sub.dueDate).toISOString(),

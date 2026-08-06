@@ -26,8 +26,8 @@ webhooksRouter.post('/mp', async (req, res) => {
       return res.status(503).json({ error: 'Webhook secret no configurado' });
     }
 
-    const rawBody = JSON.stringify(body);
-    const isValid = validateWebhookSignature(rawBody, req.headers as Record<string, string>, mpConfig.webhookSecret);
+    const dataId = String(query['data.id'] ?? body.data?.id ?? body.id ?? query.id ?? '');
+    const isValid = validateWebhookSignature(dataId, req.headers as Record<string, string>, mpConfig.webhookSecret);
     if (!isValid) {
       console.error('[WEBHOOK] Invalid signature — rejecting');
       return res.status(401).json({ error: 'Invalid signature' });

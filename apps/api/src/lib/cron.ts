@@ -129,14 +129,6 @@ export function startMonthlyFeeCron() {
       const currentMonth = now.getMonth() + 1;
       const currentYear = now.getFullYear();
 
-      // Check if fees were already generated this month
-      const existingPlayerCount = await db.playerSubscription.count({
-        where: { month: currentMonth, year: currentYear },
-      });
-      if (existingPlayerCount > 0) {
-        return; // Already generated
-      }
-
       console.log(`[CRON] Generando cuotas mensuales para ${MONTHS[currentMonth - 1]} ${currentYear}...`);
 
       // Get club config
@@ -169,28 +161,46 @@ export function startMonthlyFeeCron() {
           where: { isClubPlayer: true, active: true },
         });
 
-        const results = await Promise.allSettled(
-          players.map(p =>
-            db.playerSubscription.create({
-              data: {
-                playerId: p.id,
-                month: currentMonth,
-                year: currentYear,
-                amount: playerFee,
-                totalAmount: playerFee,
-                dueDate,
-              },
-            })
-          )
-        );
-        playerCount = results.filter(r => r.status === 'fulfilled').length;
+        // Subs existentes del mes (idempotencia) + crear las que faltan
+        const existingSubs = await db.playerSubscription.findMany({
+          where: { month: currentMonth, year: currentYear },
+        });
+        const existingPlayerIds = new Set(existingSubs.map((s: any) => s.playerId));
 
-        // Generate MP preferences + send WhatsApp for each player subscription
-        const createdSubs = results
-          .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled')
-          .map(r => r.value);
+        const toCreate = players.filter(p => !existingPlayerIds.has(p.id));
+        if (toCreate.length > 0) {
+          const results = await Promise.allSettled(
+            toCreate.map(p =>
+              db.playerSubscription.create({
+                data: {
+                  playerId: p.id,
+                  month: currentMonth,
+                  year: currentYear,
+                  amount: playerFee,
+                  totalAmount: playerFee,
+                  dueDate,
+                },
+              })
+            )
+          );
+          playerCount = results.filter(r => r.status === 'fulfilled').length;
+        }
+        playerCount += existingSubs.length;
 
-        const { errors: mpErrors } = await mapWithConcurrency(createdSubs, 3, async (sub) => {
+        // Generar/regenerar links MP SOLO para las PENDING sin link (nuevas + reintentos)
+        const pendingSubs = [
+          ...existingSubs,
+          ...((await db.playerSubscription.findMany({
+            where: {
+              month: currentMonth,
+              year: currentYear,
+              status: 'PENDING',
+              mpPaymentLink: null,
+            },
+          }))),
+        ].filter((s: any, i, arr) => arr.findIndex((x: any) => x.id === s.id) === i);
+
+        const { errors: mpErrors } = await mapWithConcurrency(pendingSubs, 3, async (sub: any) => {
           const player = players.find(p => p.id === sub.playerId);
           if (!player) return null;
 
@@ -256,27 +266,43 @@ export function startMonthlyFeeCron() {
           where: { active: true },
         });
 
-        const results = await Promise.allSettled(
-          members.map(m =>
-            db.subscription.create({
-              data: {
-                memberId: m.id,
-                month: currentMonth,
-                year: currentYear,
-                amount: memberFee,
-                dueDate,
-              },
-            })
-          )
-        );
-        memberCount = results.filter(r => r.status === 'fulfilled').length;
+        const existingSubs = await db.subscription.findMany({
+          where: { month: currentMonth, year: currentYear },
+        });
+        const existingMemberIds = new Set(existingSubs.map((s: any) => s.memberId));
 
-        // Generate MP preferences + send WhatsApp
-        const createdSubs = results
-          .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled')
-          .map(r => r.value);
+        const toCreate = members.filter(m => !existingMemberIds.has(m.id));
+        if (toCreate.length > 0) {
+          const results = await Promise.allSettled(
+            toCreate.map(m =>
+              db.subscription.create({
+                data: {
+                  memberId: m.id,
+                  month: currentMonth,
+                  year: currentYear,
+                  amount: memberFee,
+                  dueDate,
+                },
+              })
+            )
+          );
+          memberCount = results.filter(r => r.status === 'fulfilled').length;
+        }
+        memberCount += existingSubs.length;
 
-        await mapWithConcurrency(createdSubs, 3, async (sub) => {
+        const pendingSubs = [
+          ...existingSubs,
+          ...((await db.subscription.findMany({
+            where: {
+              month: currentMonth,
+              year: currentYear,
+              status: 'PENDING',
+              mpPaymentLink: null,
+            },
+          }))),
+        ].filter((s: any, i, arr) => arr.findIndex((x: any) => x.id === s.id) === i);
+
+        const { errors: memberErrors } = await mapWithConcurrency(pendingSubs, 3, async (sub: any) => {
           const member = members.find(m => m.id === sub.memberId);
           if (!member) return null;
 
@@ -345,6 +371,10 @@ export function startMonthlyFeeCron() {
 
           return { subId: sub.id, memberName: member.fullName };
         });
+
+        for (const err of memberErrors) {
+          console.error(`[CRON] Error MP en bulk socios:`, err.error);
+        }
       }
 
       // ── 3. Sponsorship Payments ────────────────────────────────────────
