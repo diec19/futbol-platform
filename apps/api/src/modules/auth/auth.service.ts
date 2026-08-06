@@ -27,7 +27,7 @@ export class AuthService {
       throw new AppError('Credenciales inválidas', 401);
     }
 
-    const payload = { id: user.id, role: user.role, email: user.email };
+    const payload = { id: user.id, role: user.role, email: user.email, type: 'admin' };
     const accessToken = jwt.sign(payload, env.JWT_SECRET, {
       expiresIn: env.JWT_EXPIRES_IN as SignOptions['expiresIn'],
     });
@@ -56,13 +56,15 @@ export class AuthService {
         id: string;
         role: string;
         email: string;
+        type: string;
       };
+      if (payload.type !== 'admin') throw new AppError('Refresh token inválido', 401);
       const user = await db.user.findUnique({
         where: { id: payload.id, active: true },
       });
       if (!user) throw new AppError('Usuario no encontrado', 401);
 
-      const newPayload = { id: user.id, role: user.role, email: user.email };
+      const newPayload = { id: user.id, role: user.role, email: user.email, type: 'admin' };
       const accessToken = jwt.sign(newPayload, env.JWT_SECRET, {
         expiresIn: env.JWT_EXPIRES_IN as SignOptions['expiresIn'],
       });

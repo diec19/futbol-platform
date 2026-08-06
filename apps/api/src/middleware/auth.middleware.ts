@@ -19,7 +19,9 @@ export function authenticate(req: AuthRequest, _res: Response, next: NextFunctio
       id: string;
       role: string;
       email: string;
+      type: string;
     };
+    if (payload.type !== 'admin') return next(new AppError('Token inválido o expirado', 401));
     req.user = payload;
     next();
   } catch {
