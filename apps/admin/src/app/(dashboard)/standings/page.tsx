@@ -4,6 +4,23 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { BarChart3 } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function StandingsPage() {
   const [tournamentId, setTournamentId] = useState('');
@@ -33,94 +50,107 @@ export default function StandingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Posiciones</h1>
-        <p className="text-gray-500 text-sm mt-1">Tabla de posiciones por grupo</p>
+        <h1 className="text-2xl font-bold tracking-tight">Posiciones</h1>
+        <p className="text-sm text-muted-foreground">Tabla de posiciones por grupo</p>
       </div>
 
-      <div className="flex items-center gap-4">
-        <select
+      <div className="flex items-center gap-4 flex-wrap">
+        <Select
           value={tournamentId}
-          onChange={(e) => { setTournamentId(e.target.value); setCategoryId(''); }}
-          className="px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary min-w-[200px]"
+          onValueChange={(v) => { setTournamentId(v); setCategoryId(''); }}
         >
-          <option value="">Seleccionar torneo</option>
-          {tournaments.map((t: any) => (
-            <option key={t.id} value={t.id}>{t.name}</option>
-          ))}
-        </select>
+          <SelectTrigger className="w-56">
+            <SelectValue placeholder="Seleccionar torneo" />
+          </SelectTrigger>
+          <SelectContent>
+            {tournaments.map((t: any) => (
+              <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         {tournamentId && (
-          <select
-            value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
-            className="px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary min-w-[200px]"
-          >
-            <option value="">Seleccionar categoría</option>
-            {categories.map((c: any) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
+          <Select value={categoryId} onValueChange={setCategoryId}>
+            <SelectTrigger className="w-56">
+              <SelectValue placeholder="Seleccionar categoría" />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map((c: any) => (
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         )}
       </div>
 
       {!categoryId && (
-        <div className="p-12 text-center bg-white rounded-xl border">
-          <BarChart3 size={40} className="mx-auto text-gray-300 mb-3" />
-          <p className="text-gray-500 font-medium">Seleccioná un torneo y una categoría</p>
-          <p className="text-gray-400 text-sm mt-1">para ver las posiciones</p>
-        </div>
+        <Card>
+          <CardContent className="p-12 text-center">
+            <BarChart3 size={40} className="mx-auto text-muted-foreground/30 mb-3" />
+            <p className="font-medium text-muted-foreground">Seleccioná un torneo y una categoría</p>
+            <p className="text-sm text-muted-foreground/70 mt-1">para ver las posiciones</p>
+          </CardContent>
+        </Card>
       )}
 
       {categoryId && isLoading && (
-        <div className="p-8 text-center text-gray-400">Cargando posiciones...</div>
+        <div className="space-y-2 p-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Skeleton key={i} className="h-10 w-full" />
+          ))}
+        </div>
       )}
 
       {categoryId && !isLoading && groups.length === 0 && (
-        <div className="p-8 text-center bg-white rounded-xl border text-gray-400">
-          No hay grupos con posiciones para esta categoría
-        </div>
+        <Card>
+          <CardContent className="p-8 text-center text-muted-foreground">
+            No hay grupos con posiciones para esta categoría
+          </CardContent>
+        </Card>
       )}
 
       {groups.map((group: any) => (
-        <div key={group.id} className="bg-white rounded-xl border overflow-hidden">
-          <div className="px-5 py-3 border-b bg-gray-50">
-            <h3 className="font-semibold text-gray-900">{group.name}</h3>
-          </div>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 border-b">
-                <th className="text-left px-4 py-3 text-gray-500 font-medium w-8">#</th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">Equipo</th>
-                <th className="text-center px-3 py-3 text-gray-500 font-medium">PJ</th>
-                <th className="text-center px-3 py-3 text-gray-500 font-medium">G</th>
-                <th className="text-center px-3 py-3 text-gray-500 font-medium">E</th>
-                <th className="text-center px-3 py-3 text-gray-500 font-medium">P</th>
-                <th className="text-center px-3 py-3 text-gray-500 font-medium">GF</th>
-                <th className="text-center px-3 py-3 text-gray-500 font-medium">GC</th>
-                <th className="text-center px-3 py-3 text-gray-500 font-medium">DG</th>
-                <th className="text-center px-3 py-3 text-gray-900 font-bold">Pts</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {(group.standings ?? group.teams ?? []).map((row: any, i: number) => (
-                <tr key={row.teamId ?? row.id} className={`hover:bg-gray-50 ${i < 2 ? 'border-l-2 border-l-green-500' : ''}`}>
-                  <td className="px-4 py-3 text-gray-400 text-center text-xs">{i + 1}</td>
-                  <td className="px-4 py-3 font-medium text-gray-900">{row.team?.name}</td>
-                  <td className="px-3 py-3 text-center text-gray-600">{row.played}</td>
-                  <td className="px-3 py-3 text-center text-gray-600">{row.won}</td>
-                  <td className="px-3 py-3 text-center text-gray-600">{row.drawn}</td>
-                  <td className="px-3 py-3 text-center text-gray-600">{row.lost}</td>
-                  <td className="px-3 py-3 text-center text-gray-600">{row.goalsFor}</td>
-                  <td className="px-3 py-3 text-center text-gray-600">{row.goalsAgainst}</td>
-                  <td className="px-3 py-3 text-center text-gray-600">
-                    {row.goalDiff > 0 ? `+${row.goalDiff}` : row.goalDiff}
-                  </td>
-                  <td className="px-3 py-3 text-center font-bold text-gray-900">{row.points}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Card key={group.id}>
+          <CardContent className="p-0">
+            <div className="px-5 py-3 border-b bg-muted/50">
+              <h3 className="font-semibold">{group.name}</h3>
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-8">#</TableHead>
+                  <TableHead>Equipo</TableHead>
+                  <TableHead className="text-center">PJ</TableHead>
+                  <TableHead className="text-center">G</TableHead>
+                  <TableHead className="text-center">E</TableHead>
+                  <TableHead className="text-center">P</TableHead>
+                  <TableHead className="text-center">GF</TableHead>
+                  <TableHead className="text-center">GC</TableHead>
+                  <TableHead className="text-center">DG</TableHead>
+                  <TableHead className="text-center font-bold">Pts</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(group.standings ?? group.teams ?? []).map((row: any, i: number) => (
+                  <TableRow key={row.teamId ?? row.id} className={i < 2 ? 'border-l-2 border-l-emerald-500' : ''}>
+                    <TableCell className="text-muted-foreground text-center text-xs">{i + 1}</TableCell>
+                    <TableCell className="font-medium">{row.team?.name}</TableCell>
+                    <TableCell className="text-center text-muted-foreground">{row.played}</TableCell>
+                    <TableCell className="text-center text-muted-foreground">{row.won}</TableCell>
+                    <TableCell className="text-center text-muted-foreground">{row.drawn}</TableCell>
+                    <TableCell className="text-center text-muted-foreground">{row.lost}</TableCell>
+                    <TableCell className="text-center text-muted-foreground">{row.goalsFor}</TableCell>
+                    <TableCell className="text-center text-muted-foreground">{row.goalsAgainst}</TableCell>
+                    <TableCell className="text-center text-muted-foreground">
+                      {row.goalDiff > 0 ? `+${row.goalDiff}` : row.goalDiff}
+                    </TableCell>
+                    <TableCell className="text-center font-bold">{row.points}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       ))}
     </div>
   );

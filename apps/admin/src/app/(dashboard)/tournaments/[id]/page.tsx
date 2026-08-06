@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import Link from 'next/link';
@@ -10,26 +11,34 @@ import {
   ArrowLeft, Plus, Pencil, Save, X,
   Trophy, Users, UserRound, Calendar, Zap,
 } from 'lucide-react';
-import { TOURNAMENT_STATUS_LABELS } from '@futbol/constants';
-
-const STATUS_COLORS: Record<string, string> = {
-  ACTIVE: 'bg-green-100 text-green-700',
-  DRAFT: 'bg-gray-100 text-gray-600',
-  SUSPENDED: 'bg-yellow-100 text-yellow-700',
-  FINISHED: 'bg-blue-100 text-blue-700',
-};
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { StatusBadge } from '@/components/domain/status-badge';
 
 function StatCard({ label, value, icon: Icon, color }: { label: string; value: number | string; icon: React.ElementType; color: string }) {
   return (
-    <div className="bg-white rounded-xl border p-5 flex items-center gap-4">
-      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${color}`}>
-        <Icon size={18} className="text-white" />
-      </div>
-      <div>
-        <p className="text-xs text-gray-500">{label}</p>
-        <p className="text-xl font-bold text-gray-900">{value}</p>
-      </div>
-    </div>
+    <Card>
+      <CardContent className="p-5 flex items-center gap-4">
+        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${color}`}>
+          <Icon size={18} className="text-white" />
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground">{label}</p>
+          <p className="text-xl font-bold">{value}</p>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -61,14 +70,28 @@ export default function TournamentDetailPage() {
       qc.invalidateQueries({ queryKey: ['tournament', id] });
       qc.invalidateQueries({ queryKey: ['tournaments'] });
       setEditing(false);
+      toast.success('Torneo actualizado');
     },
+    onError: (err: any) => toast.error(err.message),
   });
 
   const tournament = data?.data;
   const stats = statsData?.data;
 
-  if (isLoading) return <div className="p-8 text-center text-gray-400">Cargando...</div>;
-  if (!tournament) return <div className="p-8 text-center text-gray-400">Torneo no encontrado</div>;
+  if (isLoading) {
+    return (
+      <div className="space-y-6 max-w-5xl">
+        <Skeleton className="h-9 w-64" />
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full" />
+          ))}
+        </div>
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+  if (!tournament) return <div className="p-8 text-center text-muted-foreground">Torneo no encontrado</div>;
 
   function startEdit() {
     setForm({
@@ -82,77 +105,84 @@ export default function TournamentDetailPage() {
     setEditing(true);
   }
 
-  const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+  const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm(f => ({ ...f, [field]: e.target.value }));
 
   return (
     <div className="space-y-6 max-w-5xl">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Link href="/tournaments" className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-          <ArrowLeft size={18} />
+        <Link href="/tournaments" className="p-2 hover:bg-muted rounded-lg transition-colors">
+          <ArrowLeft className="h-[18px] w-[18px]" />
         </Link>
         <div className="flex-1">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-gray-900">{tournament.name}</h1>
-            <span className={`text-xs font-medium px-2 py-1 rounded-full ${STATUS_COLORS[tournament.status] ?? ''}`}>
-              {TOURNAMENT_STATUS_LABELS[tournament.status] ?? tournament.status}
-            </span>
+            <h1 className="text-2xl font-bold tracking-tight">{tournament.name}</h1>
+            <StatusBadge status={tournament.status} />
           </div>
-          <p className="text-gray-500 text-sm mt-0.5">
+          <p className="text-sm text-muted-foreground mt-0.5">
             {formatDate(tournament.startDate)} → {formatDate(tournament.endDate)}
             {tournament.sponsor && ` · Sponsor: ${tournament.sponsor}`}
           </p>
         </div>
         {!editing && (
-          <button onClick={startEdit} className="flex items-center gap-2 px-4 py-2 border rounded-lg text-sm hover:bg-gray-50 transition-colors">
-            <Pencil size={14} /> Editar
-          </button>
+          <Button variant="outline" onClick={startEdit} className="gap-2">
+            <Pencil className="h-4 w-4" /> Editar
+          </Button>
         )}
       </div>
 
       {/* Edit form */}
       {editing && (
-        <div className="bg-white rounded-xl border p-6 space-y-4">
-          <h2 className="font-semibold text-gray-900">Editar torneo</h2>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
-              <input value={form.name} onChange={set('name')} className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" />
+        <Card>
+          <CardContent className="p-6 space-y-4">
+            <h2 className="font-semibold">Editar torneo</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="col-span-2 space-y-1.5">
+                <Label>Nombre</Label>
+                <Input value={form.name} onChange={set('name')} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Fecha inicio</Label>
+                <Input type="date" value={form.startDate} onChange={set('startDate')} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Fecha fin</Label>
+                <Input type="date" value={form.endDate} onChange={set('endDate')} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Estado</Label>
+                <Select value={form.status} onValueChange={(v) => setForm(f => ({ ...f, status: v }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="DRAFT">Borrador</SelectItem>
+                    <SelectItem value="ACTIVE">Activo</SelectItem>
+                    <SelectItem value="SUSPENDED">Suspendido</SelectItem>
+                    <SelectItem value="FINISHED">Finalizado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Sponsor</Label>
+                <Input value={form.sponsor} onChange={set('sponsor')} />
+              </div>
+              <div className="col-span-2 space-y-1.5">
+                <Label>Descripción</Label>
+                <Textarea value={form.description} onChange={set('description')} rows={2} />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Fecha inicio</label>
-              <input type="date" value={form.startDate} onChange={set('startDate')} className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" />
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => setEditing(false)} className="gap-1.5">
+                <X className="h-4 w-4" /> Cancelar
+              </Button>
+              <Button onClick={() => update.mutate()} disabled={update.isPending} className="gap-1.5">
+                <Save className="h-4 w-4" /> {update.isPending ? 'Guardando...' : 'Guardar'}
+              </Button>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Fecha fin</label>
-              <input type="date" value={form.endDate} onChange={set('endDate')} className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
-              <select value={form.status} onChange={set('status')} className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
-                <option value="DRAFT">Borrador</option>
-                <option value="ACTIVE">Activo</option>
-                <option value="SUSPENDED">Suspendido</option>
-                <option value="FINISHED">Finalizado</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Sponsor</label>
-              <input value={form.sponsor} onChange={set('sponsor')} className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" />
-            </div>
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
-              <textarea value={form.description} onChange={set('description')} rows={2} className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" />
-            </div>
-          </div>
-          <div className="flex gap-3">
-            <button onClick={() => setEditing(false)} className="flex items-center gap-1.5 px-4 py-2 border rounded-lg text-sm hover:bg-gray-50"><X size={14} /> Cancelar</button>
-            <button onClick={() => update.mutate()} disabled={update.isPending} className="flex items-center gap-1.5 px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary/90 disabled:opacity-50">
-              <Save size={14} /> {update.isPending ? 'Guardando...' : 'Guardar'}
-            </button>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Stats */}
@@ -167,58 +197,60 @@ export default function TournamentDetailPage() {
       )}
 
       {/* Categories */}
-      <div className="bg-white rounded-xl border">
-        <div className="p-5 border-b flex items-center justify-between">
-          <h2 className="font-semibold text-gray-900">Categorías</h2>
-          <Link
-            href={`/tournaments/${id}/categories/new`}
-            className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
-          >
-            <Plus size={14} /> Nueva categoría
-          </Link>
-        </div>
-
-        {tournament.categories?.length === 0 ? (
-          <div className="p-8 text-center">
-            <Trophy size={32} className="mx-auto text-gray-300 mb-3" />
-            <p className="text-gray-500 font-medium">No hay categorías</p>
-            <p className="text-gray-400 text-sm mt-1">Creá la primera categoría para empezar a organizar el torneo</p>
-            <Link
-              href={`/tournaments/${id}/categories/new`}
-              className="inline-flex items-center gap-2 mt-4 bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90"
-            >
-              <Plus size={14} /> Crear categoría
-            </Link>
-          </div>
-        ) : (
-          <div className="divide-y">
-            {tournament.categories?.map((cat: any) => (
-              <Link
-                key={cat.id}
-                href={`/tournaments/${id}/categories/${cat.id}`}
-                className="flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-2 h-2 rounded-full ${cat.active ? 'bg-green-500' : 'bg-gray-300'}`} />
-                  <div>
-                    <p className="font-medium text-gray-900 group-hover:text-primary transition-colors">{cat.name}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {cat.teams?.length ?? 0} equipos
-                      {cat.phaseType && ` · ${cat.phaseType === 'GROUP' ? 'Fase de grupos' : cat.phaseType === 'KNOCKOUT' ? 'Eliminación directa' : 'Mixto'}`}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className={`text-xs px-2 py-1 rounded-full ${cat.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                    {cat.active ? 'Activa' : 'Inactiva'}
-                  </span>
-                  <span className="text-gray-400 group-hover:text-gray-600">›</span>
-                </div>
+      <Card>
+        <CardContent className="p-0">
+          <div className="p-5 border-b flex items-center justify-between">
+            <h2 className="font-semibold">Categorías</h2>
+            <Button asChild size="sm" className="gap-2">
+              <Link href={`/tournaments/${id}/categories/new`}>
+                <Plus className="h-4 w-4" /> Nueva categoría
               </Link>
-            ))}
+            </Button>
           </div>
-        )}
-      </div>
+
+          {tournament.categories?.length === 0 ? (
+            <div className="p-8 text-center">
+              <Trophy size={32} className="mx-auto text-muted-foreground/30 mb-3" />
+              <p className="font-medium text-muted-foreground">No hay categorías</p>
+              <p className="text-sm text-muted-foreground/70 mt-1">
+                Creá la primera categoría para empezar a organizar el torneo
+              </p>
+              <Button asChild className="mt-4 gap-2">
+                <Link href={`/tournaments/${id}/categories/new`}>
+                  <Plus className="h-4 w-4" /> Crear categoría
+                </Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="divide-y">
+              {tournament.categories?.map((cat: any) => (
+                <Link
+                  key={cat.id}
+                  href={`/tournaments/${id}/categories/${cat.id}`}
+                  className="flex items-center justify-between px-5 py-4 hover:bg-muted/50 transition-colors group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-2 h-2 rounded-full ${cat.active ? 'bg-emerald-500' : 'bg-muted-foreground/30'}`} />
+                    <div>
+                      <p className="font-medium group-hover:text-primary transition-colors">{cat.name}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {cat.teams?.length ?? 0} equipos
+                        {cat.phaseType && ` · ${cat.phaseType === 'GROUP' ? 'Fase de grupos' : cat.phaseType === 'KNOCKOUT' ? 'Eliminación directa' : 'Mixto'}`}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className={`text-xs px-2 py-1 rounded-full ${cat.active ? 'bg-emerald-100 text-emerald-700' : 'bg-muted text-muted-foreground'}`}>
+                      {cat.active ? 'Activa' : 'Inactiva'}
+                    </span>
+                    <span className="text-muted-foreground group-hover:text-foreground">›</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

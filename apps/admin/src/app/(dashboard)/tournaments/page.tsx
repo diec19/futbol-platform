@@ -2,18 +2,24 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import Link from 'next/link';
 import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
-import { TOURNAMENT_STATUS_LABELS } from '@futbol/constants';
-
-const STATUS_COLORS: Record<string, string> = {
-  ACTIVE: 'bg-green-100 text-green-700',
-  DRAFT: 'bg-gray-100 text-gray-600',
-  SUSPENDED: 'bg-yellow-100 text-yellow-700',
-  FINISHED: 'bg-blue-100 text-blue-700',
-};
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
+import { StatusBadge } from '@/components/domain/status-badge';
+import { ConfirmDialog } from '@/components/domain/confirm-dialog';
 
 export default function TournamentsPage() {
   const qc = useQueryClient();
@@ -29,12 +35,20 @@ export default function TournamentsPage() {
       const next = current === 'ACTIVE' ? 'DRAFT' : 'ACTIVE';
       return api.tournaments.updateStatus(id, next);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['tournaments'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tournaments'] });
+      toast.success('Estado actualizado');
+    },
+    onError: (err: any) => toast.error(err.message),
   });
 
   const remove = useMutation({
     mutationFn: (id: string) => api.tournaments.remove(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['tournaments'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tournaments'] });
+      toast.success('Torneo eliminado');
+    },
+    onError: (err: any) => toast.error(err.message),
   });
 
   const tournaments = data?.data ?? [];
@@ -44,116 +58,121 @@ export default function TournamentsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Torneos</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            {meta?.total ?? 0} torneos en total
-          </p>
+          <h1 className="text-2xl font-bold tracking-tight">Torneos</h1>
+          <p className="text-sm text-muted-foreground">{meta?.total ?? 0} torneos en total</p>
         </div>
-        <Link
-          href="/tournaments/new"
-          className="inline-flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
-        >
-          <Plus size={16} />
-          Nuevo torneo
-        </Link>
+        <Button asChild>
+          <Link href="/tournaments/new" className="gap-2">
+            <Plus className="h-4 w-4" />
+            Nuevo torneo
+          </Link>
+        </Button>
       </div>
 
-      <div className="bg-white rounded-xl border overflow-hidden">
+      <div className="rounded-xl border overflow-hidden bg-card">
         {isLoading ? (
-          <div className="p-8 text-center text-gray-400">Cargando...</div>
+          <div className="space-y-2 p-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full" />
+            ))}
+          </div>
         ) : tournaments.length === 0 ? (
-          <div className="p-8 text-center text-gray-400">
-            No hay torneos. <Link href="/tournaments/new" className="text-primary hover:underline">Crear el primero</Link>
+          <div className="p-8 text-center text-muted-foreground">
+            No hay torneos.{' '}
+            <Link href="/tournaments/new" className="text-primary hover:underline">
+              Crear el primero
+            </Link>
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="text-left px-6 py-3 text-gray-500 font-medium">Torneo</th>
-                <th className="text-left px-6 py-3 text-gray-500 font-medium">Fechas</th>
-                <th className="text-left px-6 py-3 text-gray-500 font-medium">Categorías</th>
-                <th className="text-left px-6 py-3 text-gray-500 font-medium">Estado</th>
-                <th className="px-6 py-3"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Torneo</TableHead>
+                <TableHead>Fechas</TableHead>
+                <TableHead>Categorías</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead className="text-right" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {tournaments.map((t: any) => (
-                <tr key={t.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4">
-                    <Link
-                      href={`/tournaments/${t.id}`}
-                      className="font-medium text-gray-900 hover:text-primary"
-                    >
+                <TableRow key={t.id}>
+                  <TableCell>
+                    <Link href={`/tournaments/${t.id}`} className="font-medium hover:text-primary">
                       {t.name}
                     </Link>
                     {t.sponsor && (
-                      <p className="text-xs text-gray-400 mt-0.5">Sponsor: {t.sponsor}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Sponsor: {t.sponsor}</p>
                     )}
-                  </td>
-                  <td className="px-6 py-4 text-gray-500">
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
                     {formatDate(t.startDate)} → {formatDate(t.endDate)}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-medium">
-                      {t.categories?.length ?? 0} categorías
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span
-                      className={`text-xs font-medium px-2 py-1 rounded-full ${STATUS_COLORS[t.status] ?? ''}`}
-                    >
-                      {TOURNAMENT_STATUS_LABELS[t.status] ?? t.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">{t.categories?.length ?? 0} categorías</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge status={t.status} />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={() => toggleStatus.mutate({ id: t.id, current: t.status })}
-                        className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors"
                         title={t.status === 'ACTIVE' ? 'Desactivar' : 'Activar'}
                       >
-                        {t.status === 'ACTIVE' ? <ToggleRight size={16} className="text-green-600" /> : <ToggleLeft size={16} />}
-                      </button>
-                      <Link
-                        href={`/tournaments/${t.id}`}
-                        className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors"
-                      >
-                        <Pencil size={14} />
-                      </Link>
-                      <button
-                        onClick={() => {
-                          if (confirm(`¿Eliminar "${t.name}"?`)) remove.mutate(t.id);
-                        }}
-                        className="p-1.5 rounded hover:bg-red-50 text-gray-500 hover:text-red-600 transition-colors"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                        {t.status === 'ACTIVE' ? (
+                          <ToggleRight className="h-4 w-4 text-emerald-600" />
+                        ) : (
+                          <ToggleLeft className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <Button variant="ghost" size="icon" asChild>
+                        <Link href={`/tournaments/${t.id}`}>
+                          <Pencil className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                      <ConfirmDialog
+                        title="Eliminar torneo"
+                        description={`¿Eliminar "${t.name}"? Esta acción no se puede deshacer.`}
+                        confirmLabel="Eliminar"
+                        destructive
+                        onConfirm={() => remove.mutate(t.id)}
+                        trigger={
+                          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        }
+                      />
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         )}
 
         {meta && meta.totalPages > 1 && (
-          <div className="p-4 border-t flex items-center justify-between text-sm text-gray-500">
+          <div className="p-4 border-t flex items-center justify-between text-sm text-muted-foreground">
             <span>Página {meta.page} de {meta.totalPages}</span>
             <div className="flex gap-2">
-              <button
+              <Button
+                variant="outline"
+                size="sm"
                 disabled={meta.page <= 1}
                 onClick={() => setPage((p) => p - 1)}
-                className="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-40"
               >
                 Anterior
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 disabled={meta.page >= meta.totalPages}
                 onClick={() => setPage((p) => p + 1)}
-                className="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-40"
               >
                 Siguiente
-              </button>
+              </Button>
             </div>
           </div>
         )}

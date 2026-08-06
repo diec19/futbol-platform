@@ -3,9 +3,22 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function NewCategoryPage() {
   const { id: tournamentId } = useParams<{ id: string }>();
@@ -20,7 +33,6 @@ export default function NewCategoryPage() {
     phaseType: 'MIXED',
     rules: '',
   });
-  const [error, setError] = useState('');
 
   const create = useMutation({
     mutationFn: () =>
@@ -36,106 +48,101 @@ export default function NewCategoryPage() {
       }),
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ['tournament', tournamentId] });
+      toast.success('Categoría creada correctamente');
       router.push(`/tournaments/${tournamentId}/categories/${res.data.id}`);
     },
-    onError: (err: any) => setError(err.message),
+    onError: (err: any) => toast.error(err.message),
   });
 
   const set = (field: string) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
       setForm(f => ({ ...f, [field]: e.target.value }));
 
   return (
-    <div className="max-w-xl">
-      <div className="flex items-center gap-3 mb-6">
-        <Link href={`/tournaments/${tournamentId}`} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-          <ArrowLeft size={18} />
+    <div className="max-w-xl space-y-6">
+      <div className="flex items-center gap-3">
+        <Link href={`/tournaments/${tournamentId}`} className="p-2 hover:bg-muted rounded-lg transition-colors">
+          <ArrowLeft className="h-[18px] w-[18px]" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Nueva Categoría</h1>
-          <p className="text-gray-500 text-sm">Se agregará al torneo actual</p>
+          <h1 className="text-2xl font-bold tracking-tight">Nueva Categoría</h1>
+          <p className="text-sm text-muted-foreground">Se agregará al torneo actual</p>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border p-6 space-y-5">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
-          <input
-            value={form.name} onChange={set('name')} required
-            placeholder="Ej: Sub 13, Primera División, Femenino"
-            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-          />
-        </div>
-
-        <div className="grid grid-cols-3 gap-3">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Año de nacimiento</label>
-            <input
-              type="number" value={form.birthYear} onChange={set('birthYear')}
-              placeholder="2013"
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+      <Card>
+        <CardHeader>
+          <CardTitle>Datos de la categoría</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="space-y-1.5">
+            <Label>Nombre *</Label>
+            <Input
+              value={form.name}
+              onChange={set('name')}
+              required
+              placeholder="Ej: Sub 13, Primera División, Femenino"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Edad mín.</label>
-            <input
-              type="number" value={form.minAge} onChange={set('minAge')}
-              placeholder="10"
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-1.5">
+              <Label>Año de nacimiento</Label>
+              <Input type="number" value={form.birthYear} onChange={set('birthYear')} placeholder="2013" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Edad mín.</Label>
+              <Input type="number" value={form.minAge} onChange={set('minAge')} placeholder="10" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Edad máx.</Label>
+              <Input type="number" value={form.maxAge} onChange={set('maxAge')} placeholder="13" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>Jugadores por equipo</Label>
+              <Input type="number" value={form.maxPlayers} onChange={set('maxPlayers')} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Tipo de fase</Label>
+              <Select value={form.phaseType} onValueChange={(v) => setForm(f => ({ ...f, phaseType: v }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="MIXED">Mixto (grupos + eliminación)</SelectItem>
+                  <SelectItem value="GROUP">Solo grupos</SelectItem>
+                  <SelectItem value="KNOCKOUT">Solo eliminación directa</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Reglamento específico</Label>
+            <Textarea
+              value={form.rules}
+              onChange={set('rules')}
+              rows={3}
+              placeholder="Reglamento particular de esta categoría..."
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Edad máx.</label>
-            <input
-              type="number" value={form.maxAge} onChange={set('maxAge')}
-              placeholder="13"
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-            />
+
+          <div className="flex gap-3 pt-2">
+            <Button variant="outline" asChild>
+              <Link href={`/tournaments/${tournamentId}`}>Cancelar</Link>
+            </Button>
+            <Button
+              onClick={() => create.mutate()}
+              disabled={create.isPending || !form.name}
+            >
+              {create.isPending ? 'Creando...' : 'Crear categoría'}
+            </Button>
           </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Jugadores por equipo</label>
-            <input
-              type="number" value={form.maxPlayers} onChange={set('maxPlayers')}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de fase</label>
-            <select value={form.phaseType} onChange={set('phaseType')} className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
-              <option value="MIXED">Mixto (grupos + eliminación)</option>
-              <option value="GROUP">Solo grupos</option>
-              <option value="KNOCKOUT">Solo eliminación directa</option>
-            </select>
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Reglamento específico</label>
-          <textarea
-            value={form.rules} onChange={set('rules')} rows={3}
-            placeholder="Reglamento particular de esta categoría..."
-            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-          />
-        </div>
-
-        {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
-
-        <div className="flex gap-3 pt-2">
-          <Link href={`/tournaments/${tournamentId}`} className="px-4 py-2 border rounded-lg text-sm hover:bg-gray-50">
-            Cancelar
-          </Link>
-          <button
-            onClick={() => create.mutate()}
-            disabled={create.isPending || !form.name}
-            className="px-6 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
-          >
-            {create.isPending ? 'Creando...' : 'Crear categoría'}
-          </button>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

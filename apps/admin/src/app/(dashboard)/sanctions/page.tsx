@@ -2,9 +2,33 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { AlertTriangle, Plus, X, CheckCircle, Trash2 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ConfirmDialog } from '@/components/domain/confirm-dialog';
 
 export default function SanctionsPage() {
   const qc = useQueryClient();
@@ -17,7 +41,6 @@ export default function SanctionsPage() {
     startDate: '',
     notes: '',
   });
-  const [error, setError] = useState('');
 
   const { data: sanctionsData, isLoading } = useQuery({
     queryKey: ['sanctions', filterResolved],
@@ -48,25 +71,31 @@ export default function SanctionsPage() {
       qc.invalidateQueries({ queryKey: ['sanctions'] });
       setShowForm(false);
       setForm({ playerId: '', reason: '', matchesBan: '', startDate: '', notes: '' });
-      setError('');
+      toast.success('Sanción creada correctamente');
     },
-    onError: (err: any) => setError(err.message),
+    onError: (err: any) => toast.error(err.message),
   });
 
   const resolve = useMutation({
     mutationFn: (id: string) => api.sanctions.resolve(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['sanctions'] }),
-    onError: (err: any) => setError(err.message),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['sanctions'] });
+      toast.success('Sanción resuelta');
+    },
+    onError: (err: any) => toast.error(err.message),
   });
 
   const remove = useMutation({
     mutationFn: (id: string) => api.sanctions.remove(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['sanctions'] }),
-    onError: (err: any) => setError(err.message),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['sanctions'] });
+      toast.success('Sanción eliminada');
+    },
+    onError: (err: any) => toast.error(err.message),
   });
 
   const set = (field: string) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
       setForm(f => ({ ...f, [field]: e.target.value }));
 
   const pending = sanctions.filter((s: any) => !s.resolved);
@@ -76,145 +105,154 @@ export default function SanctionsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Sanciones</h1>
-          <p className="text-gray-500 text-sm mt-1">
+          <h1 className="text-2xl font-bold tracking-tight">Sanciones</h1>
+          <p className="text-sm text-muted-foreground">
             {pending.length} pendientes · {resolved.length} resueltas
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <select
-            value={filterResolved}
-            onChange={(e) => setFilterResolved(e.target.value)}
-            className="px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-          >
-            <option value="">Todas</option>
-            <option value="false">Pendientes</option>
-            <option value="true">Resueltas</option>
-          </select>
-          <button
-            onClick={() => { setShowForm(true); setError(''); }}
-            className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90"
-          >
-            <Plus size={14} /> Nueva sanción
-          </button>
+          <Select value={filterResolved} onValueChange={setFilterResolved}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Todas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">Todas</SelectItem>
+              <SelectItem value="false">Pendientes</SelectItem>
+              <SelectItem value="true">Resueltas</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button onClick={() => setShowForm(true)} className="gap-2">
+            <Plus className="h-4 w-4" /> Nueva sanción
+          </Button>
         </div>
       </div>
 
       {showForm && (
-        <div className="bg-white rounded-xl border p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-gray-900">Nueva sanción</h3>
-            <button onClick={() => setShowForm(false)} className="p-1 hover:bg-gray-100 rounded"><X size={16} /></button>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Jugador *</label>
-              <select value={form.playerId} onChange={set('playerId')}
-                className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary">
-                <option value="">Seleccionar jugador</option>
-                {players.map((p: any) => (
-                  <option key={p.id} value={p.id}>
-                    {p.fullName}{p.team ? ` (${p.team.name})` : ''}
-                  </option>
-                ))}
-              </select>
+        <Card>
+          <CardContent className="p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold">Nueva sanción</h3>
+              <Button variant="ghost" size="icon" onClick={() => setShowForm(false)}>
+                <X className="h-4 w-4" />
+              </Button>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Fechas de suspensión *</label>
-              <input type="number" min={1} value={form.matchesBan} onChange={set('matchesBan')} placeholder="1"
-                className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Jugador *</Label>
+                <Select value={form.playerId} onValueChange={(v) => setForm(f => ({ ...f, playerId: v }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar jugador" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {players.map((p: any) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.fullName}{p.team ? ` (${p.team.name})` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Fechas de suspensión *</Label>
+                <Input type="number" min={1} value={form.matchesBan} onChange={set('matchesBan')} placeholder="1" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Fecha de inicio *</Label>
+                <Input type="date" value={form.startDate} onChange={set('startDate')} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Notas</Label>
+                <Input type="text" value={form.notes} onChange={set('notes')} placeholder="Notas adicionales" />
+              </div>
+              <div className="col-span-2 space-y-1.5">
+                <Label>Motivo *</Label>
+                <Textarea value={form.reason} onChange={set('reason')} rows={2} placeholder="Descripción del motivo de la sanción" />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de inicio *</label>
-              <input type="date" value={form.startDate} onChange={set('startDate')}
-                className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => setShowForm(false)}>Cancelar</Button>
+              <Button
+                onClick={() => create.mutate()}
+                disabled={create.isPending || !form.playerId || !form.reason || !form.matchesBan}
+              >
+                {create.isPending ? 'Guardando...' : 'Crear sanción'}
+              </Button>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Notas</label>
-              <input type="text" value={form.notes} onChange={set('notes')} placeholder="Notas adicionales"
-                className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-            </div>
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Motivo *</label>
-              <textarea value={form.reason} onChange={set('reason')} rows={2} placeholder="Descripción del motivo de la sanción"
-                className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-            </div>
-          </div>
-          {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
-          <div className="flex gap-3">
-            <button onClick={() => setShowForm(false)} className="px-4 py-2 border rounded-lg text-sm hover:bg-gray-50">Cancelar</button>
-            <button
-              onClick={() => create.mutate()}
-              disabled={create.isPending || !form.playerId || !form.reason || !form.matchesBan}
-              className="px-5 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
-            >
-              {create.isPending ? 'Guardando...' : 'Crear sanción'}
-            </button>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
-      <div className="bg-white rounded-xl border overflow-hidden">
+      <div className="rounded-xl border overflow-hidden bg-card">
         {isLoading ? (
-          <div className="p-8 text-center text-gray-400">Cargando...</div>
+          <div className="space-y-2 p-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full" />
+            ))}
+          </div>
         ) : sanctions.length === 0 ? (
           <div className="p-8 text-center">
-            <AlertTriangle size={32} className="mx-auto text-gray-300 mb-3" />
-            <p className="text-gray-500 font-medium">No hay sanciones</p>
+            <AlertTriangle size={32} className="mx-auto text-muted-foreground/30 mb-3" />
+            <p className="font-medium text-muted-foreground">No hay sanciones</p>
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="text-left px-6 py-3 text-gray-500 font-medium">Jugador</th>
-                <th className="text-left px-6 py-3 text-gray-500 font-medium">Motivo</th>
-                <th className="text-left px-6 py-3 text-gray-500 font-medium">Fechas</th>
-                <th className="text-left px-6 py-3 text-gray-500 font-medium">Inicio</th>
-                <th className="text-left px-6 py-3 text-gray-500 font-medium">Estado</th>
-                <th className="px-6 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Jugador</TableHead>
+                <TableHead>Motivo</TableHead>
+                <TableHead>Fechas</TableHead>
+                <TableHead>Inicio</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead className="text-right" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {sanctions.map((s: any) => (
-                <tr key={s.id} className={`hover:bg-gray-50 ${s.resolved ? 'opacity-60' : ''}`}>
-                  <td className="px-6 py-4">
-                    <p className="font-medium text-gray-900">{s.player?.fullName ?? '—'}</p>
-                    <p className="text-xs text-gray-400">{s.player?.team?.name}</p>
-                  </td>
-                  <td className="px-6 py-4 text-gray-600 text-xs max-w-xs truncate">{s.reason ?? '—'}</td>
-                  <td className="px-6 py-4 text-gray-600">{s.matchesBan ?? '—'}</td>
-                  <td className="px-6 py-4 text-gray-500 text-xs">{formatDate(s.startDate)}</td>
-                  <td className="px-6 py-4">
-                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${s.resolved ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                <TableRow key={s.id} className={s.resolved ? 'opacity-60' : ''}>
+                  <TableCell>
+                    <p className="font-medium">{s.player?.fullName ?? '—'}</p>
+                    <p className="text-xs text-muted-foreground">{s.player?.team?.name}</p>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-xs max-w-xs truncate">{s.reason ?? '—'}</TableCell>
+                  <TableCell className="text-muted-foreground">{s.matchesBan ?? '—'}</TableCell>
+                  <TableCell className="text-muted-foreground text-xs">{formatDate(s.startDate)}</TableCell>
+                  <TableCell>
+                    <Badge variant={s.resolved ? 'success' : 'destructive'}>
                       {s.resolved ? 'Resuelta' : 'Pendiente'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
                     <div className="flex items-center gap-1 justify-end">
                       {!s.resolved && (
-                        <button
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => resolve.mutate(s.id)}
                           disabled={resolve.isPending}
                           title="Marcar como resuelta"
-                          className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
+                          className="text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50"
                         >
-                          <CheckCircle size={14} />
-                        </button>
+                          <CheckCircle className="h-4 w-4" />
+                        </Button>
                       )}
-                      <button
-                        onClick={() => {
-                          if (confirm('¿Eliminar esta sanción?')) remove.mutate(s.id);
-                        }}
-                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      <ConfirmDialog
+                        title="Eliminar sanción"
+                        description="¿Eliminar esta sanción? Esta acción no se puede deshacer."
+                        confirmLabel="Eliminar"
+                        destructive
+                        onConfirm={() => remove.mutate(s.id)}
+                        trigger={
+                          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        }
+                      />
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         )}
       </div>
     </div>

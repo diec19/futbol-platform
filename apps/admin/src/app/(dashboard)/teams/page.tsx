@@ -2,8 +2,30 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { Shield, Plus, X, Pencil, Check, Trash2, Search } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ConfirmDialog } from '@/components/domain/confirm-dialog';
 
 interface TeamForm {
   name: string;
@@ -23,7 +45,6 @@ export default function TeamsPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<TeamForm>(EMPTY_FORM);
   const [editForm, setEditForm] = useState<TeamForm>(EMPTY_FORM);
-  const [error, setError] = useState('');
 
   const { data: teamsData, isLoading } = useQuery({
     queryKey: ['teams', page, debouncedSearch],
@@ -49,9 +70,9 @@ export default function TeamsPage() {
       qc.invalidateQueries({ queryKey: ['teams'] });
       setShowForm(false);
       setForm(EMPTY_FORM);
-      setError('');
+      toast.success('Equipo creado correctamente');
     },
-    onError: (err: any) => setError(err.message),
+    onError: (err: any) => toast.error(err.message),
   });
 
   const update = useMutation({
@@ -59,14 +80,18 @@ export default function TeamsPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['teams'] });
       setEditId(null);
+      toast.success('Equipo actualizado');
     },
-    onError: (err: any) => setError(err.message),
+    onError: (err: any) => toast.error(err.message),
   });
 
   const remove = useMutation({
     mutationFn: (id: string) => api.teams.remove(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['teams'] }),
-    onError: (err: any) => setError(err.message),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['teams'] });
+      toast.success('Equipo eliminado');
+    },
+    onError: (err: any) => toast.error(err.message),
   });
 
   function startEdit(team: any) {
@@ -80,80 +105,89 @@ export default function TeamsPage() {
   }
 
   const set = (field: keyof TeamForm, setter: React.Dispatch<React.SetStateAction<TeamForm>>) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    (e: React.ChangeEvent<HTMLInputElement>) =>
       setter(f => ({ ...f, [field]: e.target.value }));
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Equipos</h1>
-          <p className="text-gray-500 text-sm mt-1">{meta?.total ?? teams.length} equipos registrados</p>
+          <h1 className="text-2xl font-bold tracking-tight">Equipos</h1>
+          <p className="text-sm text-muted-foreground">{meta?.total ?? teams.length} equipos registrados</p>
         </div>
-        <button
-          onClick={() => { setShowForm(true); setError(''); }}
-          className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90"
-        >
-          <Plus size={14} /> Nuevo equipo
-        </button>
+        <Button onClick={() => setShowForm(true)} className="gap-2">
+          <Plus className="h-4 w-4" /> Nuevo equipo
+        </Button>
       </div>
 
       {showForm && (
-        <div className="bg-white rounded-xl border p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-gray-900">Nuevo equipo</h3>
-            <button onClick={() => setShowForm(false)} className="p-1 hover:bg-gray-100 rounded"><X size={16} /></button>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
-              <input
-                value={form.name} onChange={set('name', setForm)} placeholder="Nombre del equipo"
-                className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              />
+        <Card>
+          <CardContent className="p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold">Nuevo equipo</h3>
+              <Button variant="ghost" size="icon" onClick={() => setShowForm(false)}>
+                <X className="h-4 w-4" />
+              </Button>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
-              <select value={form.categoryId} onChange={set('categoryId', setForm)}
-                className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary">
-                <option value="">Sin categoría</option>
-                {categories.map((c: any) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Nombre *</Label>
+                <Input
+                  value={form.name}
+                  onChange={set('name', setForm)}
+                  placeholder="Nombre del equipo"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Categoría</Label>
+                <Select
+                  value={form.categoryId}
+                  onValueChange={(v) => setForm(f => ({ ...f, categoryId: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sin categoría" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Sin categoría</SelectItem>
+                    {categories.map((c: any) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Delegado</Label>
+                <Input
+                  value={form.delegateName}
+                  onChange={set('delegateName', setForm)}
+                  placeholder="Nombre del delegado"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Contacto</Label>
+                <Input
+                  value={form.delegateContact}
+                  onChange={set('delegateContact', setForm)}
+                  placeholder="Teléfono / email"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Delegado</label>
-              <input
-                value={form.delegateName} onChange={set('delegateName', setForm)} placeholder="Nombre del delegado"
-                className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              />
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => setShowForm(false)}>Cancelar</Button>
+              <Button
+                onClick={() => create.mutate()}
+                disabled={create.isPending || !form.name}
+              >
+                {create.isPending ? 'Creando...' : 'Crear equipo'}
+              </Button>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Contacto</label>
-              <input
-                value={form.delegateContact} onChange={set('delegateContact', setForm)} placeholder="Teléfono / email"
-                className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
-          </div>
-          {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
-          <div className="flex gap-3">
-            <button onClick={() => setShowForm(false)} className="px-4 py-2 border rounded-lg text-sm hover:bg-gray-50">Cancelar</button>
-            <button
-              onClick={() => create.mutate()}
-              disabled={create.isPending || !form.name}
-              className="px-5 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
-            >
-              {create.isPending ? 'Creando...' : 'Crear equipo'}
-            </button>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
-      <div className="relative">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input
+      <div className="relative max-w-sm">
+        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <Input
           value={search}
           onChange={(e) => {
             setSearch(e.target.value);
@@ -161,105 +195,131 @@ export default function TeamsPage() {
             setTimeout(() => setDebouncedSearch(e.target.value), 300);
           }}
           placeholder="Buscar equipo..."
-          className="w-full max-w-sm pl-9 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+          className="pl-9"
         />
       </div>
 
-      <div className="bg-white rounded-xl border overflow-hidden">
+      <div className="rounded-xl border overflow-hidden bg-card">
         {isLoading ? (
-          <div className="p-8 text-center text-gray-400">Cargando...</div>
+          <div className="space-y-2 p-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full" />
+            ))}
+          </div>
         ) : teams.length === 0 ? (
           <div className="p-8 text-center">
-            <Shield size={32} className="mx-auto text-gray-300 mb-3" />
-            <p className="text-gray-500 font-medium">No hay equipos</p>
+            <Shield size={32} className="mx-auto text-muted-foreground/30 mb-3" />
+            <p className="font-medium text-muted-foreground">No hay equipos</p>
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="text-left px-6 py-3 text-gray-500 font-medium">Equipo</th>
-                <th className="text-left px-6 py-3 text-gray-500 font-medium">Delegado</th>
-                <th className="text-left px-6 py-3 text-gray-500 font-medium">Contacto</th>
-                <th className="text-left px-6 py-3 text-gray-500 font-medium">Categoría</th>
-                <th className="text-left px-6 py-3 text-gray-500 font-medium">Jugadores</th>
-                <th className="px-6 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Equipo</TableHead>
+                <TableHead>Delegado</TableHead>
+                <TableHead>Contacto</TableHead>
+                <TableHead>Categoría</TableHead>
+                <TableHead>Jugadores</TableHead>
+                <TableHead className="text-right" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {teams.map((team: any) => (
                 editId === team.id ? (
-                  <tr key={team.id} className="bg-blue-50">
-                    <td className="px-4 py-3">
-                      <input value={editForm.name} onChange={set('name', setEditForm)}
-                        className="w-full px-2 py-1.5 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
-                    </td>
-                    <td className="px-4 py-3">
-                      <input value={editForm.delegateName} onChange={set('delegateName', setEditForm)}
-                        className="w-full px-2 py-1.5 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
-                    </td>
-                    <td className="px-4 py-3">
-                      <input value={editForm.delegateContact} onChange={set('delegateContact', setEditForm)}
-                        className="w-full px-2 py-1.5 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
-                    </td>
-                    <td className="px-4 py-3" colSpan={2}>
-                      <select value={editForm.categoryId} onChange={set('categoryId', setEditForm)}
-                        className="px-2 py-1.5 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary">
-                        <option value="">Sin categoría</option>
-                        {categories.map((c: any) => (
-                          <option key={c.id} value={c.id}>{c.name}</option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => update.mutate(team.id)} disabled={update.isPending}
-                          className="p-1.5 text-green-600 hover:bg-green-50 rounded"><Check size={14} /></button>
-                        <button onClick={() => setEditId(null)} className="p-1.5 text-gray-400 hover:bg-gray-100 rounded"><X size={14} /></button>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  <tr key={team.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
-                          <Shield size={14} className="text-gray-400" />
-                        </div>
-                        <p className="font-medium text-gray-900">{team.name}</p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-gray-600">{team.delegateName ?? '—'}</td>
-                    <td className="px-6 py-4 text-gray-600 text-xs">{team.delegateContact ?? '—'}</td>
-                    <td className="px-6 py-4 text-gray-500 text-xs">{team.category?.name ?? '—'}</td>
-                    <td className="px-6 py-4 text-gray-500">{team._count?.players ?? team.players?.length ?? '—'}</td>
-                    <td className="px-6 py-4">
+                  <TableRow key={team.id}>
+                    <TableCell>
+                      <Input value={editForm.name} onChange={set('name', setEditForm)} />
+                    </TableCell>
+                    <TableCell>
+                      <Input value={editForm.delegateName} onChange={set('delegateName', setEditForm)} />
+                    </TableCell>
+                    <TableCell>
+                      <Input value={editForm.delegateContact} onChange={set('delegateContact', setEditForm)} />
+                    </TableCell>
+                    <TableCell>
+                      <Select
+                        value={editForm.categoryId}
+                        onValueChange={(v) => setEditForm(f => ({ ...f, categoryId: v }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sin categoría" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Sin categoría</SelectItem>
+                          {categories.map((c: any) => (
+                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell />
+                    <TableCell className="text-right">
                       <div className="flex items-center gap-1 justify-end">
-                        <button onClick={() => startEdit(team)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors">
-                          <Pencil size={14} />
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (confirm(`¿Eliminar el equipo "${team.name}"?`)) remove.mutate(team.id);
-                          }}
-                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => update.mutate(team.id)}
+                          disabled={update.isPending}
+                          className="text-emerald-600 hover:bg-emerald-50"
                         >
-                          <Trash2 size={14} />
-                        </button>
+                          <Check className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => setEditId(null)}>
+                          <X className="h-4 w-4" />
+                        </Button>
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  <TableRow key={team.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
+                          <Shield size={14} className="text-muted-foreground" />
+                        </div>
+                        <p className="font-medium">{team.name}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{team.delegateName ?? '—'}</TableCell>
+                    <TableCell className="text-muted-foreground text-xs">{team.delegateContact ?? '—'}</TableCell>
+                    <TableCell className="text-muted-foreground text-xs">{team.category?.name ?? '—'}</TableCell>
+                    <TableCell className="text-muted-foreground">{team._count?.players ?? team.players?.length ?? '—'}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center gap-1 justify-end">
+                        <Button variant="ghost" size="icon" onClick={() => startEdit(team)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <ConfirmDialog
+                          title="Eliminar equipo"
+                          description={`¿Eliminar el equipo "${team.name}"? Esta acción no se puede deshacer.`}
+                          confirmLabel="Eliminar"
+                          destructive
+                          onConfirm={() => remove.mutate(team.id)}
+                          trigger={
+                            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          }
+                        />
+                      </div>
+                    </TableCell>
+                  </TableRow>
                 )
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         )}
 
         {meta && meta.totalPages > 1 && (
-          <div className="p-4 border-t flex items-center justify-between text-sm text-gray-500">
+          <div className="p-4 border-t flex items-center justify-between text-sm text-muted-foreground">
             <span>Página {meta.page} de {meta.totalPages}</span>
             <div className="flex gap-2">
-              <button disabled={meta.page <= 1} onClick={() => setPage(p => p - 1)} className="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-40">Anterior</button>
-              <button disabled={meta.page >= meta.totalPages} onClick={() => setPage(p => p + 1)} className="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-40">Siguiente</button>
+              <Button variant="outline" size="sm" disabled={meta.page <= 1} onClick={() => setPage(p => p - 1)}>
+                Anterior
+              </Button>
+              <Button variant="outline" size="sm" disabled={meta.page >= meta.totalPages} onClick={() => setPage(p => p + 1)}>
+                Siguiente
+              </Button>
             </div>
           </div>
         )}

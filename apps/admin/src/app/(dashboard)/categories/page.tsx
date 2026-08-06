@@ -2,9 +2,30 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { ListOrdered, Search, ToggleLeft, ToggleRight, Trash2 } from 'lucide-react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ActiveBadge } from '@/components/domain/status-badge';
+import { ConfirmDialog } from '@/components/domain/confirm-dialog';
 
 const PHASE_LABELS: Record<string, string> = {
   MIXED: 'Mixto',
@@ -32,13 +53,20 @@ export default function CategoriesPage() {
 
   const toggle = useMutation({
     mutationFn: (id: string) => api.categories.toggle(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['categories-all'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['categories-all'] });
+      toast.success('Estado actualizado');
+    },
+    onError: (err: any) => toast.error(err.message),
   });
 
   const remove = useMutation({
     mutationFn: (id: string) => api.categories.remove(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['categories-all'] }),
-    onError: (err: any) => alert(err.message),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['categories-all'] });
+      toast.success('Categoría eliminada');
+    },
+    onError: (err: any) => toast.error(err.message),
   });
 
   const tournaments = tournamentsData?.data ?? [];
@@ -51,109 +79,115 @@ export default function CategoriesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Categorías</h1>
-          <p className="text-gray-500 text-sm mt-1">{categories.length} categorías</p>
+          <h1 className="text-2xl font-bold tracking-tight">Categorías</h1>
+          <p className="text-sm text-muted-foreground">{categories.length} categorías</p>
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
-        <select
-          value={tournamentId}
-          onChange={(e) => setTournamentId(e.target.value)}
-          className="px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary min-w-[200px]"
-        >
-          <option value="">Todos los torneos</option>
-          {tournaments.map((t: any) => (
-            <option key={t.id} value={t.id}>{t.name}</option>
-          ))}
-        </select>
+      <div className="flex items-center gap-4 flex-wrap">
+        <Select value={tournamentId} onValueChange={setTournamentId}>
+          <SelectTrigger className="w-56">
+            <SelectValue placeholder="Todos los torneos" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">Todos los torneos</SelectItem>
+            {tournaments.map((t: any) => (
+              <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         <div className="relative">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar categoría..."
-            className="pl-9 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            className="pl-9 w-64"
           />
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border overflow-hidden">
+      <div className="rounded-xl border overflow-hidden bg-card">
         {isLoading ? (
-          <div className="p-8 text-center text-gray-400">Cargando...</div>
+          <div className="space-y-2 p-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full" />
+            ))}
+          </div>
         ) : categories.length === 0 ? (
           <div className="p-8 text-center">
-            <ListOrdered size={32} className="mx-auto text-gray-300 mb-3" />
-            <p className="text-gray-500 font-medium">No hay categorías</p>
-            <p className="text-gray-400 text-sm mt-1">
+            <ListOrdered size={32} className="mx-auto text-muted-foreground/30 mb-3" />
+            <p className="font-medium text-muted-foreground">No hay categorías</p>
+            <p className="text-sm text-muted-foreground/70 mt-1">
               Creá categorías desde la página de cada torneo
             </p>
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="text-left px-6 py-3 text-gray-500 font-medium">Categoría</th>
-                <th className="text-left px-6 py-3 text-gray-500 font-medium">Torneo</th>
-                <th className="text-left px-6 py-3 text-gray-500 font-medium">Tipo de fase</th>
-                <th className="text-left px-6 py-3 text-gray-500 font-medium">Equipos</th>
-                <th className="text-left px-6 py-3 text-gray-500 font-medium">Edad</th>
-                <th className="text-left px-6 py-3 text-gray-500 font-medium">Estado</th>
-                <th className="px-6 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Categoría</TableHead>
+                <TableHead>Torneo</TableHead>
+                <TableHead>Tipo de fase</TableHead>
+                <TableHead>Equipos</TableHead>
+                <TableHead>Edad</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead className="text-right" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {categories.map((cat: any) => (
-                <tr key={cat.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
+                <TableRow key={cat.id}>
+                  <TableCell>
                     <Link
                       href={`/tournaments/${cat.tournamentId}/categories/${cat.id}`}
-                      className="font-medium text-gray-900 hover:text-primary transition-colors"
+                      className="font-medium hover:text-primary transition-colors"
                     >
                       {cat.name}
                     </Link>
-                  </td>
-                  <td className="px-6 py-4 text-gray-600 text-xs">{cat.tournament?.name ?? '—'}</td>
-                  <td className="px-6 py-4 text-gray-500 text-xs">{PHASE_LABELS[cat.phaseType] ?? cat.phaseType}</td>
-                  <td className="px-6 py-4 text-gray-500">{cat.teams?.length ?? cat._count?.teams ?? '—'}</td>
-                  <td className="px-6 py-4 text-gray-500 text-xs">
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-xs">{cat.tournament?.name ?? '—'}</TableCell>
+                  <TableCell className="text-muted-foreground text-xs">{PHASE_LABELS[cat.phaseType] ?? cat.phaseType}</TableCell>
+                  <TableCell className="text-muted-foreground">{cat.teams?.length ?? cat._count?.teams ?? '—'}</TableCell>
+                  <TableCell className="text-muted-foreground text-xs">
                     {cat.birthYear
                       ? `Año ${cat.birthYear}`
                       : (cat.minAge || cat.maxAge)
                         ? `${cat.minAge ?? '?'}-${cat.maxAge ?? '?'} años`
                         : '—'}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${cat.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                      {cat.active ? 'Activa' : 'Inactiva'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
+                  </TableCell>
+                  <TableCell>
+                    <ActiveBadge active={cat.active} label={cat.active ? 'Activa' : 'Inactiva'} />
+                  </TableCell>
+                  <TableCell className="text-right">
                     <div className="flex items-center gap-1 justify-end">
-                      <button
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={() => toggle.mutate(cat.id)}
                         title={cat.active ? 'Desactivar' : 'Activar'}
-                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
                       >
-                        {cat.active ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (confirm(`¿Eliminar la categoría "${cat.name}"? Esta acción no se puede deshacer.`)) {
-                            remove.mutate(cat.id);
-                          }
-                        }}
-                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                        {cat.active ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
+                      </Button>
+                      <ConfirmDialog
+                        title="Eliminar categoría"
+                        description={`¿Eliminar la categoría "${cat.name}"? Esta acción no se puede deshacer.`}
+                        confirmLabel="Eliminar"
+                        destructive
+                        onConfirm={() => remove.mutate(cat.id)}
+                        trigger={
+                          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        }
+                      />
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         )}
       </div>
     </div>

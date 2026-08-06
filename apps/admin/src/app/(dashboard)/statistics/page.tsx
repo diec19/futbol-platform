@@ -4,7 +4,22 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { BarChart3, Trophy, Target, AlertTriangle } from 'lucide-react';
-import { POSITION_LABELS } from '@futbol/constants';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 export default function StatisticsPage() {
   const [tournamentId, setTournamentId] = useState('');
@@ -55,41 +70,46 @@ export default function StatisticsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Estadísticas</h1>
-        <p className="text-gray-500 text-sm mt-1">Goleadores, tarjetas y fair play por categoría</p>
+        <h1 className="text-2xl font-bold tracking-tight">Estadísticas</h1>
+        <p className="text-sm text-muted-foreground">Goleadores, tarjetas y fair play por categoría</p>
       </div>
 
-      <div className="flex items-center gap-4">
-        <select
+      <div className="flex items-center gap-4 flex-wrap">
+        <Select
           value={tournamentId}
-          onChange={(e) => { setTournamentId(e.target.value); setCategoryId(''); }}
-          className="px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary min-w-[200px]"
+          onValueChange={(v) => { setTournamentId(v); setCategoryId(''); }}
         >
-          <option value="">Seleccionar torneo</option>
-          {tournaments.map((t: any) => (
-            <option key={t.id} value={t.id}>{t.name}</option>
-          ))}
-        </select>
+          <SelectTrigger className="w-56">
+            <SelectValue placeholder="Seleccionar torneo" />
+          </SelectTrigger>
+          <SelectContent>
+            {tournaments.map((t: any) => (
+              <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         {tournamentId && (
-          <select
-            value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
-            className="px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary min-w-[200px]"
-          >
-            <option value="">Todas las categorías</option>
-            {categories.map((c: any) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
+          <Select value={categoryId} onValueChange={setCategoryId}>
+            <SelectTrigger className="w-56">
+              <SelectValue placeholder="Todas las categorías" />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map((c: any) => (
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         )}
       </div>
 
       {!tournamentId && (
-        <div className="p-12 text-center bg-white rounded-xl border">
-          <BarChart3 size={40} className="mx-auto text-gray-300 mb-3" />
-          <p className="text-gray-500 font-medium">Seleccioná un torneo para ver estadísticas</p>
-        </div>
+        <Card>
+          <CardContent className="p-12 text-center">
+            <BarChart3 size={40} className="mx-auto text-muted-foreground/30 mb-3" />
+            <p className="font-medium text-muted-foreground">Seleccioná un torneo para ver estadísticas</p>
+          </CardContent>
+        </Card>
       )}
 
       {summary && (
@@ -100,15 +120,17 @@ export default function StatisticsPage() {
             { label: 'Tarjetas amarillas', value: summary.yellowCards ?? 0, icon: AlertTriangle, color: 'bg-yellow-500' },
             { label: 'Tarjetas rojas', value: summary.redCards ?? 0, icon: AlertTriangle, color: 'bg-red-500' },
           ].map(stat => (
-            <div key={stat.label} className="bg-white rounded-xl border p-5 flex items-center gap-4">
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${stat.color}`}>
-                <stat.icon size={18} className="text-white" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">{stat.label}</p>
-                <p className="text-xl font-bold text-gray-900">{stat.value}</p>
-              </div>
-            </div>
+            <Card key={stat.label}>
+              <CardContent className="p-5 flex items-center gap-4">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${stat.color}`}>
+                  <stat.icon size={18} className="text-white" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">{stat.label}</p>
+                  <p className="text-xl font-bold">{stat.value}</p>
+                </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}
@@ -116,100 +138,109 @@ export default function StatisticsPage() {
       {categoryId && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Scorers */}
-          <div className="bg-white rounded-xl border overflow-hidden">
-            <div className="px-5 py-3 border-b bg-gray-50 flex items-center gap-2">
-              <Target size={14} className="text-green-600" />
-              <h3 className="font-semibold text-gray-900 text-sm">Goleadores</h3>
-            </div>
-            {scorers.length === 0 ? (
-              <p className="p-4 text-sm text-gray-400 text-center">Sin datos</p>
-            ) : (
-              <table className="w-full text-sm">
-                <thead className="border-b">
-                  <tr>
-                    <th className="text-left px-4 py-2 text-xs text-gray-500 font-medium">#</th>
-                    <th className="text-left px-4 py-2 text-xs text-gray-500 font-medium">Jugador</th>
-                    <th className="text-center px-4 py-2 text-xs text-gray-500 font-medium">Goles</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {scorers.slice(0, 10).map((s: any, i: number) => (
-                    <tr key={s.playerId} className="hover:bg-gray-50">
-                      <td className="px-4 py-2.5 text-gray-400 text-xs">{i + 1}</td>
-                      <td className="px-4 py-2.5">
-                        <p className="font-medium text-gray-900 text-xs">{s.player?.fullName}</p>
-                        <p className="text-xs text-gray-400">{s.player?.team?.name}</p>
-                      </td>
-                      <td className="px-4 py-2.5 text-center font-bold text-gray-900">{s.goals}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <Target className="h-4 w-4 text-green-600" /> Goleadores
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              {scorers.length === 0 ? (
+                <p className="p-4 text-sm text-muted-foreground text-center">Sin datos</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">#</TableHead>
+                      <TableHead className="text-xs">Jugador</TableHead>
+                      <TableHead className="text-center text-xs">Goles</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {scorers.slice(0, 10).map((s: any, i: number) => (
+                      <TableRow key={s.playerId}>
+                        <TableCell className="text-muted-foreground text-xs">{i + 1}</TableCell>
+                        <TableCell>
+                          <p className="font-medium text-xs">{s.player?.fullName}</p>
+                          <p className="text-xs text-muted-foreground">{s.player?.team?.name}</p>
+                        </TableCell>
+                        <TableCell className="text-center font-bold">{s.goals}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Cards */}
-          <div className="bg-white rounded-xl border overflow-hidden">
-            <div className="px-5 py-3 border-b bg-gray-50 flex items-center gap-2">
-              <AlertTriangle size={14} className="text-yellow-500" />
-              <h3 className="font-semibold text-gray-900 text-sm">Tarjetas</h3>
-            </div>
-            {cards.length === 0 ? (
-              <p className="p-4 text-sm text-gray-400 text-center">Sin datos</p>
-            ) : (
-              <table className="w-full text-sm">
-                <thead className="border-b">
-                  <tr>
-                    <th className="text-left px-4 py-2 text-xs text-gray-500 font-medium">Jugador</th>
-                    <th className="text-center px-3 py-2 text-xs text-gray-500 font-medium">🟨</th>
-                    <th className="text-center px-3 py-2 text-xs text-gray-500 font-medium">🟥</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {cards.slice(0, 10).map((c: any) => (
-                    <tr key={c.playerId} className="hover:bg-gray-50">
-                      <td className="px-4 py-2.5">
-                        <p className="font-medium text-gray-900 text-xs">{c.player?.fullName}</p>
-                        <p className="text-xs text-gray-400">{c.player?.team?.name}</p>
-                      </td>
-                      <td className="px-3 py-2.5 text-center text-gray-700 text-xs">{c.yellowCards ?? 0}</td>
-                      <td className="px-3 py-2.5 text-center text-gray-700 text-xs">{c.redCards ?? 0}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <AlertTriangle className="h-4 w-4 text-yellow-500" /> Tarjetas
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              {cards.length === 0 ? (
+                <p className="p-4 text-sm text-muted-foreground text-center">Sin datos</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">Jugador</TableHead>
+                      <TableHead className="text-center text-xs">🟨</TableHead>
+                      <TableHead className="text-center text-xs">🟥</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {cards.slice(0, 10).map((c: any) => (
+                      <TableRow key={c.playerId}>
+                        <TableCell>
+                          <p className="font-medium text-xs">{c.player?.fullName}</p>
+                          <p className="text-xs text-muted-foreground">{c.player?.team?.name}</p>
+                        </TableCell>
+                        <TableCell className="text-center text-muted-foreground text-xs">{c.yellowCards ?? 0}</TableCell>
+                        <TableCell className="text-center text-muted-foreground text-xs">{c.redCards ?? 0}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Fair Play */}
-          <div className="bg-white rounded-xl border overflow-hidden">
-            <div className="px-5 py-3 border-b bg-gray-50 flex items-center gap-2">
-              <Trophy size={14} className="text-blue-500" />
-              <h3 className="font-semibold text-gray-900 text-sm">Fair Play (equipos)</h3>
-            </div>
-            {fairPlay.length === 0 ? (
-              <p className="p-4 text-sm text-gray-400 text-center">Sin datos</p>
-            ) : (
-              <table className="w-full text-sm">
-                <thead className="border-b">
-                  <tr>
-                    <th className="text-left px-4 py-2 text-xs text-gray-500 font-medium">#</th>
-                    <th className="text-left px-4 py-2 text-xs text-gray-500 font-medium">Equipo</th>
-                    <th className="text-center px-4 py-2 text-xs text-gray-500 font-medium">Pts</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {fairPlay.slice(0, 10).map((f: any, i: number) => (
-                    <tr key={f.teamId ?? i} className="hover:bg-gray-50">
-                      <td className="px-4 py-2.5 text-gray-400 text-xs">{i + 1}</td>
-                      <td className="px-4 py-2.5 font-medium text-gray-900 text-xs">{f.team?.name}</td>
-                      <td className="px-4 py-2.5 text-center font-bold text-gray-900 text-xs">{f.fairPlayPoints ?? f.points}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <Trophy className="h-4 w-4 text-blue-500" /> Fair Play (equipos)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              {fairPlay.length === 0 ? (
+                <p className="p-4 text-sm text-muted-foreground text-center">Sin datos</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">#</TableHead>
+                      <TableHead className="text-xs">Equipo</TableHead>
+                      <TableHead className="text-center text-xs">Pts</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {fairPlay.slice(0, 10).map((f: any, i: number) => (
+                      <TableRow key={f.teamId ?? i}>
+                        <TableCell className="text-muted-foreground text-xs">{i + 1}</TableCell>
+                        <TableCell className="font-medium text-xs">{f.team?.name}</TableCell>
+                        <TableCell className="text-center font-bold text-xs">{f.fairPlayPoints ?? f.points}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>
