@@ -8,9 +8,13 @@ import {
   CheckCircle, Clock, AlertCircle, Send, Copy, MessageCircle,
   ChevronRight, Eye, EyeOff,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const MONTH_NAMES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const MONTHS_FULL = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+const inputBase =
+  'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none transition-colors focus:border-brand-red focus:ring-2 focus:ring-brand-red/10';
 
 const SUB_STATUS = {
   PENDING:   { label: 'Pendiente',   color: 'bg-slate-100 text-slate-600',  icon: Clock },
@@ -41,13 +45,13 @@ function MemberForm({ initial, onSave, onCancel }: { initial?: any; onSave: (d: 
         </div>
         <div className="p-5 space-y-3">
           <div className="grid grid-cols-2 gap-3">
-            <input className="input col-span-2" placeholder="Nombre completo *" value={form.fullName} onChange={e => set('fullName', e.target.value)} />
-            <input className="input" placeholder="DNI *" value={form.dni} onChange={e => set('dni', e.target.value)} />
-            <input className="input" placeholder="Teléfono" value={form.phone} onChange={e => set('phone', e.target.value)} />
-            <input className="input col-span-2" placeholder="Email *" type="email" value={form.email} onChange={e => set('email', e.target.value)} />
-            <input className="input" placeholder="Usuario *" value={form.username} onChange={e => set('username', e.target.value)} />
+            <input className={cn(inputBase, 'col-span-2')} placeholder="Nombre completo *" value={form.fullName} onChange={e => set('fullName', e.target.value)} />
+            <input className={inputBase} placeholder="DNI *" value={form.dni} onChange={e => set('dni', e.target.value)} />
+            <input className={inputBase} placeholder="Teléfono" value={form.phone} onChange={e => set('phone', e.target.value)} />
+            <input className={cn(inputBase, 'col-span-2')} placeholder="Email *" type="email" value={form.email} onChange={e => set('email', e.target.value)} />
+            <input className={inputBase} placeholder="Usuario *" value={form.username} onChange={e => set('username', e.target.value)} />
             <div className="relative">
-              <input className="input pr-10 w-full" placeholder={isEdit ? 'Nueva contraseña (dejar vacío)' : 'Contraseña *'} type={showPass ? 'text' : 'password'} value={form.password} onChange={e => set('password', e.target.value)} />
+              <input className={cn(inputBase, 'pr-10')} placeholder={isEdit ? 'Nueva contraseña (dejar vacío)' : 'Contraseña *'} type={showPass ? 'text' : 'password'} value={form.password} onChange={e => set('password', e.target.value)} />
               <button type="button" onClick={() => setShowPass(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
                 {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
               </button>
@@ -67,7 +71,6 @@ function MemberForm({ initial, onSave, onCancel }: { initial?: any; onSave: (d: 
           >{isEdit ? 'Guardar cambios' : 'Crear socio'}</button>
         </div>
       </div>
-      <style jsx>{`.input { border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 0.5rem 0.75rem; font-size: 0.875rem; outline: none; width: 100%; } .input:focus { border-color: #DC2626; }`}</style>
     </div>
   );
 }

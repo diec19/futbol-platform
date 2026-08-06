@@ -6,6 +6,7 @@ import NextImage from 'next/image';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/providers/auth-provider';
+import { Button } from '@/components/ui/button';
 import {
   Trophy,
   Users,
@@ -63,21 +64,34 @@ const tournamentNav = [
   { name: 'Sanciones', href: '/sanctions', icon: AlertTriangle },
 ];
 
-function NavItem({ item, pathname }: { item: { name: string; href: string; icon: any }; pathname: string }) {
-  const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
+function isItemActive(href: string, pathname: string): boolean {
+  return pathname === href || (href !== '/' && pathname.startsWith(href));
+}
+
+interface NavItemProps {
+  item: (typeof clubNav)[number];
+  pathname: string;
+  onNavigate?: () => void;
+}
+
+function NavItem({ item, pathname, onNavigate }: NavItemProps) {
+  const isActive = isItemActive(item.href, pathname);
+
   return (
-    <Link
-      href={item.href}
+    <Button
+      asChild
+      variant="ghost"
+      size="sm"
       className={cn(
-        'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
-        isActive
-          ? 'bg-brand-red text-white shadow-sm shadow-brand-red/30'
-          : 'text-slate-400 hover:text-white hover:bg-white/10'
+        'w-full justify-start gap-3 px-3 font-medium text-slate-400 hover:bg-white/10 hover:text-white',
+        isActive && 'bg-brand-red text-white shadow-sm shadow-brand-red/30 hover:bg-brand-red hover:text-white'
       )}
     >
-      <item.icon size={16} className={isActive ? 'text-white' : 'text-slate-400'} />
-      {item.name}
-    </Link>
+      <Link href={item.href} onClick={onNavigate} className="w-full">
+        <item.icon size={16} className={isActive ? 'text-white' : 'text-slate-400'} />
+        <span className="truncate">{item.name}</span>
+      </Link>
+    </Button>
   );
 }
 
@@ -87,16 +101,16 @@ function NavSection({
   pathname,
   defaultOpen = true,
   bordered = false,
+  onNavigate,
 }: {
   label: string;
-  items: typeof tournamentNav;
+  items: typeof clubNav;
   pathname: string;
   defaultOpen?: boolean;
   bordered?: boolean;
+  onNavigate?: () => void;
 }) {
-  const hasActive = items.some(
-    (i) => pathname === i.href || (i.href !== '/' && pathname.startsWith(i.href))
-  );
+  const hasActive = items.some((i) => isItemActive(i.href, pathname));
   const [open, setOpen] = useState(defaultOpen || hasActive);
 
   return (
@@ -125,7 +139,7 @@ function NavSection({
       >
         <div className="space-y-0.5 pb-1">
           {items.map((item) => (
-            <NavItem key={item.href} item={item} pathname={pathname} />
+            <NavItem key={item.href} item={item} pathname={pathname} onNavigate={onNavigate} />
           ))}
         </div>
       </div>
@@ -133,12 +147,18 @@ function NavSection({
   );
 }
 
-export function Sidebar() {
+export function Sidebar({
+  className,
+  onNavigate,
+}: {
+  className?: string;
+  onNavigate?: () => void;
+}) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
 
   return (
-    <aside className="w-64 min-h-screen bg-brand-navy text-white flex flex-col">
+    <aside className={cn('w-64 min-h-screen bg-brand-navy text-white flex flex-col', className)}>
       {/* Logo */}
       <div className="p-5 border-b border-white/10">
         <div className="flex items-center gap-3">
@@ -158,8 +178,21 @@ export function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 p-3 overflow-y-auto space-y-1">
-        <NavSection label="Mi Club" items={clubNav} pathname={pathname} defaultOpen={true} />
-        <NavSection label="Torneos" items={tournamentNav} pathname={pathname} defaultOpen={false} bordered />
+        <NavSection
+          label="Mi Club"
+          items={clubNav}
+          pathname={pathname}
+          defaultOpen={true}
+          onNavigate={onNavigate}
+        />
+        <NavSection
+          label="Torneos"
+          items={tournamentNav}
+          pathname={pathname}
+          defaultOpen={false}
+          bordered
+          onNavigate={onNavigate}
+        />
       </nav>
 
       {/* Footer */}
@@ -173,13 +206,15 @@ export function Sidebar() {
             <p className="text-xs text-slate-400 truncate">{user?.role}</p>
           </div>
         </div>
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={logout}
-          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+          className="w-full justify-start gap-2 text-slate-400 hover:text-white hover:bg-white/10"
         >
           <LogOut size={15} />
           Cerrar sesión
-        </button>
+        </Button>
       </div>
     </aside>
   );

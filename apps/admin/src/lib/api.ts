@@ -197,6 +197,8 @@ export const api = {
     createGroup: (data: unknown) => post<{ data: any }>('/standings/group', data),
     addTeams: (groupId: string, teamIds: string[]) =>
       post<{ data: any }>(`/standings/group/${groupId}/teams`, { teamIds }),
+    recalculate: (groupId: string) =>
+      post<{ data: any }>(`/standings/group/${groupId}/recalculate`, {}),
   },
   brackets: {
     byCategory: (categoryId: string) => get<{ data: any[] }>(`/brackets/category/${categoryId}`),

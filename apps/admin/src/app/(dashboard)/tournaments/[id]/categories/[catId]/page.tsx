@@ -162,8 +162,7 @@ function GroupsTab({ categoryId }: { categoryId: string }) {
   });
 
   const recalculate = useMutation({
-    mutationFn: (groupId: string) =>
-      fetch(`/api/v1/standings/group/${groupId}/recalculate`, { method: 'POST' }).then(r => r.json()),
+    mutationFn: (groupId: string) => api.standings.recalculate(groupId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['standings', categoryId] }),
   });
 

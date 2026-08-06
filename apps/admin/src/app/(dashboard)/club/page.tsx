@@ -4,6 +4,10 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { Building2, Save, Globe, Phone, Mail, Instagram, Facebook, MessageCircle, CreditCard, Eye, EyeOff } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+const inputBase =
+  'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none transition-colors focus:border-brand-red focus:ring-2 focus:ring-brand-red/10';
 
 export default function ClubInfoPage() {
   const qc = useQueryClient();
@@ -55,27 +59,27 @@ export default function ClubInfoPage() {
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
               <label className="text-xs text-slate-500 mb-1 block">Nombre del club *</label>
-              <input className="input-base" value={val('name')} onChange={(e) => set('name', e.target.value)} placeholder="Club Atlético..." />
+              <input               className={inputBase} value={val('name')} onChange={(e) => set('name', e.target.value)} placeholder="Club Atlético..." />
             </div>
             <div>
               <label className="text-xs text-slate-500 mb-1 block">Nombre corto</label>
-              <input className="input-base" value={val('shortName')} onChange={(e) => set('shortName', e.target.value)} placeholder="CA..." />
+              <input               className={inputBase} value={val('shortName')} onChange={(e) => set('shortName', e.target.value)} placeholder="CA..." />
             </div>
             <div>
               <label className="text-xs text-slate-500 mb-1 block">Año de fundación</label>
-              <input className="input-base" type="number" value={val('foundedYear')} onChange={(e) => set('foundedYear', e.target.value)} placeholder="1985" />
+              <input               className={inputBase} type="number" value={val('foundedYear')} onChange={(e) => set('foundedYear', e.target.value)} placeholder="1985" />
             </div>
             <div className="col-span-2">
               <label className="text-xs text-slate-500 mb-1 block">Descripción / Historia</label>
-              <textarea className="input-base min-h-[100px] resize-none" value={val('description')} onChange={(e) => set('description', e.target.value)} placeholder="Historia del club..." />
+              <textarea className={cn(inputBase, 'min-h-[100px] resize-none')} value={val('description')} onChange={(e) => set('description', e.target.value)} placeholder="Historia del club..." />
             </div>
             <div className="col-span-2">
               <label className="text-xs text-slate-500 mb-1 block">Dirección</label>
-              <input className="input-base" value={val('address')} onChange={(e) => set('address', e.target.value)} placeholder="Calle Falsa 123, Ciudad" />
+              <input               className={inputBase} value={val('address')} onChange={(e) => set('address', e.target.value)} placeholder="Calle Falsa 123, Ciudad" />
             </div>
             <div>
               <label className="text-xs text-slate-500 mb-1 block">Logo (URL)</label>
-              <input className="input-base" value={val('logo')} onChange={(e) => set('logo', e.target.value)} placeholder="https://..." />
+              <input               className={inputBase} value={val('logo')} onChange={(e) => set('logo', e.target.value)} placeholder="https://..." />
             </div>
           </div>
         </div>
@@ -86,19 +90,19 @@ export default function ClubInfoPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-xs text-slate-500 mb-1 flex items-center gap-1"><Phone size={11} />Teléfono</label>
-              <input className="input-base" value={val('phone')} onChange={(e) => set('phone', e.target.value)} placeholder="+54 11 ..." />
+              <input               className={inputBase} value={val('phone')} onChange={(e) => set('phone', e.target.value)} placeholder="+54 11 ..." />
             </div>
             <div>
               <label className="text-xs text-slate-500 mb-1 flex items-center gap-1"><Mail size={11} />Email</label>
-              <input className="input-base" value={val('email')} onChange={(e) => set('email', e.target.value)} placeholder="club@..." />
+              <input               className={inputBase} value={val('email')} onChange={(e) => set('email', e.target.value)} placeholder="club@..." />
             </div>
             <div>
               <label className="text-xs text-slate-500 mb-1 flex items-center gap-1"><Globe size={11} />Sitio web</label>
-              <input className="input-base" value={val('website')} onChange={(e) => set('website', e.target.value)} placeholder="https://..." />
+              <input               className={inputBase} value={val('website')} onChange={(e) => set('website', e.target.value)} placeholder="https://..." />
             </div>
             <div>
               <label className="text-xs text-slate-500 mb-1 flex items-center gap-1"><MessageCircle size={11} />WhatsApp</label>
-              <input className="input-base" value={val('whatsapp')} onChange={(e) => set('whatsapp', e.target.value)} placeholder="+54 9 11 ..." />
+              <input               className={inputBase} value={val('whatsapp')} onChange={(e) => set('whatsapp', e.target.value)} placeholder="+54 9 11 ..." />
             </div>
           </div>
         </div>
@@ -109,11 +113,11 @@ export default function ClubInfoPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-xs text-slate-500 mb-1 flex items-center gap-1"><Instagram size={11} />Instagram</label>
-              <input className="input-base" value={val('instagram')} onChange={(e) => set('instagram', e.target.value)} placeholder="@clubname" />
+              <input               className={inputBase} value={val('instagram')} onChange={(e) => set('instagram', e.target.value)} placeholder="@clubname" />
             </div>
             <div>
               <label className="text-xs text-slate-500 mb-1 flex items-center gap-1"><Facebook size={11} />Facebook</label>
-              <input className="input-base" value={val('facebook')} onChange={(e) => set('facebook', e.target.value)} placeholder="facebook.com/club" />
+              <input               className={inputBase} value={val('facebook')} onChange={(e) => set('facebook', e.target.value)} placeholder="facebook.com/club" />
             </div>
           </div>
         </div>
@@ -129,7 +133,7 @@ export default function ClubInfoPage() {
               <label className="text-xs text-slate-500 mb-1 block">Access Token</label>
               <div className="flex gap-2">
                 <input
-                  className="input-base flex-1"
+                  className={cn(inputBase, 'flex-1')}
                   type={showMpToken ? 'text' : 'password'}
                   value={val('mpAccessToken')}
                   onChange={(e) => set('mpAccessToken', e.target.value)}
@@ -148,7 +152,7 @@ export default function ClubInfoPage() {
               <label className="text-xs text-slate-500 mb-1 block">Webhook Secret (opcional)</label>
               <div className="flex gap-2">
                 <input
-                  className="input-base flex-1"
+                  className={cn(inputBase, 'flex-1')}
                   type={showMpSecret ? 'text' : 'password'}
                   value={val('mpWebhookSecret')}
                   onChange={(e) => set('mpWebhookSecret', e.target.value)}
@@ -175,15 +179,15 @@ export default function ClubInfoPage() {
           <div className="space-y-3">
             <div>
               <label className="text-xs text-slate-500 mb-1 block">API URL</label>
-              <input className="input-base" value={val('whatsappApiUrl')} onChange={(e) => set('whatsappApiUrl', e.target.value)} placeholder="https://evolution-api-tuclub.up.railway.app" />
+              <input               className={inputBase} value={val('whatsappApiUrl')} onChange={(e) => set('whatsappApiUrl', e.target.value)} placeholder="https://evolution-api-tuclub.up.railway.app" />
             </div>
             <div>
               <label className="text-xs text-slate-500 mb-1 block">API Key</label>
-              <input className="input-base" type="password" value={val('whatsappApiKey')} onChange={(e) => set('whatsappApiKey', e.target.value)} placeholder="Tu API Key de Evolution" />
+              <input               className={inputBase} type="password" value={val('whatsappApiKey')} onChange={(e) => set('whatsappApiKey', e.target.value)} placeholder="Tu API Key de Evolution" />
             </div>
             <div>
               <label className="text-xs text-slate-500 mb-1 block">Nombre de instancia</label>
-              <input className="input-base" value={val('whatsappInstance')} onChange={(e) => set('whatsappInstance', e.target.value)} placeholder="club-futbol" />
+              <input               className={inputBase} value={val('whatsappInstance')} onChange={(e) => set('whatsappInstance', e.target.value)} placeholder="club-futbol" />
             </div>
           </div>
         </div>
@@ -195,11 +199,11 @@ export default function ClubInfoPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-xs text-slate-500 mb-1 block">Cuota mensual jugadores ($)</label>
-              <input className="input-base" type="number" value={val('monthlyPlayerFee')} onChange={(e) => set('monthlyPlayerFee', e.target.value)} placeholder="15000" />
+              <input               className={inputBase} type="number" value={val('monthlyPlayerFee')} onChange={(e) => set('monthlyPlayerFee', e.target.value)} placeholder="15000" />
             </div>
             <div>
               <label className="text-xs text-slate-500 mb-1 block">Cuota mensual socios ($)</label>
-              <input className="input-base" type="number" value={val('monthlyMemberFee')} onChange={(e) => set('monthlyMemberFee', e.target.value)} placeholder="10000" />
+              <input               className={inputBase} type="number" value={val('monthlyMemberFee')} onChange={(e) => set('monthlyMemberFee', e.target.value)} placeholder="10000" />
             </div>
           </div>
         </div>
@@ -215,19 +219,6 @@ export default function ClubInfoPage() {
           {saved ? '¡Guardado!' : updateMutation.isPending ? 'Guardando...' : 'Guardar cambios'}
         </button>
       </div>
-
-      <style jsx>{`
-        .input-base {
-          width: 100%;
-          border: 1px solid #e2e8f0;
-          border-radius: 0.5rem;
-          padding: 0.5rem 0.75rem;
-          font-size: 0.875rem;
-          outline: none;
-          transition: border-color 0.15s;
-        }
-        .input-base:focus { border-color: #DC2626; box-shadow: 0 0 0 3px rgba(220,38,38,0.08); }
-      `}</style>
     </div>
   );
 }

@@ -7,7 +7,7 @@ import { GitBranch } from 'lucide-react';
 import { BRACKET_STAGE_LABELS } from '@futbol/constants';
 
 const STAGE_ORDER = [
-  'ROUND_OF_32', 'ROUND_OF_16', 'QUARTERFINAL', 'SEMIFINAL', 'THIRD_PLACE', 'FINAL',
+  'ROUND_OF_32', 'ROUND_OF_16', 'QUARTER_FINAL', 'SEMI_FINAL', 'THIRD_PLACE', 'FINAL',
 ];
 
 export default function BracketsPage() {
