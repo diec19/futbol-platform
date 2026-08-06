@@ -2,9 +2,9 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
-import { api } from '../../services/api'
-import Card from '../../components/ui/Card'
-import { colors } from '../../theme/colors'
+import { api } from '../services/api'
+import Card from '../components/ui/Card'
+import { colors } from '../theme/colors'
 import { useState, useCallback } from 'react'
 
 export default function BeneficiosScreen() {
