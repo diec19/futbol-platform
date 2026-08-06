@@ -345,7 +345,7 @@ export const membersService = {
     });
   },
 
-  async markPaid(subId: string) {
+  async markPaid(subId: string, includeChildren: boolean = false) {
     const sub = await db.subscription.findUnique({
       where: { id: subId },
       include: {
@@ -359,8 +359,8 @@ export const membersService = {
       data: { status: 'PAID', paidAt: new Date() },
     });
 
-    // Auto-mark linked children's PlayerSubscriptions for same month/year as PAID
-    if (sub.member?.players?.length) {
+    // Optional: explicitly mark linked children's PlayerSubscriptions for same month/year as PAID
+    if (includeChildren && sub.member?.players?.length) {
       await db.playerSubscription.updateMany({
         where: {
           playerId: { in: sub.member.players.map((p) => p.playerId) },

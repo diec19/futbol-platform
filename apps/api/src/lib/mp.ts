@@ -125,8 +125,20 @@ export async function mapWithConcurrency<T, R>(
 // ── MP Preference Creation ───────────────────────────────────────────────────
 const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
+// ── Amount / Expiration Helpers ──────────────────────────────────────────────
+export function expectedPaymentAmount(sub: { amount: number; dueDate?: Date | string | null; status?: string; totalAmount?: number | null }): number {
+  if (sub.totalAmount != null && sub.totalAmount > sub.amount) return sub.totalAmount;
+  if (sub.dueDate && new Date(sub.dueDate) < new Date()) return Math.round(sub.amount * 1.1);
+  return sub.amount;
+}
+
+export function preferenceExpiration(dueDate: Date | string): Date {
+  if (new Date(dueDate) > new Date()) return new Date(dueDate);
+  return new Date(Date.now() + 15 * 24 * 60 * 60 * 1000);
+}
+
 export async function createPlayerMpPreference(
-  sub: { id: string; month: number; year: number; amount: number; dueDate: Date | string },
+  sub: { id: string; month: number; year: number; amount: number; dueDate: Date | string; totalAmount?: number | null },
   player: { id: string; fullName: string },
   customAmount?: number,
 ) {
@@ -144,7 +156,7 @@ export async function createPlayerMpPreference(
       id: uniqueId,
       title: `Cuota ${MONTHS[sub.month - 1]} ${sub.year} — ${player.fullName}`,
       quantity: 1,
-      unit_price: customAmount ?? sub.amount,
+      unit_price: customAmount ?? expectedPaymentAmount(sub),
       currency_id: 'ARS',
     }],
     payer: memberLink
@@ -154,7 +166,7 @@ export async function createPlayerMpPreference(
     ...(env.APP_URL ? { notification_url: `${env.APP_URL}/api/v1/webhooks/mp` } : {}),
     statement_descriptor: 'Club Futbol',
     expires: true,
-    expiration_date_to: dueDate.toISOString(),
+    expiration_date_to: preferenceExpiration(dueDate).toISOString(),
   };
 
   const result = await mpRequest(accessToken, body);
@@ -162,9 +174,9 @@ export async function createPlayerMpPreference(
 }
 
 export async function createMemberMpPreference(
-  sub: { id: string; month: number; year: number; amount: number; dueDate: Date | string },
+  sub: { id: string; month: number; year: number; amount: number; dueDate: Date | string; totalAmount?: number | null },
   member: { email: string; fullName: string },
-  childSubs: { id: string; player: { fullName: string }; amount: number }[] = [],
+  childSubs: { id: string; player: { fullName: string }; amount: number; dueDate?: Date | string; totalAmount?: number | null }[] = [],
   customAmount?: number,
 ) {
   const { accessToken } = await getClubMpToken();
@@ -174,7 +186,7 @@ export async function createMemberMpPreference(
     id: sub.id,
     title: `Cuota ${monthName} ${sub.year} — ${member.fullName}`,
     quantity: 1,
-    unit_price: customAmount ?? sub.amount,
+    unit_price: customAmount ?? expectedPaymentAmount(sub),
     currency_id: 'ARS',
   }];
 
@@ -183,7 +195,7 @@ export async function createMemberMpPreference(
       id: cs.id,
       title: `Cuota ${monthName} ${sub.year} — ${cs.player.fullName}`,
       quantity: 1,
-      unit_price: cs.amount,
+      unit_price: expectedPaymentAmount(cs),
       currency_id: 'ARS',
     });
   }
@@ -195,7 +207,7 @@ export async function createMemberMpPreference(
     ...(env.APP_URL ? { notification_url: `${env.APP_URL}/api/v1/webhooks/mp` } : {}),
     statement_descriptor: 'Club Futbol',
     expires: true,
-    expiration_date_to: new Date(sub.dueDate).toISOString(),
+    expiration_date_to: preferenceExpiration(sub.dueDate).toISOString(),
   };
 
   const result = await mpRequest(accessToken, body);

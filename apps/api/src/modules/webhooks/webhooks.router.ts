@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db } from '../../config/database';
-import { getClubMpToken, fetchMpPayment, validateWebhookSignature } from '../../lib/mp';
+import { getClubMpToken, fetchMpPayment, validateWebhookSignature, expectedPaymentAmount } from '../../lib/mp';
 
 export const webhooksRouter = Router();
 
@@ -54,56 +54,67 @@ webhooksRouter.post('/mp', async (req, res) => {
       const subId = payment.external_reference;
       if (!subId) { console.log('[WEBHOOK] No external_reference'); return res.json({ ignored: true }); }
 
-      // Try PlayerSubscription first
+      const transactionAmount = payment.transaction_amount ?? 0;
+
+      // Try PlayerSubscription first — a player payment covers ONLY that player's fee
       const playerSub = await db.playerSubscription.findUnique({
         where: { id: subId },
-        include: { player: { include: { memberLinks: { select: { memberId: true } } } } },
       });
       if (playerSub) {
+        const expected = expectedPaymentAmount(playerSub);
+        if (transactionAmount < expected - 1) {
+          console.log('[WEBHOOK] Monto insuficiente para player sub:', subId, transactionAmount, expected);
+          return res.json({ processed: true, type: 'player', subId, warning: 'monto insuficiente' });
+        }
+
         console.log('[WEBHOOK] Updating player subscription:', subId);
         await db.playerSubscription.update({
           where: { id: subId },
           data: { status: 'PAID', paidAt: new Date(), mpPaymentId: String(paymentId) },
         });
 
-        // Cross-sync: auto-mark linked Member Subscriptions as PAID
-        if (playerSub.player?.memberLinks?.length) {
-          await db.subscription.updateMany({
-            where: {
-              memberId: { in: playerSub.player.memberLinks.map(l => l.memberId) },
-              month: playerSub.month,
-              year: playerSub.year,
-              status: { not: 'PAID' },
-            },
-            data: { status: 'PAID', paidAt: new Date() },
-          });
-        }
-
         return res.json({ processed: true, type: 'player', subId });
       }
 
-      // Fallback to Member Subscription
+      // Fallback to Member Subscription — consolidated or individual, decided by amount
       const memberSub = await db.subscription.findUnique({
         where: { id: subId },
         include: { member: { include: { players: { select: { playerId: true } } } } },
       });
       if (memberSub) {
+        const expectedMember = expectedPaymentAmount(memberSub);
+
+        const childSubs = memberSub.member?.players?.length
+          ? await db.playerSubscription.findMany({
+              where: {
+                playerId: { in: memberSub.member.players.map((p) => p.playerId) },
+                month: memberSub.month,
+                year: memberSub.year,
+              },
+            })
+          : [];
+        const expectedChildren = childSubs.reduce((sum, cs) => sum + expectedPaymentAmount(cs), 0);
+
+        if (transactionAmount < expectedMember - 1) {
+          console.log('[WEBHOOK] Monto insuficiente para member sub:', subId, transactionAmount, expectedMember);
+          return res.json({ processed: true, type: 'member', subId, warning: 'monto insuficiente' });
+        }
+
         console.log('[WEBHOOK] Updating member subscription:', subId);
         await db.subscription.update({
           where: { id: subId },
           data: { status: 'PAID', paidAt: new Date(), mpPaymentId: String(paymentId) },
         });
 
-        // Cross-sync: auto-mark linked PlayerSubscriptions as PAID
-        if (memberSub.member?.players?.length) {
+        // Consolidated payment: amount covers member + children → mark children explicitly
+        if (childSubs.length && transactionAmount >= expectedMember + expectedChildren - 1) {
           await db.playerSubscription.updateMany({
             where: {
-              playerId: { in: memberSub.member.players.map(p => p.playerId) },
+              playerId: { in: childSubs.map((cs) => cs.playerId) },
               month: memberSub.month,
               year: memberSub.year,
-              status: { not: 'PAID' },
             },
-            data: { status: 'PAID', paidAt: new Date() },
+            data: { status: 'PAID', paidAt: new Date(), mpPaymentId: String(paymentId) },
           });
         }
 
@@ -114,18 +125,44 @@ webhooksRouter.post('/mp', async (req, res) => {
       res.json({ ignored: true, reason: 'subscription not found' });
 
     } else if (['cancelled', 'refunded', 'charged_back'].includes(payment.status)) {
-      // Handle rejected/refunded payments
+      // Handle rejected/refunded payments — revert PAID back to PENDING
       const subId = payment.external_reference;
       if (subId) {
-        await db.playerSubscription.updateMany({
-          where: { id: subId, status: { not: 'PAID' } },
-          data: { status: 'PENDING', mpPaymentId: null },
-        });
-        await db.subscription.updateMany({
-          where: { id: subId, status: { not: 'PAID' } },
-          data: { status: 'PENDING', mpPaymentId: null },
-        });
-        console.log(`[WEBHOOK] Reverted subscription ${subId} due to payment ${payment.status}`);
+        const playerSub = await db.playerSubscription.findUnique({ where: { id: subId } });
+        if (playerSub) {
+          await db.playerSubscription.update({
+            where: { id: subId },
+            data: { status: 'PENDING', paidAt: null, mpPaymentId: null },
+          });
+          console.log(`[WEBHOOK] Reverted player subscription ${subId} due to payment ${payment.status}`);
+        } else {
+          const memberSub = await db.subscription.findUnique({
+            where: { id: subId },
+            include: { member: { include: { players: { select: { playerId: true } } } } },
+          });
+          if (memberSub) {
+            await db.subscription.update({
+              where: { id: subId },
+              data: { status: 'PENDING', paidAt: null, mpPaymentId: null },
+            });
+
+            // Revert only children marked by THIS payment (idempotency across payments)
+            if (memberSub.member?.players?.length) {
+              await db.playerSubscription.updateMany({
+                where: {
+                  playerId: { in: memberSub.member.players.map((p) => p.playerId) },
+                  month: memberSub.month,
+                  year: memberSub.year,
+                  mpPaymentId: String(paymentId),
+                },
+                data: { status: 'PENDING', paidAt: null, mpPaymentId: null },
+              });
+            }
+            console.log(`[WEBHOOK] Reverted member subscription ${subId} due to payment ${payment.status}`);
+          } else {
+            console.log('[WEBHOOK] No subscription found to revert for:', subId);
+          }
+        }
       }
       res.json({ processed: true, action: 'reverted', status: payment.status });
 
