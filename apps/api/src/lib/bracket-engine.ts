@@ -43,7 +43,10 @@ export async function initializeBracket(
     );
   }
 
-  const matches = await db.$transaction(matchCreations);
+  const matches = await db.$transaction([
+    db.match.deleteMany({ where: { bracketId: bracket.id } }),
+    ...matchCreations,
+  ]);
   return { bracket, matches };
 }
 
