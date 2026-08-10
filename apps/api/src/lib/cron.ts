@@ -17,6 +17,9 @@ export function startOverdueCron() {
   async function checkOverdueSubscriptions() {
     try {
       const now = new Date();
+      // Una cuota vence el DUE_DAY a las 00:00. Recién se marca OVERDUE a partir del
+      // día siguiente (inicio del día actual): el día del vencimiento es período de gracia.
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
       let outboxInapp = 0;
       let outboxWhatsapp = 0;
@@ -26,7 +29,7 @@ export function startOverdueCron() {
       const overduePlayerSubs = await db.playerSubscription.findMany({
         where: {
           status: { in: ['PENDING', 'LINK_SENT'] },
-          dueDate: { lt: now },
+          dueDate: { lt: startOfToday },
         },
         include: {
           player: {
@@ -40,7 +43,7 @@ export function startOverdueCron() {
       const playerResult = await db.playerSubscription.updateMany({
         where: {
           status: { in: ['PENDING', 'LINK_SENT'] },
-          dueDate: { lt: now },
+          dueDate: { lt: startOfToday },
         },
         data: { status: 'OVERDUE' },
       });
@@ -103,7 +106,7 @@ export function startOverdueCron() {
       const overdueMemberSubs = await db.subscription.findMany({
         where: {
           status: { in: ['PENDING', 'LINK_SENT'] },
-          dueDate: { lt: now },
+          dueDate: { lt: startOfToday },
         },
         include: { member: { select: { id: true, phone: true, email: true, fullName: true } } },
       });
@@ -111,7 +114,7 @@ export function startOverdueCron() {
       const memberResult = await db.subscription.updateMany({
         where: {
           status: { in: ['PENDING', 'LINK_SENT'] },
-          dueDate: { lt: now },
+          dueDate: { lt: startOfToday },
         },
         data: { status: 'OVERDUE' },
       });
@@ -169,7 +172,7 @@ export function startOverdueCron() {
       const overdueSponsorPayments = await db.sponsorshipPayment.findMany({
         where: {
           status: { in: ['PENDING', 'LINK_SENT'] },
-          dueDate: { lt: now },
+          dueDate: { lt: startOfToday },
         },
         include: { sponsorship: { include: { sponsor: true, plan: true } } },
       });
@@ -177,7 +180,7 @@ export function startOverdueCron() {
       const sponsorResult = await db.sponsorshipPayment.updateMany({
         where: {
           status: { in: ['PENDING', 'LINK_SENT'] },
-          dueDate: { lt: now },
+          dueDate: { lt: startOfToday },
         },
         data: { status: 'OVERDUE' },
       });
