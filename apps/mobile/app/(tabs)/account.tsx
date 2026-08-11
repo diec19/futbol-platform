@@ -8,15 +8,7 @@ import { useAuth } from '../../services/auth'
 import PlayerAvatar from '../../components/PlayerAvatar'
 import Card from '../../components/ui/Card'
 import { colors } from '../../theme/colors'
-
-function getPlayerStats(player: any) {
-  const events = player.events ?? []
-  return {
-    goals: events.filter((e: any) => e.type === 'GOAL').length,
-    yellow: events.filter((e: any) => e.type === 'YELLOW_CARD').length,
-    red: events.filter((e: any) => ['RED_CARD', 'DOUBLE_YELLOW'].includes(e.type)).length,
-  }
-}
+import { getPlayerStats } from '../../lib/stats'
 
 function calcAge(birthDate: string) {
   const birth = new Date(birthDate)
@@ -108,7 +100,7 @@ export default function SettingsScreen() {
   const { logout } = useAuth()
   const router = useRouter()
   const qc = useQueryClient()
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['member-me'], queryFn: () => api.members.me(), retry: false,
   })
   const [selectedPlayer, setSelectedPlayer] = useState<any>(null)
@@ -123,7 +115,23 @@ export default function SettingsScreen() {
     return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator color={colors.primary} size="large" /></View>
   }
 
-  if (error) { handleLogout(); return null }
+  if (error) {
+    // Solo sesión expirada/inválida (401) fuerza logout. Un error de red o del server
+    // no debe cerrar la sesión: se muestra error con reintentar.
+    if ((error as any)?.status === 401) {
+      handleLogout()
+      return null
+    }
+    return (
+      <View style={styles.errorBox}>
+        <Ionicons name="cloud-offline-outline" size={40} color={colors.gray[300]} />
+        <Text style={styles.errorText}>No se pudo cargar tu perfil</Text>
+        <TouchableOpacity style={styles.errorRetry} onPress={() => refetch()} activeOpacity={0.85}>
+          <Text style={styles.errorRetryText}>Reintentar</Text>
+        </TouchableOpacity>
+      </View>
+    )
+  }
 
   const member = data?.data
 
@@ -212,4 +220,8 @@ const styles = StyleSheet.create({
   modalName: { fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: 16 },
   infoGrid: { flexDirection: 'row', justifyContent: 'center', gap: 24, marginBottom: 20 },
   statsRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+  errorBox: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: colors.background, gap: 12 },
+  errorText: { fontSize: 14, color: colors.textSecondary, textAlign: 'center' },
+  errorRetry: { backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 10, borderRadius: 12 },
+  errorRetryText: { color: '#FFFFFF', fontWeight: '700', fontSize: 14 },
 })

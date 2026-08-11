@@ -1,6 +1,7 @@
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Linking, ActivityIndicator, RefreshControl } from 'react-native'
+import { useCallback } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useRouter } from 'expo-router'
+import { useFocusEffect, useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { api } from '../../services/api'
 import { useAuth } from '../../services/auth'
@@ -14,7 +15,7 @@ function formatDate(d: string) {
   return new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(d))
 }
 
-const SUB_VARIANT: Record<string, 'success' | 'warning' | 'error' | 'info'> = {
+const SUB_VARIANT: Record<string, 'success' | 'warning' | 'error' | 'info' | 'default'> = {
   PAID: 'success',
   PENDING: 'default',
   LINK_SENT: 'info',
@@ -38,6 +39,13 @@ export default function EstadoCuentaScreen() {
     retry: false,
   })
 
+  // Al volver de Mercado Pago (o de cualquier navegación) refresca el estado de cuenta.
+  useFocusEffect(
+    useCallback(() => {
+      refetch()
+    }, [refetch])
+  )
+
   const handleLogout = async () => {
     await logout()
     qc.removeQueries({ queryKey: ['member-me'] })
@@ -53,8 +61,21 @@ export default function EstadoCuentaScreen() {
   }
 
   if (error) {
-    handleLogout()
-    return null
+    // Solo sesión expirada/inválida (401) fuerza logout. Un error de red o del server
+    // no debe cerrar la sesión: se muestra error con reintentar.
+    if ((error as any)?.status === 401) {
+      handleLogout()
+      return null
+    }
+    return (
+      <View style={styles.errorBox}>
+        <Ionicons name="cloud-offline-outline" size={40} color={colors.gray[300]} />
+        <Text style={styles.errorText}>No se pudo cargar tu estado de cuenta</Text>
+        <TouchableOpacity style={styles.errorRetry} onPress={() => refetch()} activeOpacity={0.85}>
+          <Text style={styles.errorRetryText}>Reintentar</Text>
+        </TouchableOpacity>
+      </View>
+    )
   }
 
   const member = data?.data
@@ -170,4 +191,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12, marginTop: 12,
   },
   payBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 14 },
+  errorBox: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: colors.background, gap: 12 },
+  errorText: { fontSize: 14, color: colors.textSecondary, textAlign: 'center' },
+  errorRetry: { backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 10, borderRadius: 12 },
+  errorRetryText: { color: '#FFFFFF', fontWeight: '700', fontSize: 14 },
 })

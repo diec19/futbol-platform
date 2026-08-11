@@ -24,16 +24,16 @@ export default function RootLayout() {
         <AuthProvider>
           <StatusBar style="dark" />
           <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="auth/login" />
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="tournament/[id]" options={{ headerShown: true, title: 'Torneo', ...headerStyles }} />
-            <Stack.Screen name="team/[id]" options={{ headerShown: true, title: 'Equipo', ...headerStyles }} />
-            <Stack.Screen name="player/[id]" options={{ headerShown: true, title: 'Jugador', ...headerStyles }} />
-            <Stack.Screen name="category/[id]" options={{ headerShown: true, title: 'Categoría', ...headerStyles }} />
-            <Stack.Screen name="match/[id]" options={{ headerShown: true, title: 'Partido', ...headerStyles }} />
-            <Stack.Screen name="notifications/index" options={{ headerShown: true, title: 'Notificaciones', ...headerStyles }} />
-            <Stack.Screen name="bracket/[id]" options={{ headerShown: true, title: 'Llaves', ...headerStyles }} />
-            <Stack.Screen name="beneficios" options={{ headerShown: false }} />
+              <Stack.Screen name="auth/login" />
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="tournament/[id]" options={{ headerShown: true, title: 'Torneo', ...headerStyles }} />
+              <Stack.Screen name="team/[id]" options={{ headerShown: true, title: 'Equipo', ...headerStyles }} />
+              <Stack.Screen name="player/[id]" options={{ headerShown: true, title: 'Jugador', ...headerStyles }} />
+              <Stack.Screen name="category/[id]" options={{ headerShown: true, title: 'Categoría', ...headerStyles }} />
+              <Stack.Screen name="match/[id]" options={{ headerShown: true, title: 'Partido', ...headerStyles }} />
+              <Stack.Screen name="notifications/index" options={{ headerShown: true, title: 'Notificaciones', ...headerStyles }} />
+              <Stack.Screen name="bracket/[id]" options={{ headerShown: true, title: 'Llaves', ...headerStyles }} />
+              <Stack.Screen name="beneficios" options={{ headerShown: false }} />
           </Stack>
         </AuthProvider>
       </QueryClientProvider>

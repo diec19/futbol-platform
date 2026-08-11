@@ -10,16 +10,11 @@ import Card from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
 import PlayerAvatar from '../../components/PlayerAvatar'
 import { colors } from '../../theme/colors'
+import { getPlayerStats } from '../../lib/stats'
 
 const STATUS_VARIANT: Record<string, 'success' | 'warning' | 'info' | 'default'> = {
   ACTIVE: 'success', DRAFT: 'default', FINISHED: 'info', SUSPENDED: 'warning',
 }
-
-const fallbackAds = [
-  { id: '1', title: '¡Bienvenido a la Temporada 2026!', subtitle: 'Toda la info de tu club al instante', bgColor: colors.primary },
-  { id: '2', title: 'Pago de Cuotas Online', subtitle: 'Pagá desde la app con Mercado Pago', bgColor: colors.accent },
-  { id: '3', title: 'Seguí a tu equipo', subtitle: 'Resultados en vivo y estadísticas', bgColor: colors.navyMid },
-]
 
 function QuickAction({ icon, label, onPress, color }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void; color: string }) {
   return (
@@ -30,15 +25,6 @@ function QuickAction({ icon, label, onPress, color }: { icon: keyof typeof Ionic
       <Text style={styles.quickLabel}>{label}</Text>
     </TouchableOpacity>
   )
-}
-
-function getPlayerStats(player: any) {
-  const events = player.events ?? []
-  return {
-    goals: events.filter((e: any) => e.type === 'GOAL').length,
-    yellow: events.filter((e: any) => e.type === 'YELLOW_CARD').length,
-    red: events.filter((e: any) => ['RED_CARD', 'DOUBLE_YELLOW'].includes(e.type)).length,
-  }
 }
 
 export default function HomeScreen() {
@@ -94,9 +80,10 @@ export default function HomeScreen() {
     router.replace('/auth/login')
   }
 
-  const slides = slidesData?.data ?? []
+  // Solo auspiciantes con imagen (slideUrl) son banners publicitarios.
+  // Sin imagen no se muestra nada: no se mezcla con notificaciones ni avisos.
+  const slides = (slidesData?.data ?? []).filter((s: any) => !!s.slideUrl)
   const benefitsList = benefitsData?.data ?? []
-  const hasSlides = slides.length > 0
   const hasBenefits = benefitsList.length > 0
 
   return (
@@ -131,10 +118,8 @@ export default function HomeScreen() {
         </TouchableOpacity>
       )}
 
-      {hasSlides ? (
+      {slides.length > 0 && (
         <Carousel slides={slides.map((s: any) => ({ id: s.id, title: s.name, subtitle: s.website ?? '', bgColor: colors.primary, imageUrl: s.slideUrl }))} />
-      ) : (
-        <Carousel slides={fallbackAds} />
       )}
 
       <View style={styles.quickActions}>

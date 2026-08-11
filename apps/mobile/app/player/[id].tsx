@@ -8,6 +8,7 @@ import Card from '../../components/ui/Card'
 import PlayerAvatar from '../../components/PlayerAvatar'
 import { colors } from '../../theme/colors'
 import { POSITION_LABELS } from '../../lib/constants'
+import { getPlayerStats } from '../../lib/stats'
 
 const EVENT_LABELS: Record<string, string> = {
   GOAL: 'Gol', OWN_GOAL: 'Gol en contra',
@@ -53,11 +54,7 @@ export default function PlayerScreen() {
   const sanctions: any[] = player.sanctions ?? []
   const pendingSanctions = sanctions.filter((s: any) => !s.resolved)
 
-  const goals = events.filter((e: any) => e.type === 'GOAL').length
-  const ownGoals = events.filter((e: any) => e.type === 'OWN_GOAL').length
-  const yellow = events.filter((e: any) => e.type === 'YELLOW_CARD' || e.type === 'DOUBLE_YELLOW').length
-  const red = events.filter((e: any) => e.type === 'RED_CARD' || e.type === 'DOUBLE_YELLOW').length
-  const mvp = events.filter((e: any) => e.type === 'MVP').length
+  const { goals, ownGoals, yellow, red, mvp } = getPlayerStats(player)
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>

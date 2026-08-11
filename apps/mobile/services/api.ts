@@ -16,8 +16,10 @@ async function request<T>(endpoint: string, options: RequestInit = {}, withAuth 
   const res = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: 'Error' }));
-    throw new Error(err.error ?? 'Request failed');
+    const err = await res.json().catch(() => ({ error: 'Request failed' }))
+    const error = new Error(err.error ?? 'Request failed') as Error & { status?: number }
+    error.status = res.status
+    throw error
   }
 
   return res.json();

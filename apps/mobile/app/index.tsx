@@ -10,7 +10,7 @@ export default function Index() {
   useEffect(() => {
     if (!loading) {
       if (token) {
-        router.replace('/(tabs)/account');
+        router.replace('/(tabs)');
       } else {
         router.replace('/auth/login');
       }
