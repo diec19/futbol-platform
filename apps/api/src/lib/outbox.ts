@@ -1,6 +1,6 @@
 import { db } from '../config/database';
 import { env } from '../config/env';
-import { sendWhatsAppMessage } from './whatsapp';
+import { sendWhatsAppTemplate } from './whatsapp';
 import { sendEmail } from './email';
 
 export interface EnqueueInput {
@@ -50,7 +50,10 @@ async function deliver(row: any): Promise<{ ok: boolean; error?: string; skipped
     case 'WHATSAPP': {
       const phone = row.payload?.phone;
       if (!phone) return { ok: true, error: 'Sin teléfono' };
-      const res = await sendWhatsAppMessage(phone, row.message);
+      const templateName: string | undefined = row.payload?.templateName;
+      if (!templateName) return { ok: false, error: 'Falta templateName en payload' };
+      const params = (row.payload?.templateParams ?? []).map((p: string) => ({ type: 'text', text: String(p) }));
+      const res = await sendWhatsAppTemplate(phone, templateName, params);
       return res.success ? { ok: true } : { ok: false, error: res.error };
     }
     case 'EMAIL': {

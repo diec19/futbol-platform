@@ -274,39 +274,14 @@ export default function ClubInfoPage() {
           </div>
         </CardContent>
 
-        {/* WhatsApp / Evolution API */}
+        {/* WhatsApp Business Cloud API */}
         <CardContent className="space-y-4 pt-6">
-          {sectionTitle(<MessageCircle size={14} />, 'WhatsApp (Evolution API)')}
+          {sectionTitle(<MessageCircle size={14} />, 'WhatsApp (Business Cloud API)')}
           <p className="text-xs text-muted-foreground">
-            Conexión con Evolution API para envío automático de links de pago por WhatsApp.
+            Envío automático de links de pago por WhatsApp. La conexión se configura con variables de entorno en el deploy:
+            WHATSAPP_GRAPH_TOKEN y WHATSAPP_PHONE_NUMBER_ID.
           </p>
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label>API URL</Label>
-              <Input
-                value={val('whatsappApiUrl')}
-                onChange={(e) => set('whatsappApiUrl', e.target.value)}
-                placeholder="https://evolution-api-tuclub.up.railway.app"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>API Key</Label>
-              <Input
-                type="password"
-                value={val('whatsappApiKey')}
-                onChange={(e) => set('whatsappApiKey', e.target.value)}
-                placeholder="Tu API Key de Evolution"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Nombre de instancia</Label>
-              <Input
-                value={val('whatsappInstance')}
-                onChange={(e) => set('whatsappInstance', e.target.value)}
-                placeholder="club-futbol"
-              />
-            </div>
-          </div>
+          <WhatsAppStatus />
         </CardContent>
 
         {/* Cuotas mensuales */}
@@ -344,6 +319,36 @@ export default function ClubInfoPage() {
           {updateMutation.isPending ? 'Guardando...' : 'Guardar cambios'}
         </Button>
       </div>
+    </div>
+  );
+}
+
+function WhatsAppStatus() {
+  const { data, isLoading, isFetching, refetch } = useQuery({
+    queryKey: ['whatsapp-status'],
+    queryFn: () => api.whatsapp.status(),
+  });
+  const connected = data?.data?.connected;
+
+  return (
+    <div className="flex items-center gap-3 rounded-lg border p-3">
+      <div className={`h-2.5 w-2.5 shrink-0 rounded-full ${connected ? 'bg-green-500' : 'bg-red-500'}`} />
+      <div className="flex-1 text-sm">
+        {isLoading
+          ? 'Verificando conexión...'
+          : connected
+            ? 'WhatsApp conectado'
+            : 'WhatsApp no conectado'}
+      </div>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => refetch()}
+        disabled={isFetching}
+      >
+        Verificar
+      </Button>
     </div>
   );
 }

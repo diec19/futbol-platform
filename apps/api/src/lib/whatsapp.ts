@@ -1,30 +1,23 @@
-import { db } from '../config/database';
 import { env } from '../config/env';
 import { normalizePhone } from './mp';
 
-// ── Evolution API WhatsApp Integration ───────────────────────────────────────
-// Docs: https://doc.evolution-api.com
-// Requires: Evolution API instance running (Docker or cloud)
+// ── WhatsApp Business Cloud API Integration ─────────────────────────────────
+// Docs: https://developers.facebook.com/docs/whatsapp/cloud-api
+// Requires: Phone Number ID + permanent token + templates aprobados
 
-interface WhatsAppConfig {
-  apiUrl: string;     // e.g. http://localhost:8080
-  apiKey: string;     // Evolution API key
-  instanceName: string; // e.g. "club-futbol"
-}
+function getWhatsAppConfig(): { token: string; phoneNumberId: string; version: string } {
+  const token = env.WHATSAPP_GRAPH_TOKEN ?? '';
+  const phoneNumberId = env.WHATSAPP_PHONE_NUMBER_ID ?? '';
+  const version = env.WHATSAPP_GRAPH_VERSION;
 
-async function getWhatsAppConfig(): Promise<WhatsAppConfig> {
-  const club = await db.club.findFirst();
-  // Store WhatsApp config in Club model or env vars
-  const apiUrl = (club as any)?.whatsappApiUrl || env.WHATSAPP_API_URL || '';
-  const apiKey = (club as any)?.whatsappApiKey || env.WHATSAPP_API_KEY || '';
-  const instanceName = (club as any)?.whatsappInstance || env.WHATSAPP_INSTANCE || '';
-
-  if (!apiUrl || !apiKey || !instanceName) {
-    throw new Error('WhatsApp no configurado — faltan WHATSAPP_API_URL, WHATSAPP_API_KEY o WHATSAPP_INSTANCE');
+  if (!token || !phoneNumberId) {
+    throw new Error('WhatsApp no configurado — faltan WHATSAPP_GRAPH_TOKEN o WHATSAPP_PHONE_NUMBER_ID');
   }
 
-  return { apiUrl, apiKey, instanceName };
+  return { token, phoneNumberId, version };
 }
+
+const GRAPH_HOST = 'graph.facebook.com';
 
 export interface WhatsAppSendResult {
   success: boolean;
@@ -32,21 +25,42 @@ export interface WhatsAppSendResult {
   error?: string;
 }
 
-export async function sendWhatsAppMessage(phone: string, message: string): Promise<WhatsAppSendResult> {
+export interface WhatsAppTemplateParam {
+  type: 'text';
+  text: string;
+}
+
+export async function sendWhatsAppTemplate(
+  phone: string,
+  templateName: string,
+  templateParams: WhatsAppTemplateParam[] = [],
+  languageCode = 'es_AR',
+): Promise<WhatsAppSendResult> {
   try {
-    const config = await getWhatsAppConfig();
+    const { token, phoneNumberId, version } = getWhatsAppConfig();
     const normalizedPhone = normalizePhone(phone);
 
-    const response = await fetch(`${config.apiUrl}/message/sendText/${config.instanceName}`, {
+    const body: Record<string, unknown> = {
+      messaging_product: 'whatsapp',
+      to: normalizedPhone,
+      type: 'template',
+      template: {
+        name: templateName,
+        language: { code: languageCode },
+      },
+    };
+
+    if (templateParams.length > 0) {
+      (body.template as any).components = [{ type: 'body', parameters: templateParams }];
+    }
+
+    const response = await fetch(`https://${GRAPH_HOST}/${version}/${phoneNumberId}/messages`, {
       method: 'POST',
       headers: {
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
-        'apikey': config.apiKey,
       },
-      body: JSON.stringify({
-        number: normalizedPhone,
-        text: message,
-      }),
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {
@@ -54,61 +68,43 @@ export async function sendWhatsAppMessage(phone: string, message: string): Promi
       return { success: false, error: `HTTP ${response.status}: ${errorText}` };
     }
 
-    const data = await response.json() as { key?: { id?: string }; id?: string };
+    const data = await response.json() as { messages?: { id?: string }[] };
     return {
       success: true,
-      messageId: data.key?.id ?? data.id,
+      messageId: data.messages?.[0]?.id,
     };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
 }
 
-export async function sendBulkWhatsAppMessages(
-  messages: { phone: string; message: string; subId: string }[],
-  concurrency: number = 5,
-): Promise<{ sent: number; failed: number; results: { subId: string; success: boolean; error?: string }[] }> {
-  const results: { subId: string; success: boolean; error?: string }[] = [];
-  let current = 0;
-
-  async function worker() {
-    while (current < messages.length) {
-      const idx = current++;
-      const msg = messages[idx];
-      try {
-        const result = await sendWhatsAppMessage(msg.phone, msg.message);
-        results.push({ subId: msg.subId, success: result.success, error: result.error });
-
-        // Rate limit: 100ms between messages
-        await new Promise(r => setTimeout(r, 100));
-      } catch (error: any) {
-        results.push({ subId: msg.subId, success: false, error: error.message });
-      }
-    }
-  }
-
-  const workers = Array.from(
-    { length: Math.min(concurrency, messages.length) },
-    () => worker(),
-  );
-  await Promise.all(workers);
-
-  const sent = results.filter(r => r.success).length;
-  const failed = results.filter(r => !r.success).length;
-
-  return { sent, failed, results };
-}
-
 export async function checkWhatsAppConnection(): Promise<boolean> {
   try {
-    const config = await getWhatsAppConfig();
-    const response = await fetch(`${config.apiUrl}/instance/connectionState/${config.instanceName}`, {
-      headers: { 'apikey': config.apiKey },
-    });
-    if (!response.ok) return false;
-    const data = await response.json() as { instance?: { state?: string } };
-    return data.instance?.state === 'open';
+    const { token, phoneNumberId, version } = getWhatsAppConfig();
+    const response = await fetch(
+      `https://${GRAPH_HOST}/${version}/${phoneNumberId}?fields=display_phone_number,verified_name,quality_rating`,
+      { headers: { 'Authorization': `Bearer ${token}` } },
+    );
+    return response.ok;
   } catch {
     return false;
+  }
+}
+
+export async function getWhatsAppConnectionInfo(): Promise<{ connected: boolean; info?: Record<string, unknown> }> {
+  try {
+    const { token, phoneNumberId, version } = getWhatsAppConfig();
+    const response = await fetch(
+      `https://${GRAPH_HOST}/${version}/${phoneNumberId}?fields=display_phone_number,verified_name,quality_rating`,
+      { headers: { 'Authorization': `Bearer ${token}` } },
+    );
+    if (!response.ok) {
+      const text = await response.text();
+      return { connected: false, info: { error: `HTTP ${response.status}: ${text}` } };
+    }
+    const data = await response.json() as Record<string, unknown>;
+    return { connected: true, info: data };
+  } catch (error: any) {
+    return { connected: false, info: { error: error.message } };
   }
 }

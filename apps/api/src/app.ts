@@ -26,6 +26,7 @@ import { sponsorshipsRouter } from './modules/sponsorships/sponsorships.router';
 import { benefitsRouter } from './modules/benefits/benefits.router';
 
 const app = express();
+const v1 = '/api/v1';
 
 app.use(helmet());
 const corsOrigins = env.CORS_ORIGIN.split(',').map((o) => o.trim()).filter(Boolean);
@@ -37,14 +38,29 @@ app.use(
   })
 );
 app.use(morgan(env.NODE_ENV === 'production' ? 'combined' : 'dev'));
+
+// Webhook de WhatsApp (Meta) necesita el body crudo para verificar X-Hub-Signature-256.
+// Se registra ANTES de express.json(): captura el Buffer y re-expone el objeto parseado.
+const rawWhatsappWebhook = express.raw({ type: () => true });
+app.use(`${v1}/webhooks/whatsapp`, rawWhatsappWebhook, (req, _res, next) => {
+  const buf = (req as any).body;
+  if (Buffer.isBuffer(buf)) {
+    (req as any).rawBody = buf;
+    try {
+      req.body = JSON.parse(buf.toString('utf8'));
+    } catch {
+      req.body = {};
+    }
+  }
+  next();
+});
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
-
-const v1 = '/api/v1';
 app.use(`${v1}/auth`, authRouter);
 app.use(`${v1}/tournaments`, tournamentsRouter);
 app.use(`${v1}/categories`, categoriesRouter);

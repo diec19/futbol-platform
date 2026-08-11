@@ -264,7 +264,8 @@ export const api = {
   },
   whatsapp: {
     status: () => get<{ data: { connected: boolean } }>('/whatsapp/status'),
-    send: (phone: string, message: string) => post<{ data: any }>('/whatsapp/send', { phone, message }),
+    send: (phone: string, templateName: string, templateParams?: string[]) =>
+      post<{ data: any }>('/whatsapp/send', { phone, templateName, templateParams }),
     sendSubscription: (subId: string, type: string = 'player') =>
       post<{ data: any }>(`/whatsapp/send-subscription/${subId}`, { type }),
     bulkSendPlayer: (subscriptionIds: string[]) =>

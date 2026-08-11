@@ -1,5 +1,7 @@
 import { Router } from 'express';
+import crypto from 'crypto';
 import { db } from '../../config/database';
+import { env } from '../../config/env';
 import { getClubMpToken, fetchMpPayment, validateWebhookSignature, expectedPaymentAmount } from '../../lib/mp';
 
 export const webhooksRouter = Router();
@@ -179,4 +181,69 @@ webhooksRouter.post('/mp', async (req, res) => {
 
 webhooksRouter.get('/mp', async (req, res) => {
   res.status(200).send('OK');
+});
+
+// ── WhatsApp Cloud API Webhook ───────────────────────────────────────────────
+// GET: verificación inicial de Meta (hub.challenge)
+webhooksRouter.get('/whatsapp', async (req, res) => {
+  const mode = req.query['hub.mode'];
+  const verifyToken = req.query['hub.verify_token'];
+  const challenge = req.query['hub.challenge'];
+
+  if (mode === 'subscribe' && verifyToken === env.WHATSAPP_WEBHOOK_VERIFY_TOKEN) {
+    console.log('[WEBHOOK:WA] Verificación de webhook de WhatsApp exitosa');
+    res.status(200).send(String(challenge));
+  } else {
+    console.warn('[WEBHOOK:WA] Verificación rechazada — verify token inválido');
+    res.status(403).send('Verificación fallida');
+  }
+});
+
+// POST: mensajes entrantes y actualizaciones de estado
+webhooksRouter.post('/whatsapp', async (req, res) => {
+  try {
+    // Verificación de firma X-Hub-Signature-256 (si el App Secret está configurado)
+    const appSecret = env.WHATSAPP_APP_SECRET;
+    const signature = (req.headers['x-hub-signature-256'] as string | undefined) ?? '';
+    const rawBody = (req as any).rawBody;
+
+    if (appSecret && signature && rawBody) {
+      const computed = `sha256=${crypto.createHmac('sha256', appSecret).update(rawBody).digest('hex')}`;
+      if (computed !== signature) {
+        console.warn('[WEBHOOK:WA] Firma inválida — rechazando');
+        return res.status(401).send('Firma inválida');
+      }
+    } else if (appSecret && !signature) {
+      console.warn('[WEBHOOK:WA] Request sin firma — rechazando por seguridad');
+      return res.status(401).send('Falta firma');
+    }
+
+    const body = req.body ?? {};
+
+    for (const entry of (body.entry ?? []) as any[]) {
+      for (const change of (entry.changes ?? []) as any[]) {
+        const value = change.value ?? {};
+
+        if (Array.isArray(value.messages) && value.messages.length > 0) {
+          for (const msg of value.messages) {
+            console.log(`[WEBHOOK:WA] Mensaje entrante de ${msg.from} (tipo: ${msg.type ?? 'desconocido'})`);
+          }
+        }
+
+        if (Array.isArray(value.statuses) && value.statuses.length > 0) {
+          for (const status of value.statuses) {
+            const errDesc = status.errors?.map((e: any) => e.message).join('; ') ?? '';
+            console.log(
+              `[WEBHOOK:WA] Estado ${status.status} para mensaje ${status.id} (a ${status.recipient_id})${errDesc ? ` — ${errDesc}` : ''}`,
+            );
+          }
+        }
+      }
+    }
+
+    res.status(200).send('OK');
+  } catch (e: any) {
+    console.error('[WEBHOOK:WA] Error procesando webhook:', e.message);
+    res.status(500).send('Error');
+  }
 });

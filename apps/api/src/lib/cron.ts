@@ -82,7 +82,15 @@ export function startOverdueCron() {
               entityId: sub.id,
               title: 'Cuota vencida',
               message: waMsg,
-              payload: { phone: normalizePhone(member.phone), subId: sub.id, month: sub.month, year: sub.year, name: sub.player.fullName },
+              payload: {
+                phone: normalizePhone(member.phone),
+                subId: sub.id,
+                month: sub.month,
+                year: sub.year,
+                name: sub.player.fullName,
+                templateName: 'cuota_vencida',
+                templateParams: [member.fullName, `${MONTHS[sub.month - 1]} ${sub.year}`],
+              },
             });
             outboxWhatsapp++;
           }
@@ -149,7 +157,15 @@ export function startOverdueCron() {
             entityId: sub.id,
             title,
             message: waMsg,
-            payload: { phone: normalizePhone(member.phone), subId: sub.id, month: sub.month, year: sub.year, name: member.fullName },
+            payload: {
+              phone: normalizePhone(member.phone),
+              subId: sub.id,
+              month: sub.month,
+              year: sub.year,
+              name: member.fullName,
+              templateName: 'cuota_vencida',
+              templateParams: [member.fullName, `${MONTHS[sub.month - 1]} ${sub.year}`],
+            },
           });
           outboxWhatsapp++;
         }
@@ -199,7 +215,14 @@ export function startOverdueCron() {
             entityId: payment.id,
             title,
             message: msg,
-            payload: { phone: normalizePhone(sponsor.phone), month: payment.month, year: payment.year, name: sponsor.name },
+            payload: {
+              phone: normalizePhone(sponsor.phone),
+              month: payment.month,
+              year: payment.year,
+              name: sponsor.name,
+              templateName: 'cuota_auspicio_vencida',
+              templateParams: [sponsor.contactName ?? sponsor.name, `${MONTHS[payment.month - 1]} ${payment.year}`, planName],
+            },
           });
           outboxWhatsapp++;
         }
@@ -357,7 +380,22 @@ export function startMonthlyFeeCron() {
                   entityId: sub.id,
                   title: 'Cuota disponible',
                   message: waMsg,
-                  payload: { phone: normalizePhone(phone), subId: sub.id, month: currentMonth, year: currentYear, name: player.fullName, paymentLink },
+                  payload: {
+                    phone: normalizePhone(phone),
+                    subId: sub.id,
+                    month: currentMonth,
+                    year: currentYear,
+                    name: player.fullName,
+                    paymentLink,
+                    templateName: 'cuota_disponible',
+                    templateParams: [
+                      link.member.fullName,
+                      `${MONTHS[currentMonth - 1]} ${currentYear}`,
+                      player.fullName,
+                      `$${sub.amount.toLocaleString('es-AR')}`,
+                      paymentLink,
+                    ],
+                  },
                 });
                 outboxWhatsapp++;
               }
@@ -491,7 +529,22 @@ export function startMonthlyFeeCron() {
                 entityId: sub.id,
                 title: 'Cuota disponible',
                 message: msg,
-                payload: { phone: normalizePhone(member.phone), subId: sub.id, month: currentMonth, year: currentYear, name: member.fullName, paymentLink },
+                payload: {
+                  phone: normalizePhone(member.phone),
+                  subId: sub.id,
+                  month: currentMonth,
+                  year: currentYear,
+                  name: member.fullName,
+                  paymentLink,
+                  templateName: 'cuota_disponible',
+                  templateParams: [
+                    member.fullName,
+                    `${MONTHS[currentMonth - 1]} ${currentYear}`,
+                    club.name,
+                    `$${memberFee.toLocaleString('es-AR')}`,
+                    paymentLink,
+                  ],
+                },
               });
               outboxWhatsapp++;
             }
@@ -558,7 +611,19 @@ export function startMonthlyFeeCron() {
             entityId: payment.id,
             title: 'Cuota de auspicio',
             message: msg,
-            payload: { phone: normalizePhone(phone), month: currentMonth, year: currentYear, name: sponsorship.sponsor.name },
+            payload: {
+              phone: normalizePhone(phone),
+              month: currentMonth,
+              year: currentYear,
+              name: sponsorship.sponsor.name,
+              templateName: 'cuota_auspicio',
+              templateParams: [
+                sponsorship.sponsor.contactName ?? sponsorship.sponsor.name,
+                `${MONTHS[currentMonth - 1]} ${currentYear}`,
+                sponsorship.plan.name,
+                `$${amount.toLocaleString('es-AR')}`,
+              ],
+            },
           });
           outboxWhatsapp++;
         }

@@ -9,7 +9,7 @@ const getOrCreateClub = async () => {
   return club;
 };
 
-const SECRET_FIELDS = ['whatsappApiUrl', 'whatsappApiKey', 'whatsappInstance', 'mpAccessToken', 'mpWebhookSecret'] as const;
+const SECRET_FIELDS = ['mpAccessToken', 'mpWebhookSecret'] as const;
 
 function toPublicClub<T extends Record<string, unknown>>(club: T) {
   const publicClub = { ...club } as Record<string, unknown>;

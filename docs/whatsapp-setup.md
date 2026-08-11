@@ -1,87 +1,70 @@
-# Guía: WhatsApp API en Producción (Railway)
+# Guía: WhatsApp Business Cloud API
 
 ## Arquitectura
 
 ```
-┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
-│   Admin Panel    │────▶│   API (Railway)   │────▶│ Evolution API   │
-│   (Vercel)       │     │   Puerto 3001     │     │ Puerto 8080     │
-└─────────────────┘     └──────────────────┘     └────────┬────────┘
-                                                          │
-                                                   ┌──────▼───────┐
-                                                   │  WhatsApp    │
-                                                   │  (servidor   │
-                                                   │  oficial)    │
-                                                   └──────────────┘
+┌─────────────────┐     ┌──────────────────┐     ┌──────────────────────────┐
+│   Admin Panel    │────▶│   API (Railway)   │────▶│ Meta Cloud API (Graph)   │
+│   (Vercel)       │     │   Puerto 3001     │     │ graph.facebook.com/v21.0 │
+└─────────────────┘     └──────────────────┘     └─────────────┬────────────┘
+                                                               │
+                                                        ┌──────▼───────┐
+                                                        │  WhatsApp    │
+                                                        │  (número     │
+                                                        │  del club)   │
+                                                        └──────────────┘
 ```
 
-## Paso 1: Crear servicio Evolution API en Railway
+Reemplaza por completo a Evolution API: no hay servidor propio, QR ni instancia. Meta entrega los
+mensajes de plantillas (templates) directamente contra su API. Solo se pueden enviar mensajes
+**business-initiated** usando **templates aprobados** (categoría Utility).
 
-### 1a. Crear Redis (requerido por Evolution API v2.3+)
+## Paso 1: Configuración en Meta (una sola vez)
 
-1. Click **"+ New"** → **"Database"** → **"Redis"**
-2. Railway asigna un servicio Redis con variables como `REDIS_URL`
-3. Copiá la **Private Network URL** (algo como `redis://red-xxxx.railway.internal:6379`)
+1. Crear la app de tipo **Business** en https://developers.facebook.com
+2. Agregar el producto **WhatsApp** → crear una **WhatsApp Business Account** (WABA)
+3. Asociar un **número de teléfono** (en desarrollo se usa el número de prueba de Meta: +1 555...)
+4. En **API Setup**, generar el **Token permanente** y copiar:
+   - **Phone Number ID** (ej: `1215227851677505`)
+   - **Token de acceso** (`EAANZC1...`)
+   - **WABA ID** (ej: `1572160644458879`)
+   - **App Secret** de la app (para verificar el webhook)
 
-### 1b. Crear Evolution API
+## Paso 2: Crear los templates de cuotas
 
-1. Click **"+ New"** → **"Docker Image"**
-2. En el campo Image, poné: **`evoapicloud/evolution-api:v2.3.7`**
-   - **IMPORTANTE**: Usá `evoapicloud`, NO `atendai` (la imagen `atendai` es legacy y falla en Railway)
-3. En **Settings**:
-   - **Port**: `8080`
-   - **Healthcheck Path**: `/`
-4. En **Variables**, agregá:
+En WhatsApp Manager → **Message Templates** → **Create**. Categoría **Utility**, idioma **Spanish (es_AR)**.
+No usar emojis ni mayúsculas excesivas (Meta las puede rechazar).
+
+| Nombre | Texto | Variables |
+|---|---|---|
+| `cuota_disponible` | Hola {{1}}, te enviamos el link de pago de la cuota {{2}} de {{3}}. Monto: {{4}}. Link: {{5}} | nombre, periodo ("Agosto 2026"), nombre jugador/club, monto ("$1.000"), link MP |
+| `cuota_vencida` | Hola {{1}}, tu cuota de {{2}} está vencida. Abonala lo antes posible. | nombre, periodo |
+| `cuota_auspicio` | Hola {{1}}, la cuota de auspicio de {{2}} ({{3}}) ya está disponible. Monto: {{4}}. Comunicate con el club para abonarla. | contacto, periodo, nombre del plan, monto |
+| `cuota_auspicio_vencida` | Hola {{1}}, la cuota de auspicio de {{2}} ({{3}}) está vencida. Comunicate con el club para regularizarla. | contacto, periodo, nombre del plan |
+
+Esperar a que cada template pase a estado **Approved**.
+
+## Paso 3: Configurar variables en la API (Railway)
+
+En el servicio de **futbol-platform-api**, agregar:
 
 ```env
-SERVER_URL=https://tu-evolution-api.up.railway.app
-AUTHENTICATION_API_KEY=futbol-secret-key-cambiar-esto
-DATABASE_ENABLED=true
-DATABASE_PROVIDER=postgresql
-DATABASE_CONNECTION_URI=postgresql://usuario:password@host:5432/futbol_platform
-DATABASE_CONNECTION_CLIENT_NAME=evolution
-DATABASE_SAVE_DATA_INSTANCE=true
-DATABASE_SAVE_DATA_NEW_MESSAGE=true
-DATABASE_SAVE_DATA_CONTACTS=true
-DATABASE_SAVE_DATA_CHATS=true
-REDIS_ENABLED=true
-REDIS_URI=redis://red-xxxx.railway.internal:6379
-LOG_LEVEL=WARN
+WHATSAPP_GRAPH_TOKEN=EAANZC1...
+WHATSAPP_PHONE_NUMBER_ID=1215227851677505
+WHATSAPP_GRAPH_VERSION=v21.0
+WHATSAPP_WEBHOOK_VERIFY_TOKEN=un-verify-token-secreto-propio
+WHATSAPP_APP_SECRET=el-app-secret-de-meta
 ```
 
-**IMPORTANTE**: 
-- El `DATABASE_CONNECTION_URI` debe ser el de tu DB de futbol-platform (la misma DB está bien, Evolution crea sus propias tablas con prefijo `Evolution`)
-- `REDIS_URI` debe ser la **Private Network URL** de tu servicio Redis en Railway (no la pública)
-
-6. Copiá la URL que Railway te asigna (algo como `https://evolution-api-xxxx.up.railway.app`)
-
-## Paso 2: Configurar variables en tu API de futbol-platform
-
-En Railway,和服务 de **futbol-platform-api**, agregá estas variables:
-
-```env
-WHATSAPP_API_URL=https://tu-evolution-api.up.railway.app
-WHATSAPP_API_KEY=futbol-secret-key-cambiar-esto
-WHATSAPP_INSTANCE=club-futbol
-```
-
-## Paso 3: Crear la instancia de WhatsApp en Evolution API
-
-Abrí la consola de Evolution API en tu navegador:
-```
-https://tu-evolution-api.up.railway.app/manager
-```
-
-1. Click **"New Instance"**
-2. **Instance Name**: `club-futbol` (debe coincidir con `WHATSAPP_INSTANCE`)
-3. **Integration**: `WHATSAPP-BAILEYS`
-4. Click **"Create"**
-5. **Escaneá el QR code** con WhatsApp en tu celular
-6. Esperá a que diga **"Conectado"**
+- `WHATSAPP_WEBHOOK_VERIFY_TOKEN`: valor propio (cualquier texto largo). Debe coincidir con el
+  "Identificador de verificación" al configurar el webhook en Meta.
+- El **webhook de WhatsApp** (solo para mensajes entrantes y estados de entrega, NO necesario para enviar)
+  se configura en la app de Meta → WhatsApp → **Configuration → Webhook**:
+  - **Callback URL**: `https://futbol-platform-production.up.railway.app/api/v1/webhooks/whatsapp`
+  - **Verify token**: el mismo `WHATSAPP_WEBHOOK_VERIFY_TOKEN`
+  - Suscribirse a los campos `messages` y `message_template_status_update`
 
 ## Paso 4: Verificar la conexión
-
-Desde tu API, hacé un request:
 
 ```bash
 curl -H "Authorization: Bearer TU_TOKEN_ADMIN" \
@@ -95,16 +78,19 @@ Respuesta esperada:
 
 ## Paso 5: Probar el envío
 
-### Envío individual:
+En modo desarrollo, Meta solo entrega mensajes a **números permitidos** (Test Recipients). Agregar el
+celular propio en WhatsApp Manager → **Test recipients** y registrarlo como evaluador de la app.
+
+### Envío de template individual:
 ```bash
 curl -X POST \
   -H "Authorization: Bearer TU_TOKEN_ADMIN" \
   -H "Content-Type: application/json" \
-  -d '{"phone": "5491112345678", "message": "Hola! Test de WhatsApp"}' \
+  -d '{"phone": "5491123456789", "templateName": "cuota_disponible", "templateParams": ["Juan", "Agosto 2026", "Club Deportivo", "$1.000", "https://mpago.la/xxxx"]}' \
   http://localhost:3001/api/v1/whatsapp/send
 ```
 
-### Envío a una suscripción:
+### Envío a una suscripción (genera el template con los datos de la cuota):
 ```bash
 curl -X POST \
   -H "Authorization: Bearer TU_TOKEN_ADMIN" \
@@ -113,43 +99,37 @@ curl -X POST \
   http://localhost:3001/api/v1/whatsapp/send-subscription/SUBSCRIPTION_ID
 ```
 
-### Envío masivo:
+### Envío masivo (encola en el outbox, se procesa con reintentos):
 ```bash
 curl -X POST \
   -H "Authorization: Bearer TU_TOKEN_ADMIN" \
   -H "Content-Type: application/json" \
-  -d '{"subscriptionIds": ["sub1", "sub2", "sub3"]}' \
+  -d '{"subscriptionIds": ["sub1", "sub2"]}' \
   http://localhost:3001/api/v1/whatsapp/bulk-send-player
 ```
 
 ## Costos
 
-- **Evolution API**: GRATIS (self-hosted)
-- **Railway**: El plan Hobby incluye $5/mes de uso. Un servicio mínimo cuesta ~$1/mes
-- **WhatsApp**: GRATIS (no hay costo por mensaje con Baileys)
-
-## Limitaciones
-
-- **Número de WhatsApp**: Necesitás un número de teléfono real (puede ser un número secundario)
-- **Multi-device**: WhatsApp permite hasta 4 dispositivos conectados
-- **Rate limit**: Evitar enviar más de 50 mensajes por hora para no ser bloqueado
-- **Reconexión**: Si WhatsApp se desconecta, hay que re-escanear el QR
+- **Cloud API**: con templates de categoría **Utility**, las primeras **1.000 conversaciones de
+  servicio por mes son gratis** en Argentina. Para el volumen del club (~30-60 mensajes/mes) el costo es $0.
+- Se cobra por **conversación** (ventana de 24h por contacto), no por mensaje. Solo se abre una
+  conversación de servicio cuando un contacto responde.
 
 ## Troubleshooting
 
 ### "WhatsApp no configurado"
-Verificar que las 3 variables estén seteadas: `WHATSAPP_API_URL`, `WHATSAPP_API_KEY`, `WHATSAPP_INSTANCE`
+Verificar que `WHATSAPP_GRAPH_TOKEN` y `WHATSAPP_PHONE_NUMBER_ID` estén seteados en Railway.
 
-### "Connection closed"
-La instancia de WhatsApp se desconectó. Entrar al manager de Evolution API y reconectar.
+### Error 131-048 / "template not found"
+El template indicado no existe o no está **Approved**. Revisar el nombre exacto en WhatsApp Manager.
 
-### "Number not registered"
-El número no tiene WhatsApp. Verificar que sea correcto con código de país.
+### Error 131-030 / "message failed to send because more than 24 hours have passed"
+La ventana de 24h del contacto venció. Los templates Utility se pueden enviar aunque la ventana esté
+cerrada, siempre que el template esté aprobado.
 
-### Evolution API no conecta a la DB
-Verificar que el `DATABASE_CONNECTION_URI` apunte a la misma DB que la API.
+### Error 100 / "Session has expired"
+El token de Graph expiró. Regenerar el token permanente en la app de Meta y actualizar la variable.
 
-### Evolution API no inicia / "Failed to create deployment"
-1. Verificar que la imagen sea `evoapicloud/evolution-api:v2.3.7` (NO `atendai/evolution-api`)
-2. Verificar que Redis esté corriendo y `REDIS_URI` esté seteado correctamente
-3. Verificar que `DATABASE_CONNECTION_URI` sea válido y accesible desde Railway
+### Webhook de verificación falla
+El GET de verificación responde `403`: el `hub.verify_token` no coincide con `WHATSAPP_WEBHOOK_VERIFY_TOKEN`.
+El endpoint expuesto es `GET /api/v1/webhooks/whatsapp` (responde el `hub.challenge`).
