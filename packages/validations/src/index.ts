@@ -146,9 +146,10 @@ export const createSponsorSchema = z.object({
   contactName: z.string().max(100).optional(),
   phone: z.string().max(30).optional(),
   email: z.string().email().optional(),
-  logoUrl: z.string().url().optional(),
+  logoUrl: z.string().optional(),
   website: z.string().url().optional(),
-  slideUrl: z.string().url().optional(),
+  // Acepta URL o imagen base64 (data:image/...) cargada desde el admin
+  slideUrl: z.string().optional(),
   slideOrder: z.number().int().min(0).optional(),
 });
 

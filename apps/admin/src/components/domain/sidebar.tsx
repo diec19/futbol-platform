@@ -32,6 +32,7 @@ import {
   Banknote,
   Handshake,
   Gift,
+  MonitorPlay,
 } from 'lucide-react';
 
 const clubNav = [
@@ -41,6 +42,7 @@ const clubNav = [
   { name: 'Plantel', href: '/club/plantel', icon: Shirt },
   { name: 'Cuotas', href: '/club/cuotas', icon: Banknote },
   { name: 'Auspiciantes', href: '/club/sponsors', icon: Handshake },
+  { name: 'Banners', href: '/club/banners', icon: MonitorPlay },
   { name: 'Beneficios', href: '/club/benefits', icon: Gift },
   { name: 'Socios', href: '/club/members', icon: Users },
   { name: 'Noticias', href: '/club/news', icon: Newspaper },
