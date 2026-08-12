@@ -75,8 +75,7 @@ export default function Carousel({ slides, autoplayInterval = 4000 }: CarouselPr
         {slides.map((_, i) => (
           <View key={i} style={[styles.dot, i === activeIndex && styles.dotActive]} />
         ))}
-      </View>
-    </View>
+      </View>    </View>
   )
 }
 
@@ -97,7 +96,7 @@ const styles = StyleSheet.create({
   },
   slideTitle: { color: '#FFFFFF', fontSize: 20, fontWeight: '700', fontFamily: 'Poppins_700Bold', marginBottom: 2 },
   slideSubtitle: { color: 'rgba(255,255,255,0.85)', fontSize: 13 },
-  dots: { flexDirection: 'row', justifyContent: 'center', marginTop: 10, gap: 6 },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.gray[300] },
+  dots: { flexDirection: 'row', justifyContent: 'center', marginTop: 10 },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.gray[300], marginHorizontal: 3 },
   dotActive: { width: 20, backgroundColor: colors.primary },
 })
