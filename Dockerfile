@@ -3,6 +3,10 @@ RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/
 WORKDIR /app
 
 COPY package.json package-lock.json turbo.json ./
+COPY scripts/check-lockfile.cjs ./scripts/check-lockfile.cjs
+
+# Verifica que el lockfile tenga el arbol transitivo completo antes de instalar
+RUN node scripts/check-lockfile.cjs
 
 COPY apps/api/package.json ./apps/api/
 COPY packages/constants/package.json ./packages/constants/
