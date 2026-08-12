@@ -1,4 +1,5 @@
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { colors } from '../../theme/colors'
@@ -8,13 +9,18 @@ export default function OnboardingWelcome() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.hero}>
+      <LinearGradient
+        colors={[colors.primary, '#8B1E2D', colors.accent]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.hero}
+      >
         <View style={styles.logoWrap}>
-          <Text style={styles.logoText}>⚽</Text>
+          <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
         </View>
         <Text style={styles.appName}>Fútbol Platform</Text>
         <Text style={styles.tagline}>Área de Socios</Text>
-      </View>
+      </LinearGradient>
 
       <View style={styles.body}>
         <Text style={styles.title}>¡Bienvenido!</Text>
@@ -71,17 +77,26 @@ export default function OnboardingWelcome() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   hero: {
-    backgroundColor: colors.primary,
     paddingTop: 96,
     paddingBottom: 56,
     alignItems: 'center',
     borderBottomLeftRadius: 40,
     borderBottomRightRadius: 40,
   },
-  logoWrap: { width: 84, height: 84, borderRadius: 42, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
-  logoText: { fontSize: 42 },
-  appName: { fontSize: 26, fontWeight: '800', fontFamily: 'Poppins_800ExtraBold', color: '#FFFFFF', marginBottom: 2 },
-  tagline: { fontSize: 14, color: 'rgba(255,255,255,0.85)', fontFamily: 'Poppins_400Regular' },
+  logoWrap: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.35)',
+  },
+  logo: { width: 76, height: 76, borderRadius: 38 },
+  appName: { fontSize: 26, fontWeight: '800', fontFamily: 'Poppins_800ExtraBold', color: '#FFFFFF', marginBottom: 4, letterSpacing: 0.3 },
+  tagline: { fontSize: 14, color: 'rgba(255,255,255,0.9)', fontFamily: 'Poppins_500Medium', letterSpacing: 1.5, textTransform: 'uppercase' },
   body: { flex: 1, padding: 24 },
   title: { fontSize: 24, fontWeight: '800', fontFamily: 'Poppins_800ExtraBold', color: colors.text, marginBottom: 8 },
   subtitle: { fontSize: 14, color: colors.textSecondary, fontFamily: 'Poppins_400Regular', lineHeight: 21, marginBottom: 24 },

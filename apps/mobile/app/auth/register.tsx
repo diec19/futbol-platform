@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Image } from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { api } from '../../services/api'
@@ -55,13 +56,18 @@ export default function RegisterScreen() {
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
-        <View style={styles.hero}>
+        <LinearGradient
+          colors={[colors.primary, '#8B1E2D', colors.accent]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.hero}
+        >
           <View style={styles.logoWrap}>
-            <Text style={styles.logoText}>⚽</Text>
+            <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
           </View>
           <Text style={styles.appName}>Crear cuenta</Text>
           <Text style={styles.tagline}>Ingresá tus datos para asociarte</Text>
-        </View>
+        </LinearGradient>
         <View style={styles.card}>
           <View style={styles.inputGroup}>
             <Text style={styles.label}>NOMBRE Y APELLIDO *</Text>
@@ -149,7 +155,7 @@ export default function RegisterScreen() {
             {loading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.buttonText}>Crear cuenta</Text>}
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.backLink} onPress={() => router.back()} activeOpacity={0.7}>
+          <TouchableOpacity style={styles.backLink} onPress={() => router.replace('/auth/login')} activeOpacity={0.7}>
             <Text style={styles.backLinkText}>Ya tengo cuenta — Volver al login</Text>
           </TouchableOpacity>
         </View>
@@ -161,17 +167,26 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   hero: {
-    backgroundColor: colors.primary,
     paddingTop: 64,
     paddingBottom: 40,
     alignItems: 'center',
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
   },
-  logoWrap: { width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
-  logoText: { fontSize: 36 },
+  logoWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.35)',
+  },
+  logo: { width: 56, height: 56, borderRadius: 28 },
   appName: { fontSize: 24, fontWeight: '800', fontFamily: 'Poppins_800ExtraBold', color: '#FFFFFF', marginBottom: 2 },
-  tagline: { fontSize: 14, color: 'rgba(255,255,255,0.85)', fontFamily: 'Poppins_400Regular' },
+  tagline: { fontSize: 14, color: 'rgba(255,255,255,0.9)', fontFamily: 'Poppins_400Regular' },
   card: {
     backgroundColor: colors.surface,
     borderRadius: 24,

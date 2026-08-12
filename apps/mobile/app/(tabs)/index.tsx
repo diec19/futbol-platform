@@ -1,4 +1,5 @@
 import { View, Text, Image, ScrollView, TouchableOpacity, ActivityIndicator, StyleSheet, RefreshControl } from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
 import { useCallback, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
@@ -97,24 +98,38 @@ export default function HomeScreen() {
           <ActivityIndicator color={colors.primary} size="small" />
         </View>
       ) : member ? (
-        <TouchableOpacity style={styles.profileHeader} onPress={() => router.push('/(tabs)/account')} activeOpacity={0.8}>
-          <View style={styles.profileAvatar}>
-            <Text style={styles.profileInitial}>{member.fullName?.[0]}</Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.profileGreeting}>Hola, {member.fullName?.split(' ')[0]} 👋</Text>
-            <Text style={styles.profileUsername}>@{member.username}</Text>
-          </View>
-          <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
-            <Ionicons name="log-out-outline" size={18} color={colors.primary} />
-          </TouchableOpacity>
+        <TouchableOpacity onPress={() => router.push('/(tabs)/account')} activeOpacity={0.8}>
+          <LinearGradient
+            colors={[colors.primary, '#8B1E2D', colors.accent]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.profileHeader}
+          >
+            <View style={styles.profileAvatar}>
+              <Text style={styles.profileInitial}>{member.fullName?.[0]}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.profileGreeting}>Hola, {member.fullName?.split(' ')[0]} 👋</Text>
+              <Text style={styles.profileUsername}>@{member.username}</Text>
+            </View>
+            <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
+              <Ionicons name="log-out-outline" size={18} color="#FFFFFF" />
+            </TouchableOpacity>
+          </LinearGradient>
         </TouchableOpacity>
       ) : (
-        <TouchableOpacity style={styles.profileHeader} onPress={() => router.replace('/auth/login')} activeOpacity={0.8}>
-          <View style={styles.profileAvatar}>
-            <Ionicons name="person" size={24} color="#FFFFFF" />
-          </View>
-          <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600', fontFamily: 'Poppins_600SemiBold' }}>Iniciar sesión</Text>
+        <TouchableOpacity onPress={() => router.replace('/auth/login')} activeOpacity={0.8}>
+          <LinearGradient
+            colors={[colors.primary, '#8B1E2D', colors.accent]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.profileHeader}
+          >
+            <View style={styles.profileAvatar}>
+              <Ionicons name="person" size={24} color="#FFFFFF" />
+            </View>
+            <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600', fontFamily: 'Poppins_600SemiBold' }}>Iniciar sesión</Text>
+          </LinearGradient>
         </TouchableOpacity>
       )}
 

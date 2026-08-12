@@ -9,7 +9,7 @@ export default function OnboardingIngresar() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => router.replace('/auth/login')} activeOpacity={0.7}>
           <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
         </TouchableOpacity>
         <Text style={styles.stepLabel}>PASO 2 DE 4</Text>

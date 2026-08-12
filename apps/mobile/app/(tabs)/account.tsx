@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Modal, Linking } from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
@@ -137,13 +138,18 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
-      <View style={styles.profileCard}>
+      <LinearGradient
+        colors={[colors.primary, '#8B1E2D', colors.accent]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.profileCard}
+      >
         <View style={styles.profileAvatarBig}>
           <Text style={styles.profileInitialBig}>{member?.fullName?.[0]}</Text>
         </View>
         <Text style={styles.profileName}>{member?.fullName}</Text>
         <Text style={styles.profileUsername}>@{member?.username}</Text>
-      </View>
+      </LinearGradient>
 
       <View style={styles.menuSection}>
         <MenuItem icon="person" label="Mi Perfil" onPress={() => {}} />
