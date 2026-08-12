@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { View, ScrollView, Image, Text, Dimensions, StyleSheet, NativeSyntheticEvent, NativeScrollEvent } from 'react-native'
 import { colors } from '../../theme/colors'
 
@@ -20,23 +20,26 @@ type CarouselProps = {
 }
 
 export default function Carousel({ slides, autoplayInterval = 4000 }: CarouselProps) {
-  const scrollRef = useRef<ScrollView>(null)
   const [activeIndex, setActiveIndex] = useState(0)
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const scrollRef = useRef<ScrollView>(null)
 
   const handleScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const index = Math.round(e.nativeEvent.contentOffset.x / CARD_WIDTH)
     setActiveIndex(index)
   }, [])
 
+  // Autoplay: avanza cada `autoplayInterval` si hay más de un slide.
   useEffect(() => {
-    intervalRef.current = setInterval(() => {
-      const next = (activeIndex + 1) % slides.length
-      scrollRef.current?.scrollTo({ x: next * CARD_WIDTH, animated: true })
-      setActiveIndex(next)
+    if (slides.length <= 1) return
+    const interval = setInterval(() => {
+      setActiveIndex((prev) => {
+        const next = (prev + 1) % slides.length
+        scrollRef.current?.scrollTo({ x: next * CARD_WIDTH, animated: true })
+        return next
+      })
     }, autoplayInterval)
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
-  }, [activeIndex, slides.length, autoplayInterval])
+    return () => clearInterval(interval)
+  }, [slides.length, autoplayInterval])
 
   if (slides.length === 0) return null
 
@@ -61,21 +64,24 @@ export default function Carousel({ slides, autoplayInterval = 4000 }: CarouselPr
               { backgroundColor: slide.bgColor || colors.primary, marginRight: i < slides.length - 1 ? CARD_GAP : 0 },
             ]}
           >
-            {slide.imageUrl && (
+            {slide.imageUrl ? (
               <Image source={{ uri: slide.imageUrl }} style={styles.slideImage} resizeMode="cover" />
-            )}
+            ) : null}
             <View style={styles.slideOverlay}>
               <Text style={styles.slideTitle}>{slide.title}</Text>
-              {slide.subtitle && <Text style={styles.slideSubtitle}>{slide.subtitle}</Text>}
+              {slide.subtitle ? <Text style={styles.slideSubtitle}>{slide.subtitle}</Text> : null}
             </View>
           </View>
         ))}
       </ScrollView>
-      <View style={styles.dots}>
-        {slides.map((_, i) => (
-          <View key={i} style={[styles.dot, i === activeIndex && styles.dotActive]} />
-        ))}
-      </View>    </View>
+      {slides.length > 1 && (
+        <View style={styles.dots}>
+          {slides.map((_, i) => (
+            <View key={i} style={[styles.dot, i === activeIndex && styles.dotActive]} />
+          ))}
+        </View>
+      )}
+    </View>
   )
 }
 
