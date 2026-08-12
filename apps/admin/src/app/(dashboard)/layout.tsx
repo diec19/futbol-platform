@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Menu } from 'lucide-react';
 import { Sidebar } from '@/components/domain/sidebar';
+import { AdminNotificationBell } from '@/components/domain/admin-notification-bell';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -44,7 +45,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </Sheet>
 
           <h1 className="text-sm font-semibold md:text-base">Panel de Administración</h1>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+            <AdminNotificationBell />
             <ThemeToggle />
           </div>
         </header>

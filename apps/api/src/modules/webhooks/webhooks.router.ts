@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { db } from '../../config/database';
 import { env } from '../../config/env';
 import { getClubMpToken, fetchMpPayment, validateWebhookSignature, expectedPaymentAmount } from '../../lib/mp';
+import { notificationsService } from '../notifications/notifications.service';
 
 export const webhooksRouter = Router();
 
@@ -75,6 +76,22 @@ webhooksRouter.post('/mp', async (req, res) => {
           data: { status: 'PAID', paidAt: new Date(), mpPaymentId: String(paymentId) },
         });
 
+        try {
+          const player = await db.player.findUnique({
+            where: { id: playerSub.playerId },
+            select: { fullName: true },
+          });
+          await notificationsService.createAdmin({
+            type: 'payment',
+            refType: 'PlayerSubscription',
+            refId: subId,
+            title: 'Pago recibido',
+            message: `Pago de $${transactionAmount.toLocaleString('es-AR')} recibido por la cuota de ${player?.fullName ?? 'un jugador'}`,
+          });
+        } catch (e) {
+          console.error('Error creando notificacion admin:', e);
+        }
+
         return res.json({ processed: true, type: 'player', subId });
       }
 
@@ -107,6 +124,18 @@ webhooksRouter.post('/mp', async (req, res) => {
           where: { id: subId },
           data: { status: 'PAID', paidAt: new Date(), mpPaymentId: String(paymentId) },
         });
+
+        try {
+          await notificationsService.createAdmin({
+            type: 'payment',
+            refType: 'Subscription',
+            refId: subId,
+            title: 'Pago recibido',
+            message: `Pago de $${transactionAmount.toLocaleString('es-AR')} recibido de ${memberSub.member?.fullName ?? 'un socio'}`,
+          });
+        } catch (e) {
+          console.error('Error creando notificacion admin:', e);
+        }
 
         // Consolidated payment: amount covers member + children → mark children explicitly
         if (childSubs.length && transactionAmount >= expectedMember + expectedChildren - 1) {

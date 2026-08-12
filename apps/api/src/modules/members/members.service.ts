@@ -4,6 +4,7 @@ import { db } from '../../config/database';
 import { env } from '../../config/env';
 import { AppError } from '../../lib/app-error';
 import { mpService } from './mp.service';
+import { notificationsService } from '../notifications/notifications.service';
 import { mapWithConcurrency, normalizePhone, buildWhatsAppUrl } from '../../lib/mp';
 
 const memberSelect = {
@@ -151,7 +152,7 @@ export const membersService = {
       throw new AppError('Ya enviaste una solicitud para ese jugador', 409);
     }
 
-    return db.playerJoinRequest.create({
+    const request = await db.playerJoinRequest.create({
       data: {
         memberId,
         fullName: data.fullName,
@@ -160,6 +161,22 @@ export const membersService = {
         categoryId: data.categoryId,
       },
     });
+
+    // Notificar al admin para que revise la solicitud
+    try {
+      const member = await db.member.findUnique({ where: { id: memberId } });
+      await notificationsService.createAdmin({
+        type: 'player_join_request',
+        refType: 'PlayerJoinRequest',
+        refId: request.id,
+        title: 'Nueva solicitud de alta',
+        message: `${member?.fullName ?? 'Un socio'} pidió dar de alta a ${data.fullName} (DNI ${data.dni})`,
+      });
+    } catch (e) {
+      console.error('Error creando notificacion admin:', e);
+    }
+
+    return request;
   },
 
   async listJoinRequests(status?: string) {

@@ -62,4 +62,28 @@ export const notificationsService = {
   async remove(id: string) {
     await db.notification.delete({ where: { id } });
   },
+
+  // ── Admin notifications ──────────────────────────────────────────────────
+  async createAdmin(data: { type: string; refType?: string; refId?: string; title: string; message: string }) {
+    return db.adminNotification.create({ data });
+  },
+
+  async listAdmin(limit = 50) {
+    return db.adminNotification.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+  },
+
+  async adminUnreadCount() {
+    return db.adminNotification.count({ where: { read: false } });
+  },
+
+  async markAdminRead(id: string) {
+    return db.adminNotification.update({ where: { id }, data: { read: true } });
+  },
+
+  async markAllAdminRead() {
+    return db.adminNotification.updateMany({ data: { read: true } });
+  },
 };

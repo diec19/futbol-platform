@@ -566,6 +566,22 @@ model Notification {
   @@map("notifications")
 }
 
+// Notificaciones internas para el admin (requieren atencion: altas, pagos, etc.)
+model AdminNotification {
+  id         String   @id @default(cuid())
+  type       String   // 'player_join_request' | 'payment' | ...
+  refType    String?
+  refId      String?
+  title      String
+  message    String
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([read, createdAt])
+  @@map("admin_notifications")
+}
+
 // ── Outbox Multicanal ────────────────────────────────────────────────────────
 
 enum OutboxChannel {

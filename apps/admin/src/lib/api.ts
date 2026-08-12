@@ -266,6 +266,12 @@ joinRequests: {
     list: () => get<{ data: any[] }>('/notifications/all'),
     create: (data: unknown) => post<{ data: any }>('/notifications', data),
     remove: (id: string) => del<void>(`/notifications/${id}`),
+    adminList: () => get<{ data: any[] }>('/notifications/admin'),
+    adminCount: () => get<{ data: { count: number } }>('/notifications/admin/count'),
+    adminMarkRead: (id: string) =>
+      patch<{ data: any }>(`/notifications/admin/${id}/read`, {}),
+    adminMarkAllRead: () =>
+      patch<{ data: any }>('/notifications/admin/read-all', {}),
   },
   whatsapp: {
     status: () => get<{ data: { connected: boolean } }>('/whatsapp/status'),

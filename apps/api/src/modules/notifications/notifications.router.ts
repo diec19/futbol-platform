@@ -30,3 +30,9 @@ notificationsRouter.patch('/read-all', memberAuth, ctrl.markAllRead);
 notificationsRouter.post('/', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'OPERATOR'), ctrl.create);
 notificationsRouter.get('/all', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), ctrl.listAll);
 notificationsRouter.delete('/:id', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), ctrl.remove);
+
+// Admin inbox (altas, pagos, etc.)
+notificationsRouter.get('/admin', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'OPERATOR'), ctrl.listAdmin);
+notificationsRouter.get('/admin/count', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'OPERATOR'), ctrl.adminUnreadCount);
+notificationsRouter.patch('/admin/read-all', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'OPERATOR'), ctrl.markAllAdminRead);
+notificationsRouter.patch('/admin/:id/read', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'OPERATOR'), ctrl.markAdminRead);

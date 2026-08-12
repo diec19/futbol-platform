@@ -68,4 +68,27 @@ export const notificationsController = {
       next(e);
     }
   },
+
+  // Admin notifications
+  listAdmin: async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const limit = req.query.limit ? Number(req.query.limit) : 50;
+      res.json({ data: await svc.listAdmin(limit) });
+    } catch (e) { next(e); }
+  },
+  adminUnreadCount: async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+      res.json({ data: { count: await svc.adminUnreadCount() } });
+    } catch (e) { next(e); }
+  },
+  markAdminRead: async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      res.json({ data: await svc.markAdminRead(req.params.id) });
+    } catch (e) { next(e); }
+  },
+  markAllAdminRead: async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+      res.json({ data: await svc.markAllAdminRead() });
+    } catch (e) { next(e); }
+  },
 };
