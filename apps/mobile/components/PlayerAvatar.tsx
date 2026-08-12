@@ -39,6 +39,6 @@ const styles = StyleSheet.create({
   },
   initial: {
     color: '#FFFFFF',
-    fontWeight: '700',
+    fontWeight: '700', fontFamily: 'Poppins_700Bold',
   },
 });

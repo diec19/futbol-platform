@@ -101,7 +101,7 @@ export default function BeneficiosScreen() {
                       <Image source={{ uri: b.sponsor.logoUrl }} style={styles.sponsorLogo} />
                     ) : (
                       <View style={[styles.sponsorLogo, { backgroundColor: colors.gray[100], alignItems: 'center', justifyContent: 'center' }]}>
-                        <Text style={{ fontSize: 10, fontWeight: '700', color: colors.textSecondary }}>
+                        <Text style={{ fontSize: 10, fontWeight: '700', fontFamily: 'Poppins_700Bold', color: colors.textSecondary }}>
                           {b.sponsor.name[0]}
                         </Text>
                       </View>
@@ -126,11 +126,11 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
   },
   backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: '#FFFFFF' },
+  headerTitle: { fontSize: 18, fontWeight: '700', fontFamily: 'Poppins_700Bold', color: '#FFFFFF' },
   filterRow: { flexDirection: 'row', paddingHorizontal: 16, paddingTop: 16, gap: 8 },
   filterBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: colors.gray[100] },
   filterBtnActive: { backgroundColor: colors.primary },
-  filterText: { fontSize: 12, fontWeight: '600', color: colors.textSecondary },
+  filterText: { fontSize: 12, fontWeight: '600', fontFamily: 'Poppins_600SemiBold', color: colors.textSecondary },
   filterTextActive: { color: '#FFFFFF' },
   list: { paddingHorizontal: 16, paddingTop: 16, gap: 12 },
   card: { padding: 0, overflow: 'hidden' },
@@ -142,11 +142,11 @@ const styles = StyleSheet.create({
   },
   cardContent: { padding: 14 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 },
-  cardTitle: { fontSize: 15, fontWeight: '700', color: colors.text, flex: 1, marginRight: 8 },
+  cardTitle: { fontSize: 15, fontWeight: '700', fontFamily: 'Poppins_700Bold', color: colors.text, flex: 1, marginRight: 8 },
   typeBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 },
-  typeText: { fontSize: 10, fontWeight: '700' },
+  typeText: { fontSize: 10, fontWeight: '700', fontFamily: 'Poppins_700Bold' },
   cardDesc: { fontSize: 13, color: colors.textSecondary, lineHeight: 18, marginBottom: 8 },
   sponsorRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
   sponsorLogo: { width: 22, height: 22, borderRadius: 6 },
-  sponsorName: { fontSize: 11, color: colors.textTertiary, fontWeight: '600' },
+  sponsorName: { fontSize: 11, color: colors.textTertiary, fontWeight: '600', fontFamily: 'Poppins_600SemiBold' },
 })

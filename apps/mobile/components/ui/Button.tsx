@@ -45,7 +45,7 @@ const styles = StyleSheet.create({
   secondary: { backgroundColor: colors.blue[50] },
   ghost: { backgroundColor: 'transparent' },
   disabled: { opacity: 0.5 },
-  text: { fontSize: 15, fontWeight: '700' },
+  text: { fontSize: 15, fontWeight: '700', fontFamily: 'Poppins_700Bold' },
   primaryText: { color: '#FFFFFF' },
   secondaryText: { color: colors.primary },
   ghostText: { color: colors.primary },

@@ -114,7 +114,7 @@ export default function HomeScreen() {
           <View style={styles.profileAvatar}>
             <Ionicons name="person" size={24} color="#FFFFFF" />
           </View>
-          <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600' }}>Iniciar sesión</Text>
+          <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600', fontFamily: 'Poppins_600SemiBold' }}>Iniciar sesión</Text>
         </TouchableOpacity>
       )}
 
@@ -183,7 +183,7 @@ export default function HomeScreen() {
             <Text style={styles.sectionTitle}>Beneficios</Text>
             {benefitsList.length > 3 && (
               <TouchableOpacity onPress={() => router.push('/beneficios')}>
-                <Text style={{ fontSize: 13, color: colors.primary, fontWeight: '600' }}>Ver todos</Text>
+                <Text style={{ fontSize: 13, color: colors.primary, fontWeight: '600', fontFamily: 'Poppins_600SemiBold' }}>Ver todos</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -247,12 +247,12 @@ export default function HomeScreen() {
             <Ionicons name="newspaper" size={18} color={colors.text} />
             <Text style={styles.sectionTitle}>Últimas noticias</Text>
             <TouchableOpacity onPress={() => router.push('/(tabs)/noticias')}>
-              <Text style={{ fontSize: 13, color: colors.primary, fontWeight: '600' }}>Ver todas</Text>
+              <Text style={{ fontSize: 13, color: colors.primary, fontWeight: '600', fontFamily: 'Poppins_600SemiBold' }}>Ver todas</Text>
             </TouchableOpacity>
           </View>
           {latestNews.map((item: any) => (
             <Card key={item.id} style={{ marginHorizontal: 16, marginBottom: 10 }}>
-              <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 4 }}>{item.title}</Text>
+              <Text style={{ fontSize: 15, fontWeight: '700', fontFamily: 'Poppins_700Bold', color: colors.text, marginBottom: 4 }}>{item.title}</Text>
               <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18 }} numberOfLines={2}>{item.body}</Text>
             </Card>
           ))}
@@ -272,38 +272,38 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   profileAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
-  profileInitial: { color: '#FFFFFF', fontSize: 18, fontWeight: '700' },
-  profileGreeting: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+  profileInitial: { color: '#FFFFFF', fontSize: 18, fontWeight: '700', fontFamily: 'Poppins_700Bold' },
+  profileGreeting: { color: '#FFFFFF', fontSize: 16, fontWeight: '700', fontFamily: 'Poppins_700Bold' },
   profileUsername: { color: 'rgba(255,255,255,0.75)', fontSize: 12 },
   logoutBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
   quickActions: { flexDirection: 'row', paddingHorizontal: 16, gap: 12, marginBottom: 20 },
   quickAction: { flex: 1, alignItems: 'center', gap: 6 },
   quickIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  quickLabel: { fontSize: 11, fontWeight: '600', color: colors.textSecondary, textAlign: 'center' },
+  quickLabel: { fontSize: 11, fontWeight: '600', fontFamily: 'Poppins_600SemiBold', color: colors.textSecondary, textAlign: 'center' },
   alertCard: { marginHorizontal: 16, marginBottom: 16, backgroundColor: '#FFFBEB', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#FDE68A' },
   alertRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  alertText: { fontSize: 14, fontWeight: '600', color: colors.text, flex: 1 },
-  alertLink: { fontSize: 13, color: colors.primary, fontWeight: '700' },
+  alertText: { fontSize: 14, fontWeight: '600', fontFamily: 'Poppins_600SemiBold', color: colors.text, flex: 1 },
+  alertLink: { fontSize: 13, color: colors.primary, fontWeight: '700', fontFamily: 'Poppins_700Bold' },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 20, marginBottom: 12 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.text, flex: 1 },
-  sectionCount: { fontSize: 13, color: colors.textTertiary, fontWeight: '600' },
+  sectionTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'Poppins_700Bold', color: colors.text, flex: 1 },
+  sectionCount: { fontSize: 13, color: colors.textTertiary, fontWeight: '600', fontFamily: 'Poppins_600SemiBold' },
   playerCard: { marginHorizontal: 16, marginBottom: 8 },
   playerRow: { flexDirection: 'row', alignItems: 'center' },
-  playerName: { fontSize: 14, fontWeight: '600', color: colors.text },
+  playerName: { fontSize: 14, fontWeight: '600', fontFamily: 'Poppins_600SemiBold', color: colors.text },
   playerMeta: { fontSize: 12, color: colors.textSecondary, marginTop: 1 },
   playerStats: { flexDirection: 'row', gap: 8, marginTop: 3 },
   playerStat: { fontSize: 11 },
   seeAll: { alignSelf: 'center', marginTop: 4 },
-  seeAllText: { fontSize: 13, color: colors.primary, fontWeight: '600' },
+  seeAllText: { fontSize: 13, color: colors.primary, fontWeight: '600', fontFamily: 'Poppins_600SemiBold' },
   benefitCard: { width: 140, padding: 14, gap: 8 },
   benefitIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  benefitTitle: { fontSize: 13, fontWeight: '700', color: colors.text },
+  benefitTitle: { fontSize: 13, fontWeight: '700', fontFamily: 'Poppins_700Bold', color: colors.text },
   benefitDesc: { fontSize: 11, color: colors.textSecondary, lineHeight: 14 },
   tournCard: { marginHorizontal: 16, marginBottom: 8 },
   tournTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
   tournLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 10, marginRight: 8 },
   tournIcon: { width: 34, height: 34, borderRadius: 10, backgroundColor: colors.red[50], alignItems: 'center', justifyContent: 'center' },
-  tournTitle: { fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: 1 },
+  tournTitle: { fontSize: 14, fontWeight: '600', fontFamily: 'Poppins_600SemiBold', color: colors.text, marginBottom: 1 },
   tournDesc: { fontSize: 12, color: colors.textSecondary },
   tournFooter: { flexDirection: 'row', gap: 8, marginLeft: 44 },
   tournMeta: { fontSize: 11, color: colors.textTertiary },

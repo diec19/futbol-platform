@@ -95,14 +95,15 @@ export const membersService = {
 
   async create(data: {
     fullName: string; dni: string; email: string; phone?: string;
-    address?: string; username: string; password: string;
+    address?: string; username?: string; password: string;
   }) {
+    const username = data.username ?? data.email.split('@')[0];
     const exists = await db.member.findFirst({
-      where: { OR: [{ dni: data.dni }, { email: data.email }, { username: data.username }] },
+      where: { OR: [{ dni: data.dni }, { email: data.email }, { username }] },
     });
     if (exists) throw new AppError('Ya existe un socio con ese DNI, email o usuario', 409);
     const password = await bcrypt.hash(data.password, 10);
-    return db.member.create({ data: { ...data, password }, select: memberSelect });
+    return db.member.create({ data: { ...data, username, password }, select: memberSelect });
   },
 
   async update(id: string, data: {
@@ -127,6 +128,30 @@ export const membersService = {
 
   async unlinkPlayer(memberId: string, playerId: string) {
     return db.memberPlayer.deleteMany({ where: { memberId, playerId } });
+  },
+
+  // Auto-vinculación self-service: busca al jugador por DNI y valida la fecha de
+  // nacimiento como segundo factor. Permite múltiples tutores por jugador.
+  async linkPlayerByDni(memberId: string, data: { dni: string; birthDate: string }) {
+    const player = await db.player.findFirst({
+      where: { dni: data.dni },
+      include: { team: { include: { category: true } } },
+    });
+    if (!player) throw new AppError('El jugador no está registrado en el plantel', 404);
+
+    const matchesBirth = new Date(player.birthDate).toISOString().slice(0, 10) ===
+      new Date(data.birthDate).toISOString().slice(0, 10);
+    if (!matchesBirth) throw new AppError('La fecha de nacimiento no coincide con el jugador', 400);
+
+    const existing = await db.memberPlayer.findUnique({
+      where: { memberId_playerId: { memberId, playerId: player.id } },
+    });
+    if (existing) throw new AppError('Ese jugador ya está vinculado a tu cuenta', 409);
+
+    return db.memberPlayer.create({
+      data: { memberId, playerId: player.id },
+      include: { player: { include: { team: { include: { category: true } } } } },
+    });
   },
 
   // ── Subscriptions ─────────────────────────────────────────────────────────

@@ -74,7 +74,11 @@ export const api = {
   members: {
     login: (username: string, password: string) =>
       post<{ data: { accessToken: string; member: any } }>('/members/auth/login', { username, password }),
+    register: (data: { fullName: string; dni: string; email: string; phone?: string; password: string }) =>
+      post<{ data: any }>('/members/auth/register', data),
     me: () => getAuth<{ data: any }>('/members/auth/me'),
+    linkPlayer: (data: { dni: string; birthDate: string }) =>
+      post<{ data: any }>('/members/auth/link-player', data),
   },
   notifications: {
     list: () => getAuth<{ data: any[] }>('/notifications'),

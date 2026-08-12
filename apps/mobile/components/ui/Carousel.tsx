@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: 'rgba(0,0,0,0.25)',
   },
-  slideTitle: { color: '#FFFFFF', fontSize: 20, fontWeight: '700', marginBottom: 2 },
+  slideTitle: { color: '#FFFFFF', fontSize: 20, fontWeight: '700', fontFamily: 'Poppins_700Bold', marginBottom: 2 },
   slideSubtitle: { color: 'rgba(255,255,255,0.85)', fontSize: 13 },
   dots: { flexDirection: 'row', justifyContent: 'center', marginTop: 10, gap: 6 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.gray[300] },

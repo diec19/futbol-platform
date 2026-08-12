@@ -26,6 +26,9 @@ export const membersController = {
   linkPlayer: async (req: Request, res: Response, next: NextFunction) => {
     try { res.status(201).json({ data: await svc.linkPlayer(req.params.id, req.body.playerId) }); } catch (e) { next(e); }
   },
+  linkPlayerByDni: async (req: Request, res: Response, next: NextFunction) => {
+    try { res.status(201).json({ data: await svc.linkPlayerByDni((req as any).memberId, req.body) }); } catch (e) { next(e); }
+  },
   unlinkPlayer: async (req: Request, res: Response, next: NextFunction) => {
     try { await svc.unlinkPlayer(req.params.id, req.params.playerId); res.status(204).send(); } catch (e) { next(e); }
   },

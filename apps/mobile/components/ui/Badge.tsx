@@ -25,5 +25,5 @@ export default function Badge({ label, variant = 'default' }: BadgeProps) {
 
 const styles = StyleSheet.create({
   badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
-  text: { fontSize: 11, fontWeight: '600' },
+  text: { fontSize: 11, fontWeight: '600', fontFamily: 'Poppins_600SemiBold' },
 })

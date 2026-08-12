@@ -2,6 +2,7 @@ import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { useFonts, Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold, Poppins_800ExtraBold } from '@expo-google-fonts/poppins'
 import { AuthProvider } from '../services/auth'
 import { colors } from '../theme/colors'
 
@@ -12,12 +13,24 @@ const queryClient = new QueryClient({
 const headerStyles = {
   headerStyle: { backgroundColor: colors.surface },
   headerTintColor: colors.text,
-  headerTitleStyle: { fontWeight: '700' as const, fontSize: 17 },
+  headerTitleStyle: { fontWeight: '700' as const, fontSize: 17, fontFamily: 'Poppins_700Bold' },
   headerShadowVisible: false,
   headerBackTitle: 'Volver',
 }
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    Poppins_400Regular,
+    Poppins_500Medium,
+    Poppins_600SemiBold,
+    Poppins_700Bold,
+    Poppins_800ExtraBold,
+  })
+
+  if (!fontsLoaded) {
+    return null
+  }
+
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
@@ -25,6 +38,8 @@ export default function RootLayout() {
           <StatusBar style="dark" />
           <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="auth/login" />
+              <Stack.Screen name="auth/register" />
+              <Stack.Screen name="auth/link-player" />
               <Stack.Screen name="(tabs)" />
               <Stack.Screen name="tournament/[id]" options={{ headerShown: true, title: 'Torneo', ...headerStyles }} />
               <Stack.Screen name="team/[id]" options={{ headerShown: true, title: 'Equipo', ...headerStyles }} />

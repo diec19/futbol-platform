@@ -1,6 +1,8 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { authenticate } from '../../middleware/auth.middleware';
+import { validate } from '../../middleware/validate.middleware';
+import { registerMemberSchema, linkPlayerSchema } from '@futbol/validations';
 import { env } from '../../config/env';
 import { membersController as ctrl } from './members.controller';
 import { membersService as svc } from './members.service';
@@ -23,7 +25,7 @@ function memberAuth(req: Request, res: Response, next: NextFunction) {
 
 // ── Auth pública ─────────────────────────────────────────────────────────────
 membersRouter.post('/auth/login', ctrl.login);
-membersRouter.post('/auth/register', async (req, res, next) => {
+membersRouter.post('/auth/register', validate(registerMemberSchema), async (req, res, next) => {
   try {
     const data = await svc.create(req.body);
     res.status(201).json({ data });
@@ -32,6 +34,9 @@ membersRouter.post('/auth/register', async (req, res, next) => {
   }
 });
 membersRouter.get('/auth/me', memberAuth, ctrl.me);
+
+// Auto-vinculación self-service de jugadores (socio autenticado)
+membersRouter.post('/auth/link-player', memberAuth, validate(linkPlayerSchema), ctrl.linkPlayerByDni);
 
 // ── Admin CRUD ────────────────────────────────────────────────────────────────
 membersRouter.use(authenticate);

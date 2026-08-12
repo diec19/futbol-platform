@@ -182,3 +182,20 @@ export const createBenefitSchema = z.object({
 });
 
 export const updateBenefitSchema = createBenefitSchema.partial();
+
+// ── Members (socios) ──────────────────────────────────────────────────────────
+
+export const registerMemberSchema = z.object({
+  fullName: z.string().min(2).max(120),
+  dni: z.string().min(6).max(20),
+  email: z.string().email(),
+  phone: z.string().max(30).optional(),
+  address: z.string().max(200).optional(),
+  username: z.string().min(3).max(30).optional(),
+  password: z.string().min(6).max(100),
+});
+
+export const linkPlayerSchema = z.object({
+  dni: z.string().min(6).max(20),
+  birthDate: z.string().datetime(),
+});

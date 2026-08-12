@@ -20,6 +20,16 @@ const searchPaths = [
   path.join(appDir, 'node_modules', '.pnpm'),              // pnpm (just in case)
 ];
 
+// ── Ruta relativa correcta desde la ubicación real de expo-router hacia app/ ──
+// Caso hoisted (raíz):      node_modules/expo-router -> ../../apps/mobile/app
+// Caso local (apps/mobile): apps/mobile/node_modules/expo-router -> ../../app
+function ctxReplacement(routerBaseDir) {
+  const mobileAppDir = path.join(appDir, 'app');
+  let rel = path.relative(routerBaseDir, mobileAppDir).replace(/\\/g, '/');
+  if (!rel.startsWith('.')) rel = './' + rel;
+  return `'${rel}'`;
+}
+
 function findCtxFile(filename) {
   for (const base of searchPaths) {
     const fp = path.join(base, filename);
@@ -36,16 +46,25 @@ ctxFiles.forEach((ctxFile) => {
     return;
   }
 
+  // routerBaseDir = directorio que contiene el _ctx (node_modules/expo-router)
+  const routerBaseDir = path.dirname(filePath);
+  const appRel = ctxReplacement(routerBaseDir);
+
   let content = fs.readFileSync(filePath, 'utf8');
   const original = content;
 
   content = content.replace(
     /process\.env\.EXPO_ROUTER_APP_ROOT/g,
-    "'../../app'"
+    appRel
   );
   content = content.replace(
     /'\.\/app'/g,
-    "'../../app'"
+    appRel
+  );
+  // Reemplaza también un patch viejo ('../../app') por la ruta relativa correcta.
+  content = content.replace(
+    /'\.\.\/\.\.\/app'/g,
+    appRel
   );
   content = content.replace(
     /process\.env\.EXPO_ROUTER_IMPORT_MODE/g,
@@ -54,8 +73,8 @@ ctxFiles.forEach((ctxFile) => {
 
   if (content !== original) {
     fs.writeFileSync(filePath, content, 'utf8');
-    console.log(`Patched ${filePath}`);
+    console.log(`Patched ${filePath} -> ${appRel}`);
   } else {
-    console.log(`Already patched ${filePath}`);
+    console.log(`Already patched ${filePath} -> ${appRel}`);
   }
 });

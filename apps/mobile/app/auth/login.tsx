@@ -77,6 +77,10 @@ export default function LoginScreen() {
         <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading} activeOpacity={0.85}>
           {loading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.buttonText}>Ingresar</Text>}
         </TouchableOpacity>
+
+        <TouchableOpacity style={styles.registerLink} onPress={() => router.push('/auth/register')} activeOpacity={0.7}>
+          <Text style={styles.registerText}>¿No tenés cuenta? Creala acá</Text>
+        </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
   )
@@ -94,7 +98,7 @@ const styles = StyleSheet.create({
   },
   logoWrap: { width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
   logoText: { fontSize: 36 },
-  appName: { fontSize: 24, fontWeight: '800', color: '#FFFFFF', marginBottom: 2 },
+  appName: { fontSize: 24, fontWeight: '800', fontFamily: 'Poppins_800ExtraBold', color: '#FFFFFF', marginBottom: 2 },
   tagline: { fontSize: 14, color: 'rgba(255,255,255,0.85)' },
   card: {
     backgroundColor: colors.surface,
@@ -108,10 +112,10 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 6,
   },
-  welcome: { fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: 4 },
+  welcome: { fontSize: 20, fontWeight: '700', fontFamily: 'Poppins_700Bold', color: colors.text, marginBottom: 4 },
   subtitle: { fontSize: 13, color: colors.textSecondary, marginBottom: 24 },
   inputGroup: { marginBottom: 16 },
-  label: { fontSize: 11, color: colors.textSecondary, marginBottom: 6, fontWeight: '700', letterSpacing: 0.5 },
+  label: { fontSize: 11, color: colors.textSecondary, marginBottom: 6, fontWeight: '700', fontFamily: 'Poppins_700Bold', letterSpacing: 0.5 },
   input: {
     backgroundColor: colors.gray[50],
     borderWidth: 1.5,
@@ -138,5 +142,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 4,
   },
-  buttonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 16 },
+  buttonText: { color: '#FFFFFF', fontWeight: '700', fontFamily: 'Poppins_700Bold', fontSize: 16 },
+  registerLink: { alignItems: 'center', marginTop: 16 },
+  registerText: { color: colors.primary, fontSize: 13, fontWeight: '600', fontFamily: 'Poppins_600SemiBold' },
 })

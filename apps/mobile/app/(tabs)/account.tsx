@@ -56,15 +56,15 @@ function PlayerModal({ player, visible, onClose }: { player: any; visible: boole
 
             {team && (
               <Card padding={14} style={{ marginBottom: 12, width: '100%' }}>
-                <Text style={{ fontSize: 10, color: colors.textTertiary, fontWeight: '700', letterSpacing: 0.5, marginBottom: 4 }}>EQUIPO</Text>
-                <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text }}>{team.name}</Text>
+                <Text style={{ fontSize: 10, color: colors.textTertiary, fontWeight: '700', fontFamily: 'Poppins_700Bold', letterSpacing: 0.5, marginBottom: 4 }}>EQUIPO</Text>
+                <Text style={{ fontSize: 15, fontWeight: '600', fontFamily: 'Poppins_600SemiBold', color: colors.text }}>{team.name}</Text>
                 {team.category && <Text style={{ fontSize: 13, color: colors.textSecondary }}>{team.category.name}</Text>}
               </Card>
             )}
 
             {player.sanctions?.length > 0 && (
               <Card padding={14} style={{ borderLeftWidth: 3, borderLeftColor: colors.warning, width: '100%' }}>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: 6 }}>Sanciones ({player.sanctions.length})</Text>
+                <Text style={{ fontSize: 14, fontWeight: '600', fontFamily: 'Poppins_600SemiBold', color: colors.text, marginBottom: 6 }}>Sanciones ({player.sanctions.length})</Text>
                 {player.sanctions.map((s: any, i: number) => (
                   <Text key={i} style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 2 }}>• {s.description ?? s.reason}</Text>
                 ))}
@@ -80,8 +80,8 @@ function PlayerModal({ player, visible, onClose }: { player: any; visible: boole
 function InfoItem({ label, value }: { label: string; value: string }) {
   return (
     <View style={{ alignItems: 'center' }}>
-      <Text style={{ fontSize: 11, color: colors.textSecondary, fontWeight: '600' }}>{label}</Text>
-      <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text, marginTop: 2 }}>{value}</Text>
+      <Text style={{ fontSize: 11, color: colors.textSecondary, fontWeight: '600', fontFamily: 'Poppins_600SemiBold' }}>{label}</Text>
+      <Text style={{ fontSize: 15, fontWeight: '700', fontFamily: 'Poppins_700Bold', color: colors.text, marginTop: 2 }}>{value}</Text>
     </View>
   )
 }
@@ -90,8 +90,8 @@ function StatCard({ icon, value, label, color }: { icon: keyof typeof Ionicons.g
   return (
     <View style={{ flex: 1, alignItems: 'center', backgroundColor: colors.gray[50], borderRadius: 14, padding: 12 }}>
       <Ionicons name={icon} size={20} color={color} />
-      <Text style={{ fontSize: 20, fontWeight: '800', color: colors.text, marginTop: 4 }}>{value}</Text>
-      <Text style={{ fontSize: 10, color: colors.textSecondary, fontWeight: '600' }}>{label}</Text>
+      <Text style={{ fontSize: 20, fontWeight: '800', fontFamily: 'Poppins_800ExtraBold', color: colors.text, marginTop: 4 }}>{value}</Text>
+      <Text style={{ fontSize: 10, color: colors.textSecondary, fontWeight: '600', fontFamily: 'Poppins_600SemiBold' }}>{label}</Text>
     </View>
   )
 }
@@ -147,7 +147,7 @@ export default function SettingsScreen() {
 
       <View style={styles.menuSection}>
         <MenuItem icon="person" label="Mi Perfil" onPress={() => {}} />
-        <MenuItem icon="people" label="Mis Jugadores" onPress={() => {}} />
+        <MenuItem icon="people" label="Mis Jugadores" onPress={() => router.push('/auth/link-player')} />
         <MenuItem icon="notifications" label="Notificaciones" onPress={() => router.push('/notifications')} />
         <MenuItem icon="help-circle" label="Ayuda" onPress={() => {}} />
         <MenuItem icon="log-out" label="Cerrar sesión" onPress={handleLogout} color={colors.error} />
@@ -179,7 +179,18 @@ export default function SettingsScreen() {
               </TouchableOpacity>
             )
           })}
+          <TouchableOpacity style={styles.linkMoreBtn} onPress={() => router.push('/auth/link-player')} activeOpacity={0.85}>
+            <Ionicons name="add" size={18} color={colors.primary} />
+            <Text style={styles.linkMoreText}>Vincular otro jugador</Text>
+          </TouchableOpacity>
         </>
+      )}
+
+      {member?.players?.length === 0 && (
+        <TouchableOpacity style={styles.linkMoreBtn} onPress={() => router.push('/auth/link-player')} activeOpacity={0.85}>
+          <Ionicons name="add" size={18} color={colors.primary} />
+          <Text style={styles.linkMoreText}>Vincular jugador</Text>
+        </TouchableOpacity>
       )}
 
       <PlayerModal player={selectedPlayer} visible={!!selectedPlayer} onClose={() => setSelectedPlayer(null)} />
@@ -201,15 +212,15 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   profileCard: { backgroundColor: colors.primary, padding: 24, alignItems: 'center', borderBottomLeftRadius: 32, borderBottomRightRadius: 32, marginBottom: 20 },
   profileAvatarBig: { width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
-  profileInitialBig: { color: '#FFFFFF', fontSize: 24, fontWeight: '700' },
-  profileName: { fontSize: 18, fontWeight: '700', color: '#FFFFFF' },
+  profileInitialBig: { color: '#FFFFFF', fontSize: 24, fontWeight: '700', fontFamily: 'Poppins_700Bold' },
+  profileName: { fontSize: 18, fontWeight: '700', fontFamily: 'Poppins_700Bold', color: '#FFFFFF' },
   profileUsername: { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
   menuSection: { marginHorizontal: 16, backgroundColor: colors.surface, borderRadius: 16, overflow: 'hidden', marginBottom: 20 },
   menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: colors.border, gap: 12 },
-  menuLabel: { flex: 1, fontSize: 14, fontWeight: '500', color: colors.text },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.text, paddingHorizontal: 20, marginBottom: 10 },
+  menuLabel: { flex: 1, fontSize: 14, fontWeight: '500', fontFamily: 'Poppins_500Medium', color: colors.text },
+  sectionTitle: { fontSize: 15, fontWeight: '700', fontFamily: 'Poppins_700Bold', color: colors.text, paddingHorizontal: 20, marginBottom: 10 },
   playerRow: { flexDirection: 'row', alignItems: 'center' },
-  playerName: { fontSize: 14, fontWeight: '600', color: colors.text },
+  playerName: { fontSize: 14, fontWeight: '600', fontFamily: 'Poppins_600SemiBold', color: colors.text },
   playerMeta: { fontSize: 12, color: colors.textSecondary },
   playerStatsRow: { flexDirection: 'row', gap: 10, marginTop: 3 },
   modalOverlay: { flex: 1, backgroundColor: colors.darkOverlay, justifyContent: 'flex-end' },
@@ -217,11 +228,19 @@ const styles = StyleSheet.create({
   modalContent: { backgroundColor: colors.surface, borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, paddingTop: 16, alignItems: 'center', maxHeight: '90%' },
   modalClose: { alignSelf: 'flex-end', padding: 4 },
   modalAvatarWrap: { alignItems: 'center', marginBottom: 12 },
-  modalName: { fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: 16 },
+  modalName: { fontSize: 20, fontWeight: '700', fontFamily: 'Poppins_700Bold', color: colors.text, marginBottom: 16 },
   infoGrid: { flexDirection: 'row', justifyContent: 'center', gap: 24, marginBottom: 20 },
   statsRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+  linkMoreBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    marginHorizontal: 16, marginTop: 4, marginBottom: 16,
+    paddingVertical: 12, borderRadius: 14,
+    borderWidth: 1.5, borderColor: colors.primary, borderStyle: 'dashed',
+    backgroundColor: colors.primaryLight,
+  },
+  linkMoreText: { color: colors.primary, fontSize: 14, fontWeight: '600', fontFamily: 'Poppins_600SemiBold' },
   errorBox: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: colors.background, gap: 12 },
   errorText: { fontSize: 14, color: colors.textSecondary, textAlign: 'center' },
   errorRetry: { backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 10, borderRadius: 12 },
-  errorRetryText: { color: '#FFFFFF', fontWeight: '700', fontSize: 14 },
+  errorRetryText: { color: '#FFFFFF', fontWeight: '700', fontFamily: 'Poppins_700Bold', fontSize: 14 },
 })
