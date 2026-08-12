@@ -36,17 +36,31 @@ function formatDateTime(dateStr: string) {
 export default function FixturesScreen() {
   const router = useRouter()
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'finished'>('all')
+  const [myTeamOnly, setMyTeamOnly] = useState(false)
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['matches'],
     queryFn: () => api.matches.list({}),
   })
+  // Jugadores vinculados del socio: para filtrar por el equipo de su hijo
+  const { data: meData } = useQuery({
+    queryKey: ['member-me'],
+    queryFn: () => api.members.me(),
+    retry: false,
+    enabled: myTeamOnly,
+  })
+
+  const myTeamIds = new Set(
+    (meData?.data?.players ?? [])
+      .map((mp: any) => mp.player?.teamId)
+      .filter((t: string | undefined) => !!t)
+  )
 
   const matches = (data?.data ?? []).filter((m: any) => {
     if (filter === 'upcoming') return m.status === 'SCHEDULED'
     if (filter === 'finished') return m.status === 'FINISHED'
     return true
-  })
+  }).filter((m: any) => myTeamOnly ? (myTeamIds.has(m.homeTeamId) || myTeamIds.has(m.awayTeamId)) : true)
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
@@ -62,6 +76,15 @@ export default function FixturesScreen() {
             </Text>
           </TouchableOpacity>
         ))}
+        {myTeamIds.size > 0 && (
+          <TouchableOpacity
+            style={[styles.filterBtn, styles.myTeamBtn, myTeamOnly && styles.filterActive]}
+            onPress={() => setMyTeamOnly(!myTeamOnly)}
+          >
+            <Ionicons name="shield" size={12} color={myTeamOnly ? '#FFFFFF' : colors.primary} />
+            <Text style={[styles.filterText, myTeamOnly && styles.filterTextActive]}>Mi equipo</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <FlatList
@@ -137,6 +160,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   filters: { flexDirection: 'row', padding: 16, paddingBottom: 8, gap: 8 },
   filterBtn: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, backgroundColor: colors.gray[100] },
+  myTeamBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   filterActive: { backgroundColor: colors.primary },
   filterText: { fontSize: 13, fontWeight: '600', fontFamily: 'Poppins_600SemiBold', color: colors.textSecondary },
   filterTextActive: { color: '#FFFFFF' },

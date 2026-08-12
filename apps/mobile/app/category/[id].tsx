@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, FlatList, ActivityIndicator, StyleSheet, TouchableOpacity } from 'react-native'
+import { View, Text, ScrollView, FlatList, ActivityIndicator, StyleSheet, TouchableOpacity, Linking } from 'react-native'
 import { useState } from 'react'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
@@ -9,6 +9,9 @@ import Card from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
 import { colors } from '../../theme/colors'
 import { MATCH_STATUS_LABELS, BRACKET_STAGE_LABELS } from '../../lib/constants'
+
+// Link a la liga en Copa Fácil (donde un tercero carga los resultados de todos los clubes)
+const COPA_FACIL_URL = 'https://copafacil.com/-7wy79'
 
 type Tab = 'matches' | 'standings' | 'bracket'
 
@@ -58,9 +61,17 @@ export default function CategoryScreen() {
   const router = useRouter()
   const [tab, setTab] = useState<Tab>('matches')
   const [matchFilter, setMatchFilter] = useState<'upcoming' | 'finished'>('upcoming')
+  const [myTeamOnly, setMyTeamOnly] = useState(false)
 
   const { data: catData, isLoading: catLoading } = useQuery({
     queryKey: ['category', id], queryFn: () => api.categories.get(id), enabled: !!id,
+  })
+  // Jugadores vinculados del socio: para filtrar por el equipo de su hijo
+  const { data: meData } = useQuery({
+    queryKey: ['member-me'],
+    queryFn: () => api.members.me(),
+    retry: false,
+    enabled: myTeamOnly,
   })
   const { data: matchesData, isLoading: matchesLoading } = useQuery({
     queryKey: ['matches', id, matchFilter],
@@ -75,9 +86,17 @@ export default function CategoryScreen() {
   })
 
   const category = catData?.data
-  const matches = matchesData?.data ?? []
+  const allMatches = matchesData?.data ?? []
   const groups = standingsData?.data ?? []
   const brackets = (bracketsData as any)?.data ?? []
+
+  // Equipos de los jugadores vinculados al socio (para 'Mi equipo')
+  const myTeamIds = new Set(
+    (meData?.data?.players ?? [])
+      .map((mp: any) => mp.player?.teamId)
+      .filter((t: string | undefined) => !!t)
+  )
+  const matches = myTeamOnly ? allMatches.filter((m: any) => myTeamIds.has(m.homeTeamId) || myTeamIds.has(m.awayTeamId)) : allMatches
 
   if (catLoading) {
     return <View style={styles.centered}><ActivityIndicator color={colors.primary} size="large" /></View>
@@ -91,6 +110,14 @@ export default function CategoryScreen() {
         </View>
         <Text style={styles.title}>{category?.name ?? 'Categoría'}</Text>
         {category?.tournament && <Text style={styles.subtitle}>{category.tournament.name}</Text>}
+        <TouchableOpacity
+          style={styles.copaBtn}
+          onPress={() => Linking.openURL(COPA_FACIL_URL)}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="trophy" size={14} color="#FFFFFF" />
+          <Text style={styles.copaBtnText}>Ver en Copa Fácil</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.tabBar}>
@@ -110,6 +137,15 @@ export default function CategoryScreen() {
                 <Text style={[styles.filterText, matchFilter === key && styles.filterTextActive]}>{key === 'upcoming' ? 'Próximos' : 'Jugados'}</Text>
               </TouchableOpacity>
             ))}
+            {myTeamIds.size > 0 && (
+              <TouchableOpacity
+                style={[styles.filterBtn, styles.myTeamBtn, myTeamOnly && styles.filterActive]}
+                onPress={() => setMyTeamOnly(!myTeamOnly)}
+              >
+                <Ionicons name="shield" size={12} color={myTeamOnly ? '#FFFFFF' : colors.primary} />
+                <Text style={[styles.filterText, myTeamOnly && styles.filterTextActive]}>Mi equipo</Text>
+              </TouchableOpacity>
+            )}
           </View>
           {matchesLoading ? (
             <View style={styles.centered}><ActivityIndicator color={colors.primary} /></View>
@@ -206,6 +242,17 @@ const styles = StyleSheet.create({
   headerIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   title: { fontSize: 20, fontWeight: '700', fontFamily: 'Poppins_700Bold', color: '#FFFFFF', marginBottom: 2 },
   subtitle: { fontSize: 13, color: 'rgba(255,255,255,0.8)' },
+  copaBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    marginTop: 10,
+  },
+  copaBtnText: { fontSize: 12, color: '#FFFFFF', fontWeight: '600', fontFamily: 'Poppins_600SemiBold' },
   tabBar: { flexDirection: 'row', backgroundColor: colors.surface, paddingVertical: 8, gap: 4, paddingHorizontal: 8 },
   tabBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 12 },
   tabActive: { backgroundColor: colors.blue[50] },
@@ -213,6 +260,7 @@ const styles = StyleSheet.create({
   tabTextActive: { color: colors.primary, fontWeight: '700', fontFamily: 'Poppins_700Bold' },
   filterRow: { flexDirection: 'row', margin: 16, marginBottom: 8, gap: 8 },
   filterBtn: { flex: 1, paddingVertical: 9, borderRadius: 10, backgroundColor: colors.gray[100], alignItems: 'center' },
+  myTeamBtn: { flex: 1.2, flexDirection: 'row', gap: 4, justifyContent: 'center' },
   filterActive: { backgroundColor: colors.primary },
   filterText: { fontSize: 13, fontWeight: '600', fontFamily: 'Poppins_600SemiBold', color: colors.textSecondary },
   filterTextActive: { color: '#FFFFFF' },
