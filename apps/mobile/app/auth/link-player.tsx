@@ -81,7 +81,7 @@ export default function LinkPlayerScreen() {
         <Text style={styles.label}>FECHA DE NACIMIENTO *</Text>
         <View style={styles.dateRow}>
           <TextInput
-            style={[styles.input, styles.dateInput]}
+            style={styles.dateInput}
             value={day}
             onChangeText={setDay}
             placeholder="Día"
@@ -90,7 +90,7 @@ export default function LinkPlayerScreen() {
             maxLength={2}
           />
           <TextInput
-            style={[styles.input, styles.dateInput]}
+            style={styles.dateInput}
             value={month}
             onChangeText={setMonth}
             placeholder="Mes"
@@ -99,7 +99,7 @@ export default function LinkPlayerScreen() {
             maxLength={2}
           />
           <TextInput
-            style={[styles.input, styles.yearInput]}
+            style={styles.yearInput}
             value={year}
             onChangeText={setYear}
             placeholder="Año"
@@ -178,9 +178,10 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: 'Poppins_400Regular',
   },
-  dateRow: { flexDirection: 'row', gap: 8 },
+  dateRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
   dateInput: {
     flex: 1,
+    minWidth: 0,
     backgroundColor: colors.gray[50],
     borderWidth: 1.5,
     borderColor: colors.border,
@@ -194,6 +195,7 @@ const styles = StyleSheet.create({
   },
   yearInput: {
     flex: 1.5,
+    minWidth: 0,
     backgroundColor: colors.gray[50],
     borderWidth: 1.5,
     borderColor: colors.border,
