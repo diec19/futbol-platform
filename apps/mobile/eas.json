@@ -3,9 +3,6 @@
     "version": ">= 3.0.0",
     "appVersionSource": "local"
   },
-  "hooks": {
-    "post-install": "node scripts/patch-gradle-url.js"
-  },
   "build": {
     "development": {
       "developmentClient": true,
@@ -19,6 +16,9 @@
       },
       "android": {
         "buildType": "apk"
+      },
+      "hooks": {
+        "post-install": "node scripts/patch-gradle-url.js"
       }
     },
     "production": {
@@ -28,6 +28,9 @@
       },
       "android": {
         "buildType": "app-bundle"
+      },
+      "hooks": {
+        "post-install": "node scripts/patch-gradle-url.js"
       }
     }
   },
