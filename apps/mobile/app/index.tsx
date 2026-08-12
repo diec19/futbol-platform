@@ -18,8 +18,9 @@ export default function Index() {
           router.replace('/auth/link-player?from=onboarding');
         }
       } else {
-        // Sin sesión: arranca el wizard de bienvenida.
-        router.replace('/onboarding/');
+        // Sin sesión: va directo al login. Los nuevos entran por
+        // "Crear cuenta" que continúa el flujo de vinculación.
+        router.replace('/auth/login');
       }
     }
   }, [token, loading, onboardingDone]);
