@@ -36,7 +36,7 @@ clubRouter.post('/credentials/:playerId', authenticate, ctrl.generateCredential)
 clubRouter.get('/credentials/:playerId', authenticate, ctrl.getCredential);
 
 // Club Categories
-clubRouter.get('/categories', authenticate, ctrl.listClubCategories);
+clubRouter.get('/categories', ctrl.listClubCategories);
 clubRouter.post('/categories', authenticate, ctrl.createClubCategory);
 clubRouter.put('/categories/:id', authenticate, ctrl.updateClubCategory);
 clubRouter.delete('/categories/:id', authenticate, ctrl.deleteClubCategory);

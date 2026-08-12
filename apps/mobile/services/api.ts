@@ -80,6 +80,11 @@ export const api = {
     me: () => getAuth<{ data: any }>('/members/auth/me'),
     linkPlayer: (data: { dni: string; birthDate: string }) =>
       postAuth<{ data: any }>('/members/auth/link-player', data),
+    playerRequest: (data: { fullName: string; dni: string; birthDate: string; categoryId?: string }) =>
+      postAuth<{ data: any }>('/members/auth/player-request', data),
+  },
+  club: {
+    categories: () => get<{ data: any[] }>('/club/categories'),
   },
   notifications: {
     list: () => getAuth<{ data: any[] }>('/notifications'),

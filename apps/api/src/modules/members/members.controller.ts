@@ -29,6 +29,21 @@ export const membersController = {
   linkPlayerByDni: async (req: Request, res: Response, next: NextFunction) => {
     try { res.status(201).json({ data: await svc.linkPlayerByDni((req as any).memberId, req.body) }); } catch (e) { next(e); }
   },
+  createJoinRequest: async (req: Request, res: Response, next: NextFunction) => {
+    try { res.status(201).json({ data: await svc.createJoinRequest((req as any).memberId, req.body) }); } catch (e) { next(e); }
+  },
+  listJoinRequests: async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { status } = req.query;
+      res.json({ data: await svc.listJoinRequests(status as string | undefined) });
+    } catch (e) { next(e); }
+  },
+  approveJoinRequest: async (req: Request, res: Response, next: NextFunction) => {
+    try { res.json({ data: await svc.approveJoinRequest(req.params.id) }); } catch (e) { next(e); }
+  },
+  rejectJoinRequest: async (req: Request, res: Response, next: NextFunction) => {
+    try { res.json({ data: await svc.rejectJoinRequest(req.params.id, req.body.adminNote) }); } catch (e) { next(e); }
+  },
   unlinkPlayer: async (req: Request, res: Response, next: NextFunction) => {
     try { await svc.unlinkPlayer(req.params.id, req.params.playerId); res.status(204).send(); } catch (e) { next(e); }
   },

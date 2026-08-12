@@ -199,3 +199,10 @@ export const linkPlayerSchema = z.object({
   dni: z.string().min(6).max(20),
   birthDate: z.string().datetime(),
 });
+
+export const createJoinRequestSchema = z.object({
+  fullName: z.string().min(2).max(120),
+  dni: z.string().min(6).max(20),
+  birthDate: z.string().datetime(),
+  categoryId: z.string().cuid().optional(),
+});

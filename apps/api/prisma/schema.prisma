@@ -186,6 +186,7 @@ model Player {
   credential       PlayerCredential?
   memberLinks      MemberPlayer[]
   subscriptions    PlayerSubscription[]
+  joinRequests     PlayerJoinRequest[]
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
@@ -224,6 +225,7 @@ model ClubCategory {
   assistant   String?
   active      Boolean   @default(true)
   players     Player[]
+  joinRequests PlayerJoinRequest[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -482,6 +484,7 @@ model Member {
   players       MemberPlayer[]
   subscriptions Subscription[]
   notifications Notification[]
+  joinRequests  PlayerJoinRequest[]
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
@@ -497,6 +500,35 @@ model MemberPlayer {
 
   @@unique([memberId, playerId])
   @@map("member_players")
+}
+
+enum PlayerJoinRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// Solicitud de alta de jugador self-service: el socio pide cargar a un jugador
+// que no está en el plantel; el admin la aprueba/rechaza desde el panel.
+model PlayerJoinRequest {
+  id            String                   @id @default(cuid())
+  memberId      String
+  member        Member                   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  fullName      String
+  dni           String
+  birthDate     DateTime
+  categoryId    String?
+  category      ClubCategory?            @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  status        PlayerJoinRequestStatus  @default(PENDING)
+  adminNote     String?
+  playerId      String?
+  player        Player?                  @relation(fields: [playerId], references: [id], onDelete: SetNull)
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+
+  @@index([status])
+  @@index([memberId])
+  @@map("player_join_requests")
 }
 
 model Subscription {

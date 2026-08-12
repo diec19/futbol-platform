@@ -242,8 +242,13 @@ export const api = {
     get: (id: string) => get<{ data: any }>(`/members/${id}`),
     update: (id: string, data: unknown) => put<{ data: any }>(`/members/${id}`, data),
     remove: (id: string) => del<void>(`/members/${id}`),
-    linkPlayer: (id: string, playerId: string) => post<{ data: any }>(`/members/${id}/players`, { playerId }),
-    unlinkPlayer: (id: string, playerId: string) => del<void>(`/members/${id}/players/${playerId}`),
+linkPlayer: (id: string, playerId: string) => post<{ data: any }>(`/members/${id}/players`, { playerId }),
+unlinkPlayer: (id: string, playerId: string) => del<void>(`/members/${id}/players/${playerId}`),
+joinRequests: {
+  list: (status?: string) => get<{ data: any[] }>(`/members/join-requests${status ? `?status=${status}` : ''}`),
+  approve: (id: string) => post<{ data: any }>(`/members/join-requests/${id}/approve`, {}),
+  reject: (id: string, adminNote?: string) => post<{ data: any }>(`/members/join-requests/${id}/reject`, { adminNote }),
+},
     subscriptions: {
       all: (params?: Record<string, string>) => {
         const qs = params ? '?' + new URLSearchParams(params).toString() : '';

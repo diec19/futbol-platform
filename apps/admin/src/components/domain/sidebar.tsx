@@ -33,6 +33,7 @@ import {
   Handshake,
   Gift,
   MonitorPlay,
+  UserPlus,
 } from 'lucide-react';
 
 const clubNav = [
@@ -45,6 +46,7 @@ const clubNav = [
   { name: 'Banners', href: '/club/banners', icon: MonitorPlay },
   { name: 'Beneficios', href: '/club/benefits', icon: Gift },
   { name: 'Socios', href: '/club/members', icon: Users },
+  { name: 'Altas de jugadores', href: '/club/join-requests', icon: UserPlus },
   { name: 'Noticias', href: '/club/news', icon: Newspaper },
   { name: 'Notificaciones', href: '/club/notifications', icon: Bell },
   { name: 'Cuerpo Técnico', href: '/club/staff', icon: Users },

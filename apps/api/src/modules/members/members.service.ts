@@ -130,6 +130,91 @@ export const membersService = {
     return db.memberPlayer.deleteMany({ where: { memberId, playerId } });
   },
 
+  // ── Alta de jugador self-service ───────────────────────────────────────────
+  // Si el DNI ya está en el plantel, vincula directo (reusa linkPlayerByDni).
+  // Si no, crea una solicitud PENDING que el admin aprueba desde el panel.
+  async createJoinRequest(memberId: string, data: {
+    fullName: string; dni: string; birthDate: string; categoryId?: string;
+  }) {
+    const existingPlayer = await db.player.findUnique({ where: { dni: data.dni } });
+    if (existingPlayer) {
+      return db.memberPlayer.create({
+        data: { memberId, playerId: existingPlayer.id },
+        include: { player: { include: { team: { include: { category: true } } } } },
+      });
+    }
+
+    const existingRequest = await db.playerJoinRequest.findFirst({
+      where: { memberId, dni: data.dni, status: 'PENDING' },
+    });
+    if (existingRequest) {
+      throw new AppError('Ya enviaste una solicitud para ese jugador', 409);
+    }
+
+    return db.playerJoinRequest.create({
+      data: {
+        memberId,
+        fullName: data.fullName,
+        dni: data.dni,
+        birthDate: new Date(data.birthDate),
+        categoryId: data.categoryId,
+      },
+    });
+  },
+
+  async listJoinRequests(status?: string) {
+    return db.playerJoinRequest.findMany({
+      where: { ...(status ? { status: status as any } : {}) },
+      include: {
+        member: { select: { id: true, fullName: true, phone: true, email: true } },
+        category: { select: { id: true, name: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  },
+
+  // Aprobación con re-check de DNI: si el jugador ya fue cargado entre tanto,
+  // vincula en vez de crear duplicado.
+  async approveJoinRequest(id: string) {
+    const request = await db.playerJoinRequest.findUnique({ where: { id } });
+    if (!request) throw new AppError('Solicitud no encontrada', 404);
+    if (request.status !== 'PENDING') throw new AppError('La solicitud ya fue procesada', 409);
+
+    let player = await db.player.findUnique({ where: { dni: request.dni } });
+    if (!player) {
+      player = await db.player.create({
+        data: {
+          fullName: request.fullName,
+          dni: request.dni,
+          birthDate: request.birthDate,
+          clubCategoryId: request.categoryId,
+          isClubPlayer: true,
+        },
+      });
+    }
+
+    await db.memberPlayer.upsert({
+      where: { memberId_playerId: { memberId: request.memberId, playerId: player.id } },
+      update: {},
+      create: { memberId: request.memberId, playerId: player.id },
+    });
+
+    return db.playerJoinRequest.update({
+      where: { id },
+      data: { status: 'APPROVED', playerId: player.id },
+    });
+  },
+
+  async rejectJoinRequest(id: string, adminNote?: string) {
+    const request = await db.playerJoinRequest.findUnique({ where: { id } });
+    if (!request) throw new AppError('Solicitud no encontrada', 404);
+    if (request.status !== 'PENDING') throw new AppError('La solicitud ya fue procesada', 409);
+    return db.playerJoinRequest.update({
+      where: { id },
+      data: { status: 'REJECTED', adminNote },
+    });
+  },
+
   // Auto-vinculación self-service: busca al jugador por DNI y valida la fecha de
   // nacimiento como segundo factor. Permite múltiples tutores por jugador.
   async linkPlayerByDni(memberId: string, data: { dni: string; birthDate: string }) {

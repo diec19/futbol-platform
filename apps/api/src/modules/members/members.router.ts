@@ -1,8 +1,9 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { authenticate } from '../../middleware/auth.middleware';
+import { authorize } from '../../middleware/roles.middleware';
 import { validate } from '../../middleware/validate.middleware';
-import { registerMemberSchema, linkPlayerSchema } from '@futbol/validations';
+import { registerMemberSchema, linkPlayerSchema, createJoinRequestSchema } from '@futbol/validations';
 import { env } from '../../config/env';
 import { membersController as ctrl } from './members.controller';
 import { membersService as svc } from './members.service';
@@ -37,9 +38,16 @@ membersRouter.get('/auth/me', memberAuth, ctrl.me);
 
 // Auto-vinculación self-service de jugadores (socio autenticado)
 membersRouter.post('/auth/link-player', memberAuth, validate(linkPlayerSchema), ctrl.linkPlayerByDni);
+// Alta self-service: si el DNI existe vincula, si no crea solicitud PENDING
+membersRouter.post('/auth/player-request', memberAuth, validate(createJoinRequestSchema), ctrl.createJoinRequest);
 
 // ── Admin CRUD ────────────────────────────────────────────────────────────────
 membersRouter.use(authenticate);
+
+// Solicitudes de alta de jugador (admin)
+membersRouter.get('/join-requests', authorize('ADMIN', 'SUPER_ADMIN', 'OPERATOR'), ctrl.listJoinRequests);
+membersRouter.post('/join-requests/:id/approve', authorize('ADMIN', 'SUPER_ADMIN', 'OPERATOR'), ctrl.approveJoinRequest);
+membersRouter.post('/join-requests/:id/reject', authorize('ADMIN', 'SUPER_ADMIN', 'OPERATOR'), ctrl.rejectJoinRequest);
 
 // Subscriptions must precede /:id to avoid route conflict
 membersRouter.get('/subscriptions/all', ctrl.listAllSubscriptions);

@@ -40,6 +40,7 @@ export default function RootLayout() {
               <Stack.Screen name="auth/login" />
               <Stack.Screen name="auth/register" />
               <Stack.Screen name="auth/link-player" />
+              <Stack.Screen name="auth/join-request" />
               <Stack.Screen name="onboarding/index" />
               <Stack.Screen name="onboarding/ingresar" />
               <Stack.Screen name="onboarding/listo" />

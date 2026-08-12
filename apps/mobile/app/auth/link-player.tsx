@@ -14,6 +14,7 @@ export default function LinkPlayerScreen() {
   const [year, setYear] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [notFound, setNotFound] = useState(false)
   const router = useRouter()
 
   const goNext = () => {
@@ -39,11 +40,17 @@ export default function LinkPlayerScreen() {
     const birthDate = new Date(Date.UTC(y, m - 1, d)).toISOString()
     setLoading(true)
     setError('')
+    setNotFound(false)
     try {
       await api.members.linkPlayer({ dni: dni.trim(), birthDate })
       goNext()
     } catch (e: any) {
-      setError(e.message ?? 'No se pudo vincular el jugador')
+      if ((e as any)?.status === 404) {
+        setNotFound(true)
+        setError('No encontramos a ese jugador en el plantel')
+      } else {
+        setError(e.message ?? 'No se pudo vincular el jugador')
+      }
     } finally {
       setLoading(false)
     }
@@ -110,9 +117,20 @@ export default function LinkPlayerScreen() {
           </View>
         ) : null}
 
-        <TouchableOpacity style={styles.button} onPress={handleLink} disabled={loading} activeOpacity={0.85}>
-          {loading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.buttonText}>Vincular jugador</Text>}
-        </TouchableOpacity>
+        {notFound ? (
+          <TouchableOpacity
+            style={styles.notFoundBtn}
+            onPress={() => router.push(fromOnboarding ? '/auth/join-request?from=onboarding' : '/auth/join-request')}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="person-add" size={18} color="#FFFFFF" />
+            <Text style={styles.notFoundText}>Cargar jugador nuevo</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity style={styles.button} onPress={handleLink} disabled={loading} activeOpacity={0.85}>
+            {loading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.buttonText}>Vincular jugador</Text>}
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity style={styles.skipBtn} onPress={goNext} activeOpacity={0.7}>
           <Text style={styles.skipText}>Omitir por ahora</Text>
@@ -206,6 +224,17 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   buttonText: { color: '#FFFFFF', fontWeight: '700', fontFamily: 'Poppins_700Bold', fontSize: 16 },
+  notFoundBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: colors.accent,
+    borderRadius: 14,
+    padding: 15,
+    marginTop: 4,
+  },
+  notFoundText: { color: '#FFFFFF', fontWeight: '700', fontFamily: 'Poppins_700Bold', fontSize: 15 },
   skipBtn: { alignItems: 'center', marginTop: 14 },
   skipText: { color: colors.textTertiary, fontSize: 13, fontFamily: 'Poppins_500Medium' },
 })
