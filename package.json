@@ -30,6 +30,7 @@
     "typescript": "^5.5.0"
   },
   "dependencies": {
+    "@next/env": "^16.3.0",
     "append-field": "^2.0.0",
     "array-flatten": "^1.1.1",
     "client-only": "^0.0.1",
