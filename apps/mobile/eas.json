@@ -3,6 +3,9 @@
     "version": ">= 3.0.0",
     "appVersionSource": "local"
   },
+  "hooks": {
+    "post-install": "node scripts/patch-gradle-url.js"
+  },
   "build": {
     "development": {
       "developmentClient": true,
