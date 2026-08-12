@@ -216,20 +216,49 @@ export const membersService = {
       create: { memberId: request.memberId, playerId: player.id },
     });
 
-    return db.playerJoinRequest.update({
+    const updated = await db.playerJoinRequest.update({
       where: { id },
       data: { status: 'APPROVED', playerId: player.id },
     });
+
+    // Notificar al socio que su jugador fue dado de alta
+    try {
+      await notificationsService.create({
+        memberId: request.memberId,
+        title: 'Solicitud aprobada',
+        message: `¡${request.fullName} fue dado de alta! Ya lo tenés vinculado a tu cuenta.`,
+        type: 'personal',
+      });
+    } catch (e) {
+      console.error('Error notificando al socio (aprobacion):', e);
+    }
+
+    return updated;
   },
 
   async rejectJoinRequest(id: string, adminNote?: string) {
     const request = await db.playerJoinRequest.findUnique({ where: { id } });
     if (!request) throw new AppError('Solicitud no encontrada', 404);
     if (request.status !== 'PENDING') throw new AppError('La solicitud ya fue procesada', 409);
-    return db.playerJoinRequest.update({
+
+    const updated = await db.playerJoinRequest.update({
       where: { id },
       data: { status: 'REJECTED', adminNote },
     });
+
+    // Notificar al socio que su solicitud fue rechazada
+    try {
+      await notificationsService.create({
+        memberId: request.memberId,
+        title: 'Solicitud rechazada',
+        message: `La solicitud de alta de ${request.fullName} fue rechazada${adminNote ? `: ${adminNote}` : ''}. Contactá al club si tenés dudas.`,
+        type: 'personal',
+      });
+    } catch (e) {
+      console.error('Error notificando al socio (rechazo):', e);
+    }
+
+    return updated;
   },
 
   // Auto-vinculación self-service: busca al jugador por DNI y valida la fecha de
