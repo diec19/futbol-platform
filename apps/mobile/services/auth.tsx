@@ -3,19 +3,35 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type AuthState = { token: string | null; loading: boolean };
 
+const ONBOARDING_KEY = 'onboarding_done';
+
 const AuthContext = createContext<{
   token: string | null;
   loading: boolean;
+  onboardingDone: boolean;
   login: (token: string, member: any) => Promise<void>;
   logout: () => Promise<void>;
-}>({ token: null, loading: true, login: async () => {}, logout: async () => {} });
+  setOnboardingDone: () => Promise<void>;
+}>({
+  token: null,
+  loading: true,
+  onboardingDone: false,
+  login: async () => {},
+  logout: async () => {},
+  setOnboardingDone: async () => {},
+});
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>({ token: null, loading: true });
+  const [onboardingDone, setOnboardingDoneFlag] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.getItem('member_token').then((token) => {
+    Promise.all([
+      AsyncStorage.getItem('member_token'),
+      AsyncStorage.getItem(ONBOARDING_KEY),
+    ]).then(([token, onboarding]) => {
       setState({ token, loading: false });
+      setOnboardingDoneFlag(onboarding === '1');
     });
   }, []);
 
@@ -31,8 +47,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setState({ token: null, loading: false });
   }, []);
 
+  const setOnboardingDone = useCallback(async () => {
+    await AsyncStorage.setItem(ONBOARDING_KEY, '1');
+    setOnboardingDoneFlag(true);
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ token: state.token, loading: state.loading, login, logout }}>
+    <AuthContext.Provider
+      value={{
+        token: state.token,
+        loading: state.loading,
+        onboardingDone,
+        login,
+        logout,
+        setOnboardingDone,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

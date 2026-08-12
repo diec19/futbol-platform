@@ -11,7 +11,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const { login } = useAuth()
+  const { login, onboardingDone } = useAuth()
   const router = useRouter()
 
   const handleLogin = async () => {
@@ -21,7 +21,11 @@ export default function LoginScreen() {
     try {
       const res = await api.members.login(username, password)
       await login(res.data.accessToken, res.data.member)
-      router.replace('/(tabs)')
+      if (onboardingDone) {
+        router.replace('/(tabs)')
+      } else {
+        router.replace('/auth/link-player?from=onboarding')
+      }
     } catch (e: any) {
       setError(e.message ?? 'Credenciales inválidas')
     } finally {

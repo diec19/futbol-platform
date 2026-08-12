@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
-import { useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { api } from '../../services/api'
 import { colors } from '../../theme/colors'
 
 export default function LinkPlayerScreen() {
+  const { from } = useLocalSearchParams<{ from?: string }>()
+  const fromOnboarding = from === 'onboarding'
   const [dni, setDni] = useState('')
   const [day, setDay] = useState('')
   const [month, setMonth] = useState('')
@@ -13,6 +15,14 @@ export default function LinkPlayerScreen() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
+
+  const goNext = () => {
+    if (fromOnboarding) {
+      router.replace('/onboarding/listo')
+    } else {
+      router.replace('/(tabs)')
+    }
+  }
 
   const handleLink = async () => {
     if (!dni.trim() || !day || !month || !year) {
@@ -31,7 +41,7 @@ export default function LinkPlayerScreen() {
     setError('')
     try {
       await api.members.linkPlayer({ dni: dni.trim(), birthDate })
-      router.replace('/(tabs)')
+      goNext()
     } catch (e: any) {
       setError(e.message ?? 'No se pudo vincular el jugador')
     } finally {
@@ -104,7 +114,7 @@ export default function LinkPlayerScreen() {
           {loading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.buttonText}>Vincular jugador</Text>}
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.skipBtn} onPress={() => router.replace('/(tabs)')} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.skipBtn} onPress={goNext} activeOpacity={0.7}>
           <Text style={styles.skipText}>Omitir por ahora</Text>
         </TouchableOpacity>
       </View>
@@ -151,8 +161,32 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_400Regular',
   },
   dateRow: { flexDirection: 'row', gap: 8 },
-  dateInput: { flex: 1 },
-  yearInput: { flex: 1.5 },
+  dateInput: {
+    flex: 1,
+    backgroundColor: colors.gray[50],
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    color: colors.text,
+    fontSize: 15,
+    fontFamily: 'Poppins_400Regular',
+    textAlign: 'center',
+  },
+  yearInput: {
+    flex: 1.5,
+    backgroundColor: colors.gray[50],
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    color: colors.text,
+    fontSize: 15,
+    fontFamily: 'Poppins_400Regular',
+    textAlign: 'center',
+  },
   hint: { fontSize: 11, color: colors.textTertiary, marginTop: 6, marginBottom: 12, fontFamily: 'Poppins_400Regular' },
   errorBox: {
     flexDirection: 'row',

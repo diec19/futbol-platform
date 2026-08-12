@@ -24,7 +24,7 @@
       "expo-router"
     ],
     "experiments": {
-      "typedRoutes": true
+      "typedRoutes": false
     },
     "extra": {
       "apiUrl": "https://futbol-platform-production.up.railway.app/api/v1",

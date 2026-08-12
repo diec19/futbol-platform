@@ -40,6 +40,9 @@ export default function RootLayout() {
               <Stack.Screen name="auth/login" />
               <Stack.Screen name="auth/register" />
               <Stack.Screen name="auth/link-player" />
+              <Stack.Screen name="onboarding/index" />
+              <Stack.Screen name="onboarding/ingresar" />
+              <Stack.Screen name="onboarding/listo" />
               <Stack.Screen name="(tabs)" />
               <Stack.Screen name="tournament/[id]" options={{ headerShown: true, title: 'Torneo', ...headerStyles }} />
               <Stack.Screen name="team/[id]" options={{ headerShown: true, title: 'Equipo', ...headerStyles }} />

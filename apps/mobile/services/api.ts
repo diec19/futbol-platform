@@ -28,6 +28,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}, withAuth 
 const get = <T>(url: string) => request<T>(url);
 const getAuth = <T>(url: string) => request<T>(url, {}, true);
 const post = <T>(url: string, body: unknown) => request<T>(url, { method: 'POST', body: JSON.stringify(body) });
+const postAuth = <T>(url: string, body: unknown) => request<T>(url, { method: 'POST', body: JSON.stringify(body) }, true);
 
 export const api = {
   tournaments: {
@@ -78,7 +79,7 @@ export const api = {
       post<{ data: any }>('/members/auth/register', data),
     me: () => getAuth<{ data: any }>('/members/auth/me'),
     linkPlayer: (data: { dni: string; birthDate: string }) =>
-      post<{ data: any }>('/members/auth/link-player', data),
+      postAuth<{ data: any }>('/members/auth/link-player', data),
   },
   notifications: {
     list: () => getAuth<{ data: any[] }>('/notifications'),

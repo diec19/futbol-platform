@@ -44,7 +44,7 @@ export default function RegisterScreen() {
       // Registro exitoso -> login automático con email + contraseña
       const res = await api.members.login(email.trim(), password)
       await login(res.data.accessToken, res.data.member)
-      router.replace('/auth/link-player')
+      router.replace('/auth/link-player?from=onboarding')
     } catch (e: any) {
       setError(e.message ?? 'No se pudo crear la cuenta')
     } finally {
