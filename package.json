@@ -52,6 +52,7 @@
     "methods": "^1.1.2",
     "path-to-regexp": "^0.1.12",
     "proxy-addr": "^2.0.7",
+    "react-native": "0.74.5",
     "type-is": "^1.6.18"
   },
   "overrides": {
