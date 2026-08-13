@@ -285,6 +285,110 @@ export const membersService = {
     });
   },
 
+  // ── Desvinculación con aprobación ─────────────────────────────────────────
+  // El socio pide desvincular a un jugador; el admin aprueba/rechaza.
+  async createUnlinkRequest(memberId: string, data: { playerId: string; reason?: string }) {
+    const link = await db.memberPlayer.findUnique({
+      where: { memberId_playerId: { memberId, playerId: data.playerId } },
+    });
+    if (!link) throw new AppError('Ese jugador no está vinculado a tu cuenta', 404);
+
+    const existing = await db.unlinkRequest.findFirst({
+      where: { memberId, playerId: data.playerId, status: 'PENDING' },
+    });
+    if (existing) throw new AppError('Ya enviaste una solicitud de desvinculación', 409);
+
+    const request = await db.unlinkRequest.create({
+      data: { memberId, playerId: data.playerId, reason: data.reason },
+      include: { player: { select: { id: true, fullName: true } } },
+    });
+
+    try {
+      const member = await db.member.findUnique({ where: { id: memberId } });
+      await notificationsService.createAdmin({
+        type: 'player_unlink_request',
+        refType: 'UnlinkRequest',
+        refId: request.id,
+        title: 'Solicitud de desvinculación',
+        message: `${member?.fullName ?? 'Un socio'} pidió desvincular a ${request.player?.fullName ?? 'un jugador'}`,
+      });
+    } catch (e) {
+      console.error('Error creando notificacion admin:', e);
+    }
+
+    return request;
+  },
+
+  async listUnlinkRequests(status?: string) {
+    return db.unlinkRequest.findMany({
+      where: { ...(status ? { status: status as any } : {}) },
+      include: {
+        member: { select: { id: true, fullName: true, phone: true, email: true } },
+        player: { select: { id: true, fullName: true, dni: true, active: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  },
+
+  // Aprueba: desvincula el MemberPlayer y opcionalmente ajusta active del jugador.
+  async approveUnlinkRequest(id: string, setActive?: boolean) {
+    const request = await db.unlinkRequest.findUnique({ where: { id } });
+    if (!request) throw new AppError('Solicitud no encontrada', 404);
+    if (request.status !== 'PENDING') throw new AppError('La solicitud ya fue procesada', 409);
+
+    await db.memberPlayer.deleteMany({
+      where: { memberId: request.memberId, playerId: request.playerId },
+    });
+
+    if (typeof setActive === 'boolean') {
+      await db.player.update({ where: { id: request.playerId }, data: { active: setActive } });
+    }
+
+    const updated = await db.unlinkRequest.update({
+      where: { id },
+      data: { status: 'APPROVED', adminNote: undefined, setActive },
+    });
+
+    try {
+      const player = await db.player.findUnique({ where: { id: request.playerId } });
+      await notificationsService.create({
+        memberId: request.memberId,
+        title: 'Desvinculación aprobada',
+        message: `${player?.fullName ?? 'El jugador'} fue desvinculado de tu cuenta${typeof setActive === 'boolean' ? (setActive ? '. El jugador sigue activo en el club.' : '. El jugador fue marcado como inactivo en el club.') : ''}`,
+        type: 'personal',
+      });
+    } catch (e) {
+      console.error('Error notificando al socio (aprobacion desvinculacion):', e);
+    }
+
+    return updated;
+  },
+
+  async rejectUnlinkRequest(id: string, adminNote?: string) {
+    const request = await db.unlinkRequest.findUnique({ where: { id } });
+    if (!request) throw new AppError('Solicitud no encontrada', 404);
+    if (request.status !== 'PENDING') throw new AppError('La solicitud ya fue procesada', 409);
+
+    const updated = await db.unlinkRequest.update({
+      where: { id },
+      data: { status: 'REJECTED', adminNote },
+    });
+
+    try {
+      const player = await db.player.findUnique({ where: { id: request.playerId } });
+      await notificationsService.create({
+        memberId: request.memberId,
+        title: 'Desvinculación rechazada',
+        message: `La solicitud de desvincular a ${player?.fullName ?? 'el jugador'} fue rechazada${adminNote ? `: ${adminNote}` : ''}. Contactá al club si tenés dudas.`,
+        type: 'personal',
+      });
+    } catch (e) {
+      console.error('Error notificando al socio (rechazo desvinculacion):', e);
+    }
+
+    return updated;
+  },
+
   // ── Subscriptions ─────────────────────────────────────────────────────────
   async listAllSubscriptions(params: { status?: string; month?: number; year?: number }) {
     const { status, month, year } = params;

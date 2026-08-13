@@ -82,6 +82,8 @@ export const api = {
       postAuth<{ data: any }>('/members/auth/link-player', data),
     playerRequest: (data: { fullName: string; dni: string; birthDate: string; categoryId?: string }) =>
       postAuth<{ data: any }>('/members/auth/player-request', data),
+    unlinkRequest: (data: { playerId: string; reason?: string }) =>
+      postAuth<{ data: any }>('/members/auth/unlink-request', data),
   },
   club: {
     categories: () => get<{ data: any[] }>('/club/categories'),

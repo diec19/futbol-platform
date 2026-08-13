@@ -206,3 +206,8 @@ export const createJoinRequestSchema = z.object({
   birthDate: z.string().datetime(),
   categoryId: z.string().cuid().optional(),
 });
+
+export const createUnlinkRequestSchema = z.object({
+  playerId: z.string().cuid(),
+  reason: z.string().max(300).optional(),
+});

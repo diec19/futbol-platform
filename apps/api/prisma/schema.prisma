@@ -187,6 +187,7 @@ model Player {
   memberLinks      MemberPlayer[]
   subscriptions    PlayerSubscription[]
   joinRequests     PlayerJoinRequest[]
+  unlinkRequests   UnlinkRequest[]
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
@@ -485,6 +486,7 @@ model Member {
   subscriptions Subscription[]
   notifications Notification[]
   joinRequests  PlayerJoinRequest[]
+  unlinkRequests UnlinkRequest[]
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
@@ -500,6 +502,26 @@ model MemberPlayer {
 
   @@unique([memberId, playerId])
   @@map("member_players")
+}
+
+// Solicitud de desvinculación: el socio pide desvincular a un jugador; el admin
+// aprueba (desvincula y opcionalmente marca activo/inactivo) o rechaza.
+model UnlinkRequest {
+  id         String                   @id @default(cuid())
+  memberId   String
+  member     Member                   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  playerId   String
+  player     Player                   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  reason     String?
+  status     PlayerJoinRequestStatus  @default(PENDING)
+  adminNote  String?
+  setActive  Boolean?                 // si el admin quiere ajustar el estado del jugador al aprobar
+  createdAt  DateTime                 @default(now())
+  updatedAt  DateTime                 @updatedAt
+
+  @@index([status])
+  @@index([memberId])
+  @@map("unlink_requests")
 }
 
 enum PlayerJoinRequestStatus {

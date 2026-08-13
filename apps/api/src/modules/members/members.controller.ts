@@ -32,6 +32,21 @@ export const membersController = {
   createJoinRequest: async (req: Request, res: Response, next: NextFunction) => {
     try { res.status(201).json({ data: await svc.createJoinRequest((req as any).memberId, req.body) }); } catch (e) { next(e); }
   },
+  createUnlinkRequest: async (req: Request, res: Response, next: NextFunction) => {
+    try { res.status(201).json({ data: await svc.createUnlinkRequest((req as any).memberId, req.body) }); } catch (e) { next(e); }
+  },
+  listUnlinkRequests: async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { status } = req.query;
+      res.json({ data: await svc.listUnlinkRequests(status as string | undefined) });
+    } catch (e) { next(e); }
+  },
+  approveUnlinkRequest: async (req: Request, res: Response, next: NextFunction) => {
+    try { res.json({ data: await svc.approveUnlinkRequest(req.params.id, req.body.setActive) }); } catch (e) { next(e); }
+  },
+  rejectUnlinkRequest: async (req: Request, res: Response, next: NextFunction) => {
+    try { res.json({ data: await svc.rejectUnlinkRequest(req.params.id, req.body.adminNote) }); } catch (e) { next(e); }
+  },
   listJoinRequests: async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { status } = req.query;

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createJoinRequestSchema = exports.linkPlayerSchema = exports.registerMemberSchema = exports.updateBenefitSchema = exports.createBenefitSchema = exports.createSponsorshipSchema = exports.updateSponsorPlanSchema = exports.createSponsorPlanSchema = exports.updateSponsorSchema = exports.createSponsorSchema = exports.createUserSchema = exports.loginSchema = exports.createSanctionSchema = exports.initBracketSchema = exports.generateFixtureSchema = exports.loadResultSchema = exports.scheduleMatchSchema = exports.updateRefereeSchema = exports.createRefereeSchema = exports.updatePlayerSchema = exports.createPlayerSchema = exports.updateTeamSchema = exports.createTeamSchema = exports.updateCategorySchema = exports.createCategorySchema = exports.updateTournamentSchema = exports.createTournamentSchema = exports.paginationSchema = void 0;
+exports.createUnlinkRequestSchema = exports.createJoinRequestSchema = exports.linkPlayerSchema = exports.registerMemberSchema = exports.updateBenefitSchema = exports.createBenefitSchema = exports.createSponsorshipSchema = exports.updateSponsorPlanSchema = exports.createSponsorPlanSchema = exports.updateSponsorSchema = exports.createSponsorSchema = exports.createUserSchema = exports.loginSchema = exports.createSanctionSchema = exports.initBracketSchema = exports.generateFixtureSchema = exports.loadResultSchema = exports.scheduleMatchSchema = exports.updateRefereeSchema = exports.createRefereeSchema = exports.updatePlayerSchema = exports.createPlayerSchema = exports.updateTeamSchema = exports.createTeamSchema = exports.updateCategorySchema = exports.createCategorySchema = exports.updateTournamentSchema = exports.createTournamentSchema = exports.paginationSchema = void 0;
 const zod_1 = require("zod");
 const constants_1 = require("@futbol/constants");
 exports.paginationSchema = zod_1.z.object({
@@ -169,5 +169,9 @@ exports.createJoinRequestSchema = zod_1.z.object({
     dni: zod_1.z.string().min(6).max(20),
     birthDate: zod_1.z.string().datetime(),
     categoryId: zod_1.z.string().cuid().optional(),
+});
+exports.createUnlinkRequestSchema = zod_1.z.object({
+    playerId: zod_1.z.string().cuid(),
+    reason: zod_1.z.string().max(300).optional(),
 });
 //# sourceMappingURL=index.js.map

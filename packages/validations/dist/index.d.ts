@@ -629,3 +629,13 @@ export declare const createJoinRequestSchema: z.ZodObject<{
     birthDate: string;
     categoryId?: string | undefined;
 }>;
+export declare const createUnlinkRequestSchema: z.ZodObject<{
+    playerId: z.ZodString;
+    reason: z.ZodOptional<z.ZodString>;
+}, "strip", z.ZodTypeAny, {
+    playerId: string;
+    reason?: string | undefined;
+}, {
+    playerId: string;
+    reason?: string | undefined;
+}>;

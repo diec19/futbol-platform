@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Modal, Linking } from 'react-native'
+import { View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Modal, Linking } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
@@ -105,11 +105,33 @@ export default function SettingsScreen() {
     queryKey: ['member-me'], queryFn: () => api.members.me(), retry: false,
   })
   const [selectedPlayer, setSelectedPlayer] = useState<any>(null)
+  const [unlinkTarget, setUnlinkTarget] = useState<any>(null)
+  const [unlinkReason, setUnlinkReason] = useState('')
+  const [unlinkSending, setUnlinkSending] = useState(false)
+  const [unlinkMsg, setUnlinkMsg] = useState('')
 
   const handleLogout = async () => {
     await logout()
     qc.removeQueries({ queryKey: ['member-me'] })
     router.replace('/auth/login')
+  }
+
+  const handleUnlink = async () => {
+    if (!unlinkTarget) return
+    setUnlinkSending(true)
+    setUnlinkMsg('')
+    try {
+      await api.members.unlinkRequest({
+        playerId: unlinkTarget.id,
+        reason: unlinkReason.trim() || undefined,
+      })
+      setUnlinkMsg('Solicitud enviada. El club la va a aprobar.')
+      setUnlinkReason('')
+    } catch (e: any) {
+      setUnlinkMsg(e.message ?? 'No se pudo enviar la solicitud')
+    } finally {
+      setUnlinkSending(false)
+    }
   }
 
   if (isLoading) {
@@ -188,7 +210,17 @@ export default function SettingsScreen() {
                         </View>
                       </View>
                     </View>
-                    <Ionicons name="chevron-forward" size={16} color={colors.gray[300]} />
+                    <TouchableOpacity
+                      style={styles.unlinkIconBtn}
+                      onPress={() => { setUnlinkTarget(p); setUnlinkReason(''); setUnlinkMsg('') }}
+                      activeOpacity={0.7}
+                      aria-label="Desvincular jugador"
+                    >
+                      <Ionicons name="unlink-outline" size={18} color={colors.textTertiary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => setSelectedPlayer(p)} activeOpacity={0.7}>
+                      <Ionicons name="chevron-forward" size={16} color={colors.gray[300]} />
+                    </TouchableOpacity>
                   </View>
                 </Card>
               </TouchableOpacity>
@@ -209,6 +241,38 @@ export default function SettingsScreen() {
       )}
 
       <PlayerModal player={selectedPlayer} visible={!!selectedPlayer} onClose={() => setSelectedPlayer(null)} />
+
+      <Modal visible={!!unlinkTarget} transparent animationType="slide" onRequestClose={() => { if (!unlinkSending) setUnlinkTarget(null) }}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <TouchableOpacity style={styles.modalClose} onPress={() => { if (!unlinkSending) setUnlinkTarget(null) }}>
+              <Ionicons name="close" size={24} color={colors.textSecondary} />
+            </TouchableOpacity>
+            <View style={styles.modalAvatarWrap}>
+              <PlayerAvatar photoUrl={unlinkTarget?.photoUrl} name={unlinkTarget?.fullName ?? ''} size={72} />
+            </View>
+            <Text style={styles.modalName}>Desvincular a {unlinkTarget?.fullName}</Text>
+            <Text style={styles.unlinkHint}>
+              Vas a enviar una solicitud al club. El administrador la va a aprobar o rechazar.
+            </Text>
+            <TextInput
+              style={styles.unlinkInput}
+              value={unlinkReason}
+              onChangeText={setUnlinkReason}
+              placeholder="Motivo (opcional)"
+              placeholderTextColor={colors.gray[400]}
+              multiline
+            />
+            {unlinkMsg ? <Text style={styles.unlinkMsg}>{unlinkMsg}</Text> : null}
+            <TouchableOpacity style={styles.unlinkSendBtn} onPress={handleUnlink} disabled={unlinkSending} activeOpacity={0.85}>
+              {unlinkSending ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.unlinkSendText}>Enviar solicitud</Text>}
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.unlinkCancel} onPress={() => { if (!unlinkSending) setUnlinkTarget(null) }} activeOpacity={0.7}>
+              <Text style={styles.unlinkCancelText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   )
 }
@@ -240,6 +304,31 @@ const styles = StyleSheet.create({
   playerStatsRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 3 },
   statItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   statValue: { fontSize: 12, color: colors.text },
+  unlinkIconBtn: { padding: 6, marginRight: 2 },
+  unlinkHint: { fontSize: 13, color: colors.textSecondary, textAlign: 'center', fontFamily: 'Poppins_400Regular', lineHeight: 19, marginBottom: 14, paddingHorizontal: 8 },
+  unlinkInput: {
+    backgroundColor: colors.gray[50],
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: 12,
+    padding: 12,
+    color: colors.text,
+    fontSize: 14,
+    fontFamily: 'Poppins_400Regular',
+    minHeight: 70,
+    textAlignVertical: 'top',
+    width: '100%',
+    marginBottom: 12,
+  },
+  unlinkMsg: { fontSize: 13, color: colors.success, textAlign: 'center', fontFamily: 'Poppins_500Medium', marginBottom: 12 },
+  unlinkCancel: { alignItems: 'center', marginTop: 12 },
+  unlinkCancelText: { color: colors.textTertiary, fontSize: 13, fontFamily: 'Poppins_500Medium' },
+  unlinkSendBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: colors.primary, borderRadius: 12,
+    paddingVertical: 13, width: '100%',
+  },
+  unlinkSendText: { color: '#FFFFFF', fontWeight: '700', fontFamily: 'Poppins_700Bold', fontSize: 14 },
   modalOverlay: { flex: 1, backgroundColor: colors.darkOverlay, justifyContent: 'flex-end' },
   modalScroll: { justifyContent: 'flex-end' },
   modalContent: { backgroundColor: colors.surface, borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, paddingTop: 16, alignItems: 'center', maxHeight: '90%' },

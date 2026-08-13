@@ -249,6 +249,11 @@ joinRequests: {
   approve: (id: string) => post<{ data: any }>(`/members/join-requests/${id}/approve`, {}),
   reject: (id: string, adminNote?: string) => post<{ data: any }>(`/members/join-requests/${id}/reject`, { adminNote }),
 },
+unlinkRequests: {
+  list: (status?: string) => get<{ data: any[] }>(`/members/unlink-requests${status ? `?status=${status}` : ''}`),
+  approve: (id: string, setActive?: boolean) => post<{ data: any }>(`/members/unlink-requests/${id}/approve`, { setActive }),
+  reject: (id: string, adminNote?: string) => post<{ data: any }>(`/members/unlink-requests/${id}/reject`, { adminNote }),
+},
     subscriptions: {
       all: (params?: Record<string, string>) => {
         const qs = params ? '?' + new URLSearchParams(params).toString() : '';
