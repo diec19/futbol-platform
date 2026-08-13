@@ -10,6 +10,7 @@ import { colors } from '../../theme/colors'
 export default function LoginScreen() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const { login, onboardingDone } = useAuth()
@@ -67,14 +68,24 @@ export default function LoginScreen() {
 
         <View style={styles.inputGroup}>
           <Text style={styles.label}>CONTRASEÑA</Text>
-          <TextInput
-            style={styles.input}
-            value={password}
-            onChangeText={setPassword}
-            placeholder="••••••••"
-            placeholderTextColor={colors.gray[400]}
-            secureTextEntry
-          />
+          <View style={styles.passwordWrap}>
+            <TextInput
+              style={[styles.input, styles.passwordInput]}
+              value={password}
+              onChangeText={setPassword}
+              placeholder="••••••••"
+              placeholderTextColor={colors.gray[400]}
+              secureTextEntry={!showPassword}
+            />
+            <TouchableOpacity
+              style={styles.eyeBtn}
+              onPress={() => setShowPassword(!showPassword)}
+              activeOpacity={0.7}
+              aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+            >
+              <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={22} color={colors.textTertiary} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {error ? (
@@ -135,6 +146,9 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 13, color: colors.textSecondary, marginBottom: 24 },
   inputGroup: { marginBottom: 16 },
   label: { fontSize: 11, color: colors.textSecondary, marginBottom: 6, fontWeight: '700', fontFamily: 'Poppins_700Bold', letterSpacing: 0.5 },
+  passwordWrap: { position: 'relative' },
+  passwordInput: { paddingRight: 52 },
+  eyeBtn: { position: 'absolute', right: 14, top: 0, bottom: 0, justifyContent: 'center' },
   input: {
     backgroundColor: colors.gray[50],
     borderWidth: 1.5,

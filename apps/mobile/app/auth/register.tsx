@@ -14,6 +14,8 @@ export default function RegisterScreen() {
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const { login } = useAuth()
@@ -122,26 +124,46 @@ export default function RegisterScreen() {
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>CONTRASEÑA *</Text>
-            <TextInput
-              style={styles.input}
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Mínimo 6 caracteres"
-              placeholderTextColor={colors.gray[400]}
-              secureTextEntry
-            />
+            <View style={styles.passwordWrap}>
+              <TextInput
+                style={[styles.input, styles.passwordInput]}
+                value={password}
+                onChangeText={setPassword}
+                placeholder="Mínimo 6 caracteres"
+                placeholderTextColor={colors.gray[400]}
+                secureTextEntry={!showPassword}
+              />
+              <TouchableOpacity
+                style={styles.eyeBtn}
+                onPress={() => setShowPassword(!showPassword)}
+                activeOpacity={0.7}
+                aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              >
+                <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={22} color={colors.textTertiary} />
+              </TouchableOpacity>
+            </View>
           </View>
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>REPETIR CONTRASEÑA *</Text>
-            <TextInput
-              style={styles.input}
-              value={confirm}
-              onChangeText={setConfirm}
-              placeholder="Repetí la contraseña"
-              placeholderTextColor={colors.gray[400]}
-              secureTextEntry
-            />
+            <View style={styles.passwordWrap}>
+              <TextInput
+                style={[styles.input, styles.passwordInput]}
+                value={confirm}
+                onChangeText={setConfirm}
+                placeholder="Repetí la contraseña"
+                placeholderTextColor={colors.gray[400]}
+                secureTextEntry={!showConfirm}
+              />
+              <TouchableOpacity
+                style={styles.eyeBtn}
+                onPress={() => setShowConfirm(!showConfirm)}
+                activeOpacity={0.7}
+                aria-label={showConfirm ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              >
+                <Ionicons name={showConfirm ? 'eye-off-outline' : 'eye-outline'} size={22} color={colors.textTertiary} />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {error ? (
@@ -200,6 +222,9 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   inputGroup: { marginBottom: 14 },
+  passwordWrap: { position: 'relative' },
+  passwordInput: { paddingRight: 52 },
+  eyeBtn: { position: 'absolute', right: 14, top: 0, bottom: 0, justifyContent: 'center' },
   label: { fontSize: 11, color: colors.textSecondary, marginBottom: 6, fontWeight: '700', fontFamily: 'Poppins_700Bold', letterSpacing: 0.5 },
   input: {
     backgroundColor: colors.gray[50],
