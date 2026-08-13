@@ -17,22 +17,70 @@ import { ActiveBadge } from '@/components/domain/status-badge';
 
 const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
-function StatCard({ label, value, icon: Icon, color, href }: {
-  label: string; value: number | string; icon: React.ElementType; color: string; href?: string;
+// Gradientes por stat card: identidad del escudo + semánticos
+const CARD_GRADIENTS: Record<string, string> = {
+  red: 'from-rose-600 via-red-600 to-red-500',
+  blue: 'from-blue-800 via-blue-700 to-indigo-600',
+  navy: 'from-slate-900 via-slate-800 to-slate-700',
+  green: 'from-emerald-600 via-emerald-500 to-teal-500',
+  amber: 'from-amber-500 via-amber-400 to-orange-400',
+};
+
+function StatCard({ label, value, icon: Icon, gradient, href }: {
+  label: string; value: number | string; icon: React.ElementType; gradient: string; href?: string;
 }) {
   const inner = (
-    <div className={`rounded-xl p-5 flex items-center gap-4 ${color}`}>
-      <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-white/20">
+    <div
+      className={[
+        'relative rounded-2xl p-5 flex items-center gap-4 overflow-hidden',
+        'bg-gradient-to-br shadow-lg shadow-black/10',
+        'group-hover:shadow-xl group-hover:shadow-black/20 group-hover:-translate-y-0.5',
+        'transition-all duration-300',
+        gradient,
+      ].join(' ')}
+    >
+      {/* Glow decorativo */}
+      <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10 blur-2xl" />
+      <div className="absolute -left-8 -bottom-8 w-28 h-28 rounded-full bg-black/10 blur-2xl" />
+      <div className="relative w-12 h-12 rounded-xl flex items-center justify-center bg-white/20 backdrop-blur-sm ring-1 ring-white/20">
         <Icon size={22} className="text-white" />
       </div>
-      <div className="flex-1 min-w-0">
+      <div className="relative flex-1 min-w-0">
         <p className="text-sm font-medium text-white/80">{label}</p>
-        <p className="text-3xl font-extrabold text-white mt-0.5">{value}</p>
+        <p className="text-3xl font-extrabold text-white mt-0.5 tracking-tight">{value}</p>
       </div>
-      {href && <ArrowRight size={16} className="text-white/50" />}
+      {href && <ArrowRight size={16} className="relative text-white/50 transition-transform duration-300 group-hover:translate-x-1" />}
     </div>
   );
-  return href ? <Link href={href} className="group" aria-label={label}>{inner}</Link> : <div>{inner}</div>;
+  return href ? (
+    <Link href={href} className="group" aria-label={label}>{inner}</Link>
+  ) : (
+    <div className="group">{inner}</div>
+  );
+}
+
+function QuickAction({ label, href, icon: Icon, color, gradient }: {
+  label: string; href: string; icon: React.ElementType; color: string; gradient: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className={[
+        'group flex items-center gap-3 px-4 py-4 rounded-2xl border bg-card',
+        'hover:bg-gradient-to-br hover:border-transparent transition-all duration-300',
+        'hover:shadow-lg hover:shadow-black/10 hover:-translate-y-0.5',
+        gradient,
+      ].join(' ')}
+    >
+      <div className={[
+        'w-9 h-9 rounded-lg flex items-center justify-center transition-colors duration-300',
+        'bg-muted group-hover:bg-white/20',
+      ].join(' ')}>
+        <Icon size={16} className={`${color} transition-colors duration-300 group-hover:text-white`} />
+      </div>
+      <span className={`text-sm font-medium ${color} transition-colors duration-300 group-hover:text-white`}>{label}</span>
+    </Link>
+  );
 }
 
 export default function DashboardPage() {
@@ -79,45 +127,50 @@ export default function DashboardPage() {
   const activeCategories = categories.filter((c: any) => c.active).length;
 
   const statCards = [
-    { label: 'Plantel', value: players.length, icon: Shirt, color: 'bg-brand-red', href: '/club/plantel' },
-    { label: 'Categorías', value: categories.length, icon: Layers, color: 'bg-brand-blue', href: '/club/categorias' },
-    { label: 'Socios', value: members.length, icon: Users, color: 'bg-brand-navy-mid', href: '/club/members' },
-    { label: 'Cuotas cobradas', value: paid, icon: CheckCircle2, color: 'bg-emerald-600', href: '/club/cuotas' },
-    { label: 'Pendientes', value: pending + linkSent, icon: Clock, color: 'bg-amber-500', href: '/club/cuotas' },
+    { label: 'Plantel', value: players.length, icon: Shirt, gradient: CARD_GRADIENTS.red, href: '/club/plantel' },
+    { label: 'Categorías', value: categories.length, icon: Layers, gradient: CARD_GRADIENTS.blue, href: '/club/categorias' },
+    { label: 'Socios', value: members.length, icon: Users, gradient: CARD_GRADIENTS.navy, href: '/club/members' },
+    { label: 'Cuotas cobradas', value: paid, icon: CheckCircle2, gradient: CARD_GRADIENTS.green, href: '/club/cuotas' },
+    { label: 'Pendientes', value: pending + linkSent, icon: Clock, gradient: CARD_GRADIENTS.amber, href: '/club/cuotas' },
   ];
 
   const quickActions = [
-    { label: 'Agregar jugador', href: '/club/plantel', icon: Shirt, color: 'text-brand-red' },
-    { label: 'Nueva categoría', href: '/club/categorias', icon: Layers, color: 'text-brand-blue' },
-    { label: 'Gestionar cuotas', href: '/club/cuotas', icon: Banknote, color: 'text-emerald-700' },
-    { label: 'Ver socios', href: '/club/members', icon: Users, color: 'text-muted-foreground' },
+    { label: 'Agregar jugador', href: '/club/plantel', icon: Shirt, color: 'text-rose-600', gradient: 'hover:from-rose-600 hover:to-rose-500' },
+    { label: 'Nueva categoría', href: '/club/categorias', icon: Layers, color: 'text-blue-700', gradient: 'hover:from-blue-800 hover:to-indigo-600' },
+    { label: 'Gestionar cuotas', href: '/club/cuotas', icon: Banknote, color: 'text-emerald-700', gradient: 'hover:from-emerald-600 hover:to-teal-500' },
+    { label: 'Ver socios', href: '/club/members', icon: Users, color: 'text-muted-foreground', gradient: 'hover:from-slate-800 hover:to-slate-700' },
   ];
 
   return (
     <div className="space-y-8 max-w-7xl">
 
       {/* Hero */}
-      <div className="relative rounded-2xl overflow-hidden shadow-lg bg-brand-navy">
-        <div className="absolute inset-0 bg-gradient-to-r from-brand-navy via-brand-navy/90 to-brand-red/30" />
+      <div className="relative rounded-3xl overflow-hidden shadow-xl shadow-black/10">
+        <div className="absolute inset-0 bg-gradient-to-br from-brand-navy via-brand-navy to-brand-red/40" />
+        {/* Decoración: círculos de blur */}
+        <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-brand-red/30 blur-3xl" />
+        <div className="absolute -bottom-24 -left-16 w-72 h-72 rounded-full bg-blue-500/20 blur-3xl" />
+        <div className="absolute top-1/2 left-1/3 w-40 h-40 rounded-full bg-white/5 blur-2xl" />
         <div className="relative z-10 px-8 py-8 flex items-center justify-between">
           <div>
-            <p className="text-white/60 text-sm font-medium">
+            <p className="text-white/60 text-sm font-medium tracking-wide">
               {greeting}, {user?.fullName?.split(' ')[0]}
             </p>
-            <h1 className="text-3xl font-extrabold text-white mt-1 tracking-tight">
+            <h1 className="text-3xl md:text-4xl font-extrabold text-white mt-1 tracking-tight">
               {club?.name ?? 'Mi Club'}
             </h1>
             <p className="text-white/60 text-sm mt-2">
               {MONTHS[month - 1]} {year} · {players.length} jugadores · {activeCategories} categoría{activeCategories !== 1 ? 's' : ''} activa{activeCategories !== 1 ? 's' : ''}
             </p>
           </div>
-          <div className="flex-shrink-0">
+          <div className="flex-shrink-0 relative">
+            <div className="absolute inset-0 rounded-full bg-white/20 blur-lg" />
             <NextImage
               src="/logo.png"
               alt="Club logo"
-              width={72}
-              height={72}
-              className="rounded-full shadow-2xl border-2 border-white/20"
+              width={80}
+              height={80}
+              className="relative rounded-full shadow-2xl border-2 border-white/30"
             />
           </div>
         </div>
@@ -127,7 +180,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {statsLoading
           ? Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-24 w-full rounded-xl" />
+              <Skeleton key={i} className="h-24 w-full rounded-2xl" />
             ))
           : statCards.map((s) => (
               <StatCard
@@ -135,7 +188,7 @@ export default function DashboardPage() {
                 label={s.label}
                 value={s.value}
                 icon={s.icon}
-                color={s.color}
+                gradient={s.gradient}
                 href={s.href}
               />
             ))}
@@ -144,14 +197,14 @@ export default function DashboardPage() {
       {/* Quick actions */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {quickActions.map((a) => (
-          <Link
+          <QuickAction
             key={a.href}
+            label={a.label}
             href={a.href}
-            className="flex items-center gap-3 px-4 py-3.5 rounded-xl border bg-card hover:bg-accent transition-colors"
-          >
-            <a.icon size={16} className={a.color} />
-            <span className={`text-sm font-medium ${a.color}`}>{a.label}</span>
-          </Link>
+            icon={a.icon}
+            color={a.color}
+            gradient={a.gradient}
+          />
         ))}
       </div>
 
