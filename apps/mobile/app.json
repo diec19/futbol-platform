@@ -21,7 +21,8 @@
       "output": "single"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "./plugins/with-react-native-dir"
     ],
     "experiments": {
       "typedRoutes": false
