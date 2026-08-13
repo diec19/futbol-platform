@@ -174,9 +174,18 @@ export default function SettingsScreen() {
                       <Text style={styles.playerName}>{p.fullName}</Text>
                       {p.clubCategory?.name && <Text style={styles.playerMeta}>{p.clubCategory.name}</Text>}
                       <View style={styles.playerStatsRow}>
-                        <Text>⚽ {stats.goals}</Text>
-                        <Text>🟨 {stats.yellow}</Text>
-                        <Text>🟥 {stats.red}</Text>
+                        <View style={styles.statItem}>
+                          <Ionicons name="football" size={13} color={colors.green[600]} />
+                          <Text style={styles.statValue}>{stats.goals}</Text>
+                        </View>
+                        <View style={styles.statItem}>
+                          <Ionicons name="warning" size={13} color={colors.warning} />
+                          <Text style={styles.statValue}>{stats.yellow}</Text>
+                        </View>
+                        <View style={styles.statItem}>
+                          <Ionicons name="remove-circle" size={13} color={colors.error} />
+                          <Text style={styles.statValue}>{stats.red}</Text>
+                        </View>
                       </View>
                     </View>
                     <Ionicons name="chevron-forward" size={16} color={colors.gray[300]} />
@@ -228,7 +237,9 @@ const styles = StyleSheet.create({
   playerRow: { flexDirection: 'row', alignItems: 'center' },
   playerName: { fontSize: 14, fontWeight: '600', fontFamily: 'Poppins_600SemiBold', color: colors.text },
   playerMeta: { fontSize: 12, color: colors.textSecondary },
-  playerStatsRow: { flexDirection: 'row', gap: 10, marginTop: 3 },
+  playerStatsRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 3 },
+  statItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  statValue: { fontSize: 12, color: colors.text },
   modalOverlay: { flex: 1, backgroundColor: colors.darkOverlay, justifyContent: 'flex-end' },
   modalScroll: { justifyContent: 'flex-end' },
   modalContent: { backgroundColor: colors.surface, borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, paddingTop: 16, alignItems: 'center', maxHeight: '90%' },

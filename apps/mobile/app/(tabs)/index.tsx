@@ -172,9 +172,18 @@ export default function HomeScreen() {
                       <Text style={styles.playerName}>{p.fullName}</Text>
                       {p.clubCategory?.name && <Text style={styles.playerMeta}>{p.clubCategory.name}</Text>}
                       <View style={styles.playerStats}>
-                        <Text style={styles.playerStat}>⚽ {stats.goals}</Text>
-                        <Text style={styles.playerStat}>🟨 {stats.yellow}</Text>
-                        <Text style={styles.playerStat}>🟥 {stats.red}</Text>
+                        <View style={styles.statItem}>
+                          <Ionicons name="football" size={12} color={colors.green[600]} />
+                          <Text style={styles.playerStat}>{stats.goals}</Text>
+                        </View>
+                        <View style={styles.statItem}>
+                          <Ionicons name="warning" size={12} color={colors.warning} />
+                          <Text style={styles.playerStat}>{stats.yellow}</Text>
+                        </View>
+                        <View style={styles.statItem}>
+                          <Ionicons name="remove-circle" size={12} color={colors.error} />
+                          <Text style={styles.playerStat}>{stats.red}</Text>
+                        </View>
                       </View>
                     </View>
                     <Ionicons name="chevron-forward" size={16} color={colors.gray[300]} />
@@ -306,7 +315,8 @@ const styles = StyleSheet.create({
   playerRow: { flexDirection: 'row', alignItems: 'center' },
   playerName: { fontSize: 14, fontWeight: '600', fontFamily: 'Poppins_600SemiBold', color: colors.text },
   playerMeta: { fontSize: 12, color: colors.textSecondary, marginTop: 1 },
-  playerStats: { flexDirection: 'row', gap: 8, marginTop: 3 },
+  playerStats: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 3 },
+  statItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   playerStat: { fontSize: 11 },
   seeAll: { alignSelf: 'center', marginTop: 4 },
   seeAllText: { fontSize: 13, color: colors.primary, fontWeight: '600', fontFamily: 'Poppins_600SemiBold' },
