@@ -143,7 +143,7 @@ export default function ClubStaffPage() {
   });
 
   return (
-    <div className="max-w-4xl space-y-5">
+    <div className="w-full space-y-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Users className="text-brand-red" size={24} />

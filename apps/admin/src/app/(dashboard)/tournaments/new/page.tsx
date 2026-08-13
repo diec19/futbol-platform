@@ -73,7 +73,7 @@ export default function NewTournamentPage() {
   };
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="w-full space-y-6">
       <div className="flex items-center gap-3">
         <Link href="/tournaments" className="p-2 hover:bg-muted rounded-lg transition-colors" aria-label="Volver a torneos">
           <ArrowLeft className="h-[18px] w-[18px]" />

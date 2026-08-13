@@ -47,7 +47,7 @@ export default function ClubGalleryPage() {
   });
 
   return (
-    <div className="max-w-5xl space-y-5">
+    <div className="w-full space-y-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Image className="text-brand-red" size={24} />

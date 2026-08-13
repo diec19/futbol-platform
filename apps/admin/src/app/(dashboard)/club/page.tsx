@@ -44,7 +44,7 @@ export default function ClubInfoPage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-3xl space-y-4">
+      <div className="w-full space-y-4">
         <Skeleton className="h-9 w-48" />
         <Skeleton className="h-64 w-full" />
       </div>
@@ -73,7 +73,7 @@ export default function ClubInfoPage() {
   );
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="w-full space-y-6">
       <div className="flex items-center gap-3">
         <Building2 className="text-brand-red" size={24} />
         <div>
