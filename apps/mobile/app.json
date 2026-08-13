@@ -11,10 +11,22 @@
     ],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.futbolplatform.app"
+      "bundleIdentifier": "com.futbolplatform.app",
+      "icon": "./assets/logo.png"
     },
     "android": {
-      "package": "com.futbolplatform.app"
+      "package": "com.futbolplatform.app",
+      "icon": "./assets/logo.png",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/logo.png",
+        "backgroundColor": "#E63946"
+      }
+    },
+    "icon": "./assets/logo.png",
+    "splash": {
+      "image": "./assets/logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#E63946"
     },
     "web": {
       "bundler": "metro",
@@ -22,7 +34,8 @@
     },
     "plugins": [
       "expo-router",
-      "./plugins/with-react-native-dir"
+      "./plugins/with-react-native-dir",
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": false

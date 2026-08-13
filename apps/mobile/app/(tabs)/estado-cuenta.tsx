@@ -84,12 +84,26 @@ export default function EstadoCuentaScreen() {
 
   const member = data?.data
   const subscriptions: any[] = member?.subscriptions ?? []
-  const pendingSubs = subscriptions.filter((s: any) => s.status !== 'PAID')
-  const paidSubs = subscriptions.filter((s: any) => s.status === 'PAID')
+
+  // Cuotas del socio + cuotas de cada jugador vinculado (los hijos).
+  const playerSubs: any[] = (member?.players ?? []).flatMap((mp: any) =>
+    (mp.player?.subscriptions ?? []).map((s: any) => ({
+      ...s,
+      _ownerName: mp.player?.fullName,
+      _ownerIsPlayer: true,
+    }))
+  )
+  const allSubs = [
+    ...subscriptions.map((s: any) => ({ ...s, _ownerName: 'Socio', _ownerIsPlayer: false })),
+    ...playerSubs,
+  ]
+
+  const pendingSubs = allSubs.filter((s: any) => s.status !== 'PAID')
+  const paidSubs = allSubs.filter((s: any) => s.status === 'PAID')
   const hasDebt = pendingSubs.length > 0
 
   const calcTotal = () => {
-    return subscriptions.reduce((sum: number, s: any) => sum + (s.totalAmount ?? s.amount ?? 0), 0)
+    return allSubs.reduce((sum: number, s: any) => sum + (s.totalAmount ?? s.amount ?? 0), 0)
   }
   const calcPaid = () => {
     return paidSubs.reduce((sum: number, s: any) => sum + (s.totalAmount ?? s.amount ?? 0), 0)
@@ -129,7 +143,7 @@ export default function EstadoCuentaScreen() {
         </TouchableOpacity>
       )}
 
-      {subscriptions.length === 0 && (
+      {allSubs.length === 0 && (
         <Card padding={24} style={{ marginHorizontal: 16, marginTop: 16, alignItems: 'center' }}>
           <Ionicons name="card-outline" size={48} color={colors.gray[300]} />
           <Text style={{ color: colors.textSecondary, fontSize: 14, textAlign: 'center', marginTop: 12 }}>No tenés cuotas registradas</Text>
@@ -139,14 +153,15 @@ export default function EstadoCuentaScreen() {
       {/* Lista de cuotas */}
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Mis cuotas</Text>
-        <Text style={styles.sectionCount}>{subscriptions.length}</Text>
+        <Text style={styles.sectionCount}>{allSubs.length}</Text>
       </View>
 
-      {subscriptions.map((sub: any) => {
+      {allSubs.map((sub: any) => {
         const monthName = MONTH_NAMES[(sub.month ?? 1) - 1] ?? '---'
         const isPaid = sub.status === 'PAID'
         const color = SUB_COLORS[sub.status] ?? colors.textTertiary
         const icon = SUB_ICONS[sub.status] ?? 'ellipse'
+        const ownerLabel = sub._ownerIsPlayer ? sub._ownerName : 'Cuota de socio'
 
         return (
           <Card key={sub.id} style={[styles.subCard, !isPaid && styles.subCardPending]}>
@@ -155,6 +170,7 @@ export default function EstadoCuentaScreen() {
                 <Ionicons name={icon} size={20} color={color} />
               </View>
               <View style={styles.subInfo}>
+                <Text style={styles.subOwner}>{ownerLabel}</Text>
                 <Text style={styles.subTitle}>{monthName} {sub.year}</Text>
                 <Text style={styles.subDate}>
                   {isPaid
@@ -220,6 +236,7 @@ const styles = StyleSheet.create({
   subRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   subIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   subInfo: { flex: 1 },
+  subOwner: { fontSize: 11, color: colors.primary, fontWeight: '700', fontFamily: 'Poppins_700Bold', marginBottom: 1, textTransform: 'uppercase', letterSpacing: 0.4 },
   subTitle: { fontSize: 15, fontWeight: '600', fontFamily: 'Poppins_600SemiBold', color: colors.text, marginBottom: 2 },
   subDate: { fontSize: 12, color: colors.textSecondary },
   lateFee: { fontSize: 11, color: colors.error, fontWeight: '600', fontFamily: 'Poppins_600SemiBold', marginTop: 2 },

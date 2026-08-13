@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, Image } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
@@ -6,15 +6,31 @@ import { useRouter } from 'expo-router'
 import { api } from '../../services/api'
 import { useAuth } from '../../services/auth'
 import { colors } from '../../theme/colors'
+import { isBiometricAvailable, authenticateWithBiometrics, saveCredentials, getSavedCredentials } from '../../services/biometrics'
 
 export default function LoginScreen() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [rememberMe, setRememberMe] = useState(false)
+  const [biometricAvailable, setBiometricAvailable] = useState(false)
+  const [biometricLoading, setBiometricLoading] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const { login, onboardingDone } = useAuth()
   const router = useRouter()
+
+  // Al abrir: detecta biometría y precarga credenciales guardadas.
+  useEffect(() => {
+    isBiometricAvailable().then(setBiometricAvailable)
+    getSavedCredentials().then((creds) => {
+      if (creds) {
+        setUsername(creds.username)
+        setPassword('')
+        setRememberMe(true)
+      }
+    })
+  }, [])
 
   const handleLogin = async () => {
     if (!username || !password) return
@@ -23,6 +39,9 @@ export default function LoginScreen() {
     try {
       const res = await api.members.login(username, password)
       await login(res.data.accessToken, res.data.member)
+      if (rememberMe) {
+        await saveCredentials(username, password)
+      }
       if (onboardingDone) {
         router.replace('/(tabs)')
       } else {
@@ -32,6 +51,28 @@ export default function LoginScreen() {
       setError(e.message ?? 'Credenciales inválidas')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleBiometricLogin = async () => {
+    if (!biometricAvailable) return
+    setBiometricLoading(true)
+    setError('')
+    try {
+      const ok = await authenticateWithBiometrics()
+      if (!ok) return
+      const creds = await getSavedCredentials()
+      if (!creds) {
+        setError('No hay credenciales guardadas. Iniciá sesión una vez marcando "Recordarme".')
+        return
+      }
+      const res = await api.members.login(creds.username, creds.password)
+      await login(res.data.accessToken, res.data.member)
+      router.replace('/(tabs)')
+    } catch (e: any) {
+      setError(e.message ?? 'No se pudo iniciar sesión con la huella')
+    } finally {
+      setBiometricLoading(false)
     }
   }
 
@@ -95,9 +136,29 @@ export default function LoginScreen() {
           </View>
         ) : null}
 
+        <TouchableOpacity style={styles.rememberRow} onPress={() => setRememberMe(!rememberMe)} activeOpacity={0.7}>
+          <View style={[styles.checkbox, rememberMe && styles.checkboxActive]}>
+            {rememberMe && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
+          </View>
+          <Text style={styles.rememberText}>Recordarme (para entrar con huella)</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading} activeOpacity={0.85}>
           {loading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.buttonText}>Ingresar</Text>}
         </TouchableOpacity>
+
+        {biometricAvailable && (
+          <TouchableOpacity style={styles.biometricBtn} onPress={handleBiometricLogin} disabled={biometricLoading} activeOpacity={0.85}>
+            {biometricLoading ? (
+              <ActivityIndicator color={colors.accent} size="small" />
+            ) : (
+              <>
+                <Ionicons name="finger-print" size={20} color={colors.accent} />
+                <Text style={styles.biometricText}>Entrar con mi huella</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity style={styles.registerLink} onPress={() => router.push('/auth/register')} activeOpacity={0.7}>
           <Text style={styles.registerText}>¿No tenés cuenta? Creala acá</Text>
@@ -176,6 +237,16 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   buttonText: { color: '#FFFFFF', fontWeight: '700', fontFamily: 'Poppins_700Bold', fontSize: 16 },
+  rememberRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
+  checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: colors.gray[300], alignItems: 'center', justifyContent: 'center' },
+  checkboxActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  rememberText: { fontSize: 13, color: colors.textSecondary, fontFamily: 'Poppins_400Regular', flex: 1 },
+  biometricBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    marginTop: 10, paddingVertical: 13, borderRadius: 14,
+    borderWidth: 1.5, borderColor: colors.accent, backgroundColor: colors.accentLight,
+  },
+  biometricText: { color: colors.accent, fontWeight: '700', fontFamily: 'Poppins_700Bold', fontSize: 14 },
   registerLink: { alignItems: 'center', marginTop: 16 },
   registerText: { color: colors.primary, fontSize: 13, fontWeight: '600', fontFamily: 'Poppins_600SemiBold' },
 })
