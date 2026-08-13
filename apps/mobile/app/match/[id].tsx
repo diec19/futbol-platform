@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import Card from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
 import PlayerAvatar from '../../components/PlayerAvatar'
+import GradientHeader from '../../components/ui/GradientHeader'
 import { colors } from '../../theme/colors'
 import { MATCH_STATUS_LABELS } from '../../lib/constants'
 
@@ -64,7 +65,7 @@ export default function MatchScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView>
-        <View style={styles.header}>
+        <GradientHeader style={styles.header}>
           <Badge label={MATCH_STATUS_LABELS[match.status] ?? match.status} variant={STATUS_VARIANT[match.status] ?? 'default'} />
           <View style={styles.scoreRow}>
             <View style={styles.teamBlock}>
@@ -93,7 +94,7 @@ export default function MatchScreen() {
             {match.referee && <><Ionicons name="flag-outline" size={12} color="rgba(255,255,255,0.7)" /><Text style={styles.metaText}> {match.referee.fullName}</Text></>}
           </View>
           {match.group && <Text style={styles.groupText}>{match.group.name}{match.round ? ` · Fecha ${match.round}` : ''}</Text>}
-        </View>
+        </GradientHeader>
 
         {isFinished && (homeGoals.length > 0 || awayGoals.length > 0) && (
           <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>

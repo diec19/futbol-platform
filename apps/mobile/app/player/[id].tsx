@@ -6,6 +6,7 @@ import { api } from '@/services/api'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Card from '../../components/ui/Card'
 import PlayerAvatar from '../../components/PlayerAvatar'
+import GradientHeader from '../../components/ui/GradientHeader'
 import { colors } from '../../theme/colors'
 import { POSITION_LABELS } from '../../lib/constants'
 import { getPlayerStats } from '../../lib/stats'
@@ -59,7 +60,7 @@ export default function PlayerScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView>
-        <View style={styles.header}>
+        <GradientHeader style={styles.header}>
           <PlayerAvatar photoUrl={player.photoUrl} name={player.fullName} size={72} style={styles.avatar} />
           <Text style={styles.name}>{player.fullName}</Text>
           {player.shirtNumber && <Text style={styles.shirt}>#{player.shirtNumber}</Text>}
@@ -69,7 +70,7 @@ export default function PlayerScreen() {
               <Text style={styles.posText}>{POSITION_LABELS[player.position] ?? player.position}</Text>
             </View>
           )}
-        </View>
+        </GradientHeader>
 
         <View style={styles.statsRow}>
           <View style={[styles.statCard, { borderLeftColor: colors.success }]}>

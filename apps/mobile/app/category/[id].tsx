@@ -7,6 +7,7 @@ import { api } from '@/services/api'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Card from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
+import GradientHeader from '../../components/ui/GradientHeader'
 import { colors } from '../../theme/colors'
 import { MATCH_STATUS_LABELS, BRACKET_STAGE_LABELS } from '../../lib/constants'
 
@@ -104,7 +105,7 @@ export default function CategoryScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      <View style={styles.header}>
+      <GradientHeader style={styles.header}>
         <View style={styles.headerIcon}>
           <Ionicons name="layers" size={24} color="#FFFFFF" />
         </View>
@@ -118,7 +119,7 @@ export default function CategoryScreen() {
           <Ionicons name="trophy" size={14} color="#FFFFFF" />
           <Text style={styles.copaBtnText}>Ver en Copa Fácil</Text>
         </TouchableOpacity>
-      </View>
+      </GradientHeader>
 
       <View style={styles.tabBar}>
         {([['matches', 'Partidos', 'football'], ['standings', 'Posiciones', 'list'], ['bracket', 'Llaves', 'git-branch-outline']] as [Tab, string, keyof typeof Ionicons.glyphMap][]).map(([key, label, icon]) => (

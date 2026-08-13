@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { api } from '../services/api'
 import Card from '../components/ui/Card'
+import GradientHeader from '../components/ui/GradientHeader'
 import { colors } from '../theme/colors'
 import { useState, useCallback } from 'react'
 
@@ -39,13 +40,13 @@ export default function BeneficiosScreen() {
       contentContainerStyle={{ paddingBottom: 40 }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
     >
-      <View style={styles.header}>
+      <GradientHeader style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Beneficios</Text>
         <View style={{ width: 36 }} />
-      </View>
+      </GradientHeader>
 
       <View style={styles.filterRow}>
         {FILTERS.map((f) => (

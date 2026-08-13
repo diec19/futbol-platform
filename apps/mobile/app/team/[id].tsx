@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import Card from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
 import PlayerAvatar from '../../components/PlayerAvatar'
+import GradientHeader from '../../components/ui/GradientHeader'
 import { colors } from '../../theme/colors'
 import { POSITION_LABELS, MATCH_STATUS_LABELS } from '../../lib/constants'
 
@@ -47,7 +48,7 @@ export default function TeamScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      <View style={styles.header}>
+      <GradientHeader style={styles.header}>
         <View style={styles.shield}>
           <Text style={styles.shieldText}>{team.name[0]?.toUpperCase()}</Text>
         </View>
@@ -63,7 +64,7 @@ export default function TeamScreen() {
             <Text style={styles.delegate}>{team.delegateName}</Text>
           </View>
         )}
-      </View>
+      </GradientHeader>
 
       <View style={styles.tabBar}>
         {([['roster', 'people', `Plantel (${players.length})`], ['matches', 'football', 'Partidos']] as [Tab, keyof typeof Ionicons.glyphMap, string][]).map(([key, icon, label]) => (

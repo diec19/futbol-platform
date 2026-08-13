@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { api } from '@/services/api'
 import Card from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
+import GradientHeader from '../../components/ui/GradientHeader'
 import { colors } from '../../theme/colors'
 
 export default function TournamentDetail() {
@@ -29,7 +30,7 @@ export default function TournamentDetail() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
-      <View style={styles.header}>
+      <GradientHeader style={styles.header}>
         <View style={styles.headerIcon}>
           <Ionicons name="trophy" size={28} color="#FFFFFF" />
         </View>
@@ -44,7 +45,7 @@ export default function TournamentDetail() {
             </View>
           )}
         </View>
-      </View>
+      </GradientHeader>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Categorías</Text>
@@ -85,8 +86,7 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
     marginBottom: 16,
-  },
-  headerIcon: { width: 48, height: 48, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  },  headerIcon: { width: 48, height: 48, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
   title: { fontSize: 22, fontWeight: '800', fontFamily: 'Poppins_800ExtraBold', color: '#FFFFFF', marginBottom: 4 },
   description: { fontSize: 14, color: 'rgba(255,255,255,0.85)', marginBottom: 12 },
   headerMeta: { flexDirection: 'row', alignItems: 'center', gap: 12 },
