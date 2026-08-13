@@ -183,7 +183,7 @@ export default function SettingsScreen() {
 
       {member?.players?.length > 0 && (
         <>
-          <View style={styles.sectionTitle}>Jugadores vinculados</View>
+          <Text style={styles.sectionTitle}>Jugadores vinculados</Text>
           {member.players.map((mp: any) => {
             const p = mp.player
             const stats = getPlayerStats(p)
