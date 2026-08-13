@@ -37,24 +37,33 @@ import {
   UserMinus,
 } from 'lucide-react';
 
-const clubNav = [
+const clubGeneralNav = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Info del Club', href: '/club', icon: Building2 },
+  { name: 'Noticias', href: '/club/news', icon: Newspaper },
+  { name: 'Galería', href: '/club/gallery', icon: Image },
+  { name: 'Canchas', href: '/club/fields', icon: MapPin },
+];
+
+const clubPlayersNav = [
   { name: 'Categorías', href: '/club/categorias', icon: Layers },
   { name: 'Plantel', href: '/club/plantel', icon: Shirt },
-  { name: 'Cuotas', href: '/club/cuotas', icon: Banknote },
-  { name: 'Auspiciantes', href: '/club/sponsors', icon: Handshake },
-  { name: 'Banners', href: '/club/banners', icon: MonitorPlay },
-  { name: 'Beneficios', href: '/club/benefits', icon: Gift },
   { name: 'Socios', href: '/club/members', icon: Users },
   { name: 'Altas de jugadores', href: '/club/join-requests', icon: UserPlus },
   { name: 'Desvinculaciones', href: '/club/unlink-requests', icon: UserMinus },
-  { name: 'Noticias', href: '/club/news', icon: Newspaper },
-  { name: 'Notificaciones', href: '/club/notifications', icon: Bell },
   { name: 'Cuerpo Técnico', href: '/club/staff', icon: Users },
-  { name: 'Galería', href: '/club/gallery', icon: Image },
-  { name: 'Canchas', href: '/club/fields', icon: MapPin },
+];
+
+const clubFinanceNav = [
+  { name: 'Cuotas', href: '/club/cuotas', icon: Banknote },
   { name: 'Pagos', href: '/club/payments', icon: CreditCard },
+  { name: 'Auspiciantes', href: '/club/sponsors', icon: Handshake },
+  { name: 'Banners', href: '/club/banners', icon: MonitorPlay },
+  { name: 'Beneficios', href: '/club/benefits', icon: Gift },
+];
+
+const clubCommsNav = [
+  { name: 'Notificaciones', href: '/club/notifications', icon: Bell },
 ];
 
 const tournamentNav = [
@@ -75,7 +84,7 @@ function isItemActive(href: string, pathname: string): boolean {
 }
 
 interface NavItemProps {
-  item: (typeof clubNav)[number];
+  item: { name: string; href: string; icon: typeof Trophy };
   pathname: string;
   onNavigate?: () => void;
 }
@@ -110,7 +119,7 @@ function NavSection({
   onNavigate,
 }: {
   label: string;
-  items: typeof clubNav;
+  items: { name: string; href: string; icon: typeof Trophy }[];
   pathname: string;
   defaultOpen?: boolean;
   bordered?: boolean;
@@ -188,9 +197,30 @@ export function Sidebar({
       <nav className="flex-1 p-3 overflow-y-auto space-y-1">
         <NavSection
           label="Mi Club"
-          items={clubNav}
+          items={clubGeneralNav}
           pathname={pathname}
           defaultOpen={true}
+          onNavigate={onNavigate}
+        />
+        <NavSection
+          label="Jugadores y Categorías"
+          items={clubPlayersNav}
+          pathname={pathname}
+          defaultOpen={true}
+          onNavigate={onNavigate}
+        />
+        <NavSection
+          label="Finanzas"
+          items={clubFinanceNav}
+          pathname={pathname}
+          defaultOpen={false}
+          onNavigate={onNavigate}
+        />
+        <NavSection
+          label="Comunicación"
+          items={clubCommsNav}
+          pathname={pathname}
+          defaultOpen={false}
           onNavigate={onNavigate}
         />
         <NavSection
