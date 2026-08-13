@@ -142,7 +142,7 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="space-y-8 max-w-7xl">
+    <div className="space-y-8 w-full">
 
       {/* Hero */}
       <div className="relative rounded-3xl overflow-hidden shadow-xl shadow-black/10">
