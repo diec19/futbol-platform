@@ -1,14 +1,7 @@
 import { BracketStage } from '@prisma/client';
 import { db } from '../config/database';
 import { AppError } from './app-error';
-
-const STAGE_ORDER: BracketStage[] = [
-  'ROUND_OF_16',
-  'QUARTER_FINAL',
-  'SEMI_FINAL',
-  'THIRD_PLACE',
-  'FINAL',
-];
+import { STAGE_ORDER, computeMatchWinner, computeNextStage, computeFirstRoundPairings, findFreeSlot, winnerSlot } from './bracket-utils';
 
 export async function initializeBracket(
   categoryId: string,
@@ -16,9 +9,7 @@ export async function initializeBracket(
   teamIds: string[],
   scheduledAt: Date
 ) {
-  if (teamIds.length < 2 || teamIds.length % 2 !== 0) {
-    throw new AppError('Se necesita un número par de equipos (mínimo 2)', 400);
-  }
+  const pairings = computeFirstRoundPairings(teamIds);
 
   const bracket = await db.bracket.upsert({
     where: { categoryId_stage: { categoryId, stage } },
@@ -26,22 +17,19 @@ export async function initializeBracket(
     update: {},
   });
 
-  const matchCreations = [];
-  for (let i = 0; i < teamIds.length; i += 2) {
-    matchCreations.push(
-      db.match.create({
-        data: {
-          categoryId,
-          bracketId: bracket.id,
-          bracketStage: stage,
-          homeTeamId: teamIds[i],
-          awayTeamId: teamIds[i + 1],
-          scheduledAt,
-          status: 'SCHEDULED',
-        },
-      })
-    );
-  }
+  const matchCreations = pairings.map(([homeTeamId, awayTeamId]) =>
+    db.match.create({
+      data: {
+        categoryId,
+        bracketId: bracket.id,
+        bracketStage: stage,
+        homeTeamId,
+        awayTeamId,
+        scheduledAt,
+        status: 'SCHEDULED',
+      },
+    })
+  );
 
   const matches = await db.$transaction([
     db.match.deleteMany({ where: { bracketId: bracket.id } }),
@@ -57,28 +45,17 @@ export async function advanceWinnerFromMatch(matchId: string): Promise<void> {
   });
 
   if (!match?.bracket || match.status !== 'FINISHED') return;
-  if (match.homeScore === null || match.awayScore === null) return;
-
-  const winnerId =
-    match.homeScore > match.awayScore
-      ? match.homeTeamId
-      : match.awayScore > match.homeScore
-        ? match.awayTeamId
-        : null;
-
+  const winnerId = computeMatchWinner(match);
   if (!winnerId) return;
 
-  const currentIdx = STAGE_ORDER.indexOf(match.bracket.stage);
-  if (currentIdx === -1 || currentIdx >= STAGE_ORDER.length - 1) return;
-
-  const nextStage = STAGE_ORDER[currentIdx + 1];
+  const nextStage = computeNextStage(match.bracket.stage as BracketStage);
+  if (!nextStage) return;
 
   const nextBracket = await db.bracket.findUnique({
     where: {
       categoryId_stage: { categoryId: match.categoryId, stage: nextStage },
     },
   });
-
   if (!nextBracket) return;
 
   const nextMatches = await db.match.findMany({
@@ -86,11 +63,11 @@ export async function advanceWinnerFromMatch(matchId: string): Promise<void> {
     orderBy: { createdAt: 'asc' },
   });
 
-  const slot = nextMatches.find((m) => !m.homeTeamId || !m.awayTeamId);
+  const slot = findFreeSlot(nextMatches);
   if (!slot) return;
 
   await db.match.update({
     where: { id: slot.id },
-    data: slot.homeTeamId ? { awayTeamId: winnerId } : { homeTeamId: winnerId },
+    data: winnerSlot(slot) === 'home' ? { homeTeamId: winnerId } : { awayTeamId: winnerId },
   });
 }
