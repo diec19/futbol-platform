@@ -2,7 +2,8 @@ import { Router } from 'express';
 import crypto from 'crypto';
 import { db } from '../../config/database';
 import { env } from '../../config/env';
-import { getClubMpToken, fetchMpPayment, validateWebhookSignature, expectedPaymentAmount } from '../../lib/mp';
+import { getClubMpToken, fetchMpPayment } from '../../lib/mp';
+import { validateWebhookSignature, expectedPaymentAmount } from '../../lib/mp-utils';
 import { notificationsService } from '../notifications/notifications.service';
 
 export const webhooksRouter = Router();

@@ -12,7 +12,8 @@
     "postinstall": "node scripts/patch-router.js",
     "eas-build-post-install": "",
     "build:android": "eas build --platform android",
-    "lint": "eslint app --ext .ts,.tsx"
+    "lint": "eslint app --ext .ts,.tsx",
+    "test": "vitest run"
   },
   "dependencies": {
     "@expo-google-fonts/poppins": "^0.4.1",
