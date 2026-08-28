@@ -14,6 +14,10 @@ const SECRET_FIELDS = ['mpAccessToken', 'mpWebhookSecret'] as const;
 function toPublicClub<T extends Record<string, unknown>>(club: T) {
   const publicClub = { ...club } as Record<string, unknown>;
   for (const field of SECRET_FIELDS) {
+    const raw = publicClub[field] as string | null | undefined;
+    // Indica si el secreto está cargado sin exponerlo. Permite al admin mostrar
+    // "token cargado" sin revelar el valor real.
+    publicClub[`${field}Set`] = Boolean(raw && raw.length > 0);
     delete publicClub[field];
   }
   return publicClub;

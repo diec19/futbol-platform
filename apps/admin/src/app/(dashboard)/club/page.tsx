@@ -16,6 +16,7 @@ import {
   CreditCard,
   Eye,
   EyeOff,
+  CheckCircle2,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -236,7 +237,11 @@ export default function ClubInfoPage() {
                   type={showMpToken ? 'text' : 'password'}
                   value={val('mpAccessToken')}
                   onChange={(e) => set('mpAccessToken', e.target.value)}
-                  placeholder="APP_USR-..."
+                  placeholder={
+                    club?.mpAccessTokenSet
+                      ? 'APP_USR-•••••••• (token cargado)'
+                      : 'APP_USR-...'
+                  }
                 />
                 <Button
                   type="button"
@@ -249,6 +254,12 @@ export default function ClubInfoPage() {
                   {showMpToken ? <EyeOff size={15} /> : <Eye size={15} />}
                 </Button>
               </div>
+              {club?.mpAccessTokenSet && (
+                <p className="flex items-center gap-1 text-xs text-green-600">
+                  <CheckCircle2 size={13} />
+                  Token cargado. Dejalo vacío para mantenerlo, o ingresá uno nuevo para reemplazarlo.
+                </p>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label>Webhook Secret (opcional)</Label>
@@ -257,7 +268,11 @@ export default function ClubInfoPage() {
                   type={showMpSecret ? 'text' : 'password'}
                   value={val('mpWebhookSecret')}
                   onChange={(e) => set('mpWebhookSecret', e.target.value)}
-                  placeholder="Tu Webhook Secret"
+                  placeholder={
+                    club?.mpWebhookSecretSet
+                      ? '•••••••• (secreto cargado)'
+                      : 'Tu Webhook Secret'
+                  }
                 />
                 <Button
                   type="button"
@@ -270,6 +285,12 @@ export default function ClubInfoPage() {
                   {showMpSecret ? <EyeOff size={15} /> : <Eye size={15} />}
                 </Button>
               </div>
+              {club?.mpWebhookSecretSet && (
+                <p className="flex items-center gap-1 text-xs text-green-600">
+                  <CheckCircle2 size={13} />
+                  Secreto cargado. Si no coincide con el de MercadoPago, el webhook rechaza los pagos.
+                </p>
+              )}
             </div>
           </div>
         </CardContent>
