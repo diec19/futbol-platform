@@ -40,13 +40,16 @@ export function startOverdueCron() {
         },
       });
 
-      const playerResult = await db.playerSubscription.updateMany({
-        where: {
-          status: { in: ['PENDING', 'LINK_SENT'] },
-          dueDate: { lt: startOfToday },
-        },
-        data: { status: 'OVERDUE' },
-      });
+      // Marcar OVERDUE con su recargo (10% del monto base)
+      const playerResult = { count: 0 };
+      for (const sub of overduePlayerSubs) {
+        const lateFee = Math.round(sub.amount * 10 / 100);
+        await db.playerSubscription.update({
+          where: { id: sub.id },
+          data: { status: 'OVERDUE', lateFee, totalAmount: sub.amount + lateFee },
+        });
+        playerResult.count++;
+      }
 
       // Encolar recordatorios de cuotas vencidas de jugadores (outbox)
       for (const sub of overduePlayerSubs) {
@@ -119,13 +122,15 @@ export function startOverdueCron() {
         include: { member: { select: { id: true, phone: true, email: true, fullName: true } } },
       });
 
-      const memberResult = await db.subscription.updateMany({
-        where: {
-          status: { in: ['PENDING', 'LINK_SENT'] },
-          dueDate: { lt: startOfToday },
-        },
-        data: { status: 'OVERDUE' },
-      });
+      const memberResult = { count: 0 };
+      for (const sub of overdueMemberSubs) {
+        const lateFee = Math.round(sub.amount * 10 / 100);
+        await db.subscription.update({
+          where: { id: sub.id },
+          data: { status: 'OVERDUE', lateFee, totalAmount: sub.amount + lateFee },
+        });
+        memberResult.count++;
+      }
 
       // Encolar recordatorios de cuotas vencidas de socios (outbox)
       for (const sub of overdueMemberSubs) {

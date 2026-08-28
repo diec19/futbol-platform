@@ -5,6 +5,7 @@ import {
   preferenceExpiration,
   buildWhatsAppUrl,
   validateWebhookSignature,
+  calculateLateFee,
 } from './mp-utils';
 
 describe('normalizePhone', () => {
@@ -46,6 +47,27 @@ describe('expectedPaymentAmount', () => {
   it('no aplica recargo si la fecha no venció', () => {
     const sub = { amount: 10000, dueDate: new Date(Date.now() + 86400000).toISOString() };
     expect(expectedPaymentAmount(sub)).toBe(10000);
+  });
+});
+
+describe('calculateLateFee', () => {
+  // La cuota vence el día 10 a medianoche local (misma construcción que getDueDate)
+  const due = new Date(2026, 0, 10);
+
+  it('devuelve 0 si se paga antes del vencimiento', () => {
+    expect(calculateLateFee(10000, new Date(2026, 0, 9, 12), due)).toBe(0);
+  });
+
+  it('devuelve 0 si se paga el mismo día del vencimiento (gracia)', () => {
+    expect(calculateLateFee(10000, new Date(2026, 0, 10, 23, 59), due)).toBe(0);
+  });
+
+  it('aplica 10% si se paga después del vencimiento', () => {
+    expect(calculateLateFee(10000, new Date(2026, 0, 11, 0, 1), due)).toBe(1000);
+  });
+
+  it('redondea el recargo', () => {
+    expect(calculateLateFee(10033, new Date(2026, 0, 11, 0, 1), due)).toBe(1003);
   });
 });
 

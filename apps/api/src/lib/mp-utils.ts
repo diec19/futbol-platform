@@ -1,9 +1,24 @@
 // Funciones puras de MercadoPago/WhatsApp (sin dependencias de DB ni env).
 // Extraídas de mp.ts para poder testearlas de forma aislada.
 
+export const LATE_FEE_PERCENT = 10;
+
+// Recargo por pago tardío: 10% del monto base si se paga después del día de vencimiento.
+// El día del vencimiento completo es período de gracia (consistente con el cron de OVERDUE).
+export function calculateLateFee(amount: number, paidDate: Date, dueDate: Date): number {
+  const dueDay = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+  const paidDay = new Date(paidDate.getFullYear(), paidDate.getMonth(), paidDate.getDate());
+  if (paidDay <= dueDay) return 0;
+  return Math.round(amount * LATE_FEE_PERCENT / 100);
+}
+
 export function expectedPaymentAmount(sub: { amount: number; dueDate?: Date | string | null; status?: string; totalAmount?: number | null }): number {
   if (sub.totalAmount != null && sub.totalAmount > sub.amount) return sub.totalAmount;
-  if (sub.dueDate && new Date(sub.dueDate) < new Date()) return Math.round(sub.amount * 1.1);
+  if (sub.dueDate) {
+    const dueDay = new Date(new Date(sub.dueDate).getFullYear(), new Date(sub.dueDate).getMonth(), new Date(sub.dueDate).getDate());
+    const today = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+    if (dueDay < today) return Math.round(sub.amount * 1.1);
+  }
   return sub.amount;
 }
 

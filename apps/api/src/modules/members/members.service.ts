@@ -6,6 +6,7 @@ import { AppError } from '../../lib/app-error';
 import { mpService } from './mp.service';
 import { notificationsService } from '../notifications/notifications.service';
 import { mapWithConcurrency, normalizePhone, buildWhatsAppUrl } from '../../lib/mp';
+import { calculateLateFee } from '../../lib/mp-utils';
 
 const memberSelect = {
   id: true, fullName: true, dni: true, email: true,
@@ -614,22 +615,31 @@ export const membersService = {
     });
     if (!sub) throw new AppError('Cuota no encontrada', 404);
 
+    const paidAt = new Date();
+    const lateFee = calculateLateFee(sub.amount, paidAt, sub.dueDate);
     const updated = await db.subscription.update({
       where: { id: subId },
-      data: { status: 'PAID', paidAt: new Date() },
+      data: { status: 'PAID', paidAt, lateFee, totalAmount: sub.amount + lateFee },
     });
 
     // Optional: explicitly mark linked children's PlayerSubscriptions for same month/year as PAID
     if (includeChildren && sub.member?.players?.length) {
-      await db.playerSubscription.updateMany({
+      const childPaidAt = new Date();
+      const childSubs = await db.playerSubscription.findMany({
         where: {
           playerId: { in: sub.member.players.map((p) => p.playerId) },
           month: sub.month,
           year: sub.year,
           status: { not: 'PAID' },
         },
-        data: { status: 'PAID', paidAt: new Date() },
       });
+      for (const cs of childSubs) {
+        const csFee = calculateLateFee(cs.amount, childPaidAt, cs.dueDate);
+        await db.playerSubscription.update({
+          where: { id: cs.id },
+          data: { status: 'PAID', paidAt: childPaidAt, lateFee: csFee, totalAmount: cs.amount + csFee },
+        });
+      }
     }
 
     return updated;

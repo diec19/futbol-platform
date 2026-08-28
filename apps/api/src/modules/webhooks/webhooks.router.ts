@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import { db } from '../../config/database';
 import { env } from '../../config/env';
 import { getClubMpToken, fetchMpPayment } from '../../lib/mp';
-import { validateWebhookSignature, expectedPaymentAmount } from '../../lib/mp-utils';
+import { validateWebhookSignature, expectedPaymentAmount, calculateLateFee } from '../../lib/mp-utils';
 import { notificationsService } from '../notifications/notifications.service';
 
 export const webhooksRouter = Router();
@@ -72,9 +72,17 @@ webhooksRouter.post('/mp', async (req, res) => {
         }
 
         console.log('[WEBHOOK] Updating player subscription:', subId);
+        const paidAt = new Date();
+        const lateFee = calculateLateFee(playerSub.amount, paidAt, playerSub.dueDate);
         await db.playerSubscription.update({
           where: { id: subId },
-          data: { status: 'PAID', paidAt: new Date(), mpPaymentId: String(paymentId) },
+          data: {
+            status: 'PAID',
+            paidAt,
+            mpPaymentId: String(paymentId),
+            lateFee,
+            totalAmount: playerSub.amount + lateFee,
+          },
         });
 
         try {
@@ -121,9 +129,17 @@ webhooksRouter.post('/mp', async (req, res) => {
         }
 
         console.log('[WEBHOOK] Updating member subscription:', subId);
+        const memberPaidAt = new Date();
+        const memberLateFee = calculateLateFee(memberSub.amount, memberPaidAt, memberSub.dueDate);
         await db.subscription.update({
           where: { id: subId },
-          data: { status: 'PAID', paidAt: new Date(), mpPaymentId: String(paymentId) },
+          data: {
+            status: 'PAID',
+            paidAt: memberPaidAt,
+            mpPaymentId: String(paymentId),
+            lateFee: memberLateFee,
+            totalAmount: memberSub.amount + memberLateFee,
+          },
         });
 
         try {
@@ -140,14 +156,20 @@ webhooksRouter.post('/mp', async (req, res) => {
 
         // Consolidated payment: amount covers member + children → mark children explicitly
         if (childSubs.length && transactionAmount >= expectedMember + expectedChildren - 1) {
-          await db.playerSubscription.updateMany({
-            where: {
-              playerId: { in: childSubs.map((cs) => cs.playerId) },
-              month: memberSub.month,
-              year: memberSub.year,
-            },
-            data: { status: 'PAID', paidAt: new Date(), mpPaymentId: String(paymentId) },
-          });
+          const childPaidAt = new Date();
+          for (const cs of childSubs) {
+            const childLateFee = calculateLateFee(cs.amount, childPaidAt, cs.dueDate);
+            await db.playerSubscription.update({
+              where: { id: cs.id },
+              data: {
+                status: 'PAID',
+                paidAt: childPaidAt,
+                mpPaymentId: String(paymentId),
+                lateFee: childLateFee,
+                totalAmount: cs.amount + childLateFee,
+              },
+            });
+          }
         }
 
         return res.json({ processed: true, type: 'member', subId });

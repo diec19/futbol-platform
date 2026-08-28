@@ -560,6 +560,8 @@ model Subscription {
   month          Int
   year           Int
   amount         Float
+  lateFee        Float              @default(0)
+  totalAmount    Float              @default(0)
   status         SubscriptionStatus @default(PENDING)
   mpPreferenceId String?
   mpPaymentLink  String?
